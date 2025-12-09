@@ -1,1 +1,4 @@
 project_id = "bamexkkbepzlvaybysui"
+
+[functions.execute-code]
+verify_jwt = true
