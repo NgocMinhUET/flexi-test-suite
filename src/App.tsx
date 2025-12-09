@@ -7,6 +7,10 @@ import Index from "./pages/Index";
 import TakeExam from "./pages/TakeExam";
 import ExamResult from "./pages/ExamResult";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import ExamEditor from "./pages/ExamEditor";
+import ExamResults from "./pages/ExamResults";
 
 const queryClient = new QueryClient();
 
@@ -18,8 +22,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/exam/new" element={<ExamEditor />} />
+          <Route path="/exam/:id/edit" element={<ExamEditor />} />
           <Route path="/exam/:id" element={<TakeExam />} />
           <Route path="/exam/:id/result" element={<ExamResult />} />
+          <Route path="/exam/:id/results" element={<ExamResults />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
