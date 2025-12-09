@@ -43,7 +43,24 @@ const TakeExam = () => {
       }
 
       try {
-        // First check if user is assigned to this exam
+        // First check if user has already submitted this exam
+        const { data: existingResult, error: resultError } = await supabase
+          .from('exam_results')
+          .select('id, submitted_at')
+          .eq('exam_id', examId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (resultError) throw resultError;
+
+        if (existingResult) {
+          // User has already submitted - redirect to results
+          toast.info('Bạn đã nộp bài thi này rồi');
+          navigate(`/exam/${examId}/result`);
+          return;
+        }
+
+        // Check if user is assigned to this exam
         const { data: assignment, error: assignmentError } = await supabase
           .from('exam_assignments')
           .select('*')
@@ -111,7 +128,7 @@ const TakeExam = () => {
     if (!authLoading) {
       fetchExam();
     }
-  }, [examId, user, authLoading]);
+  }, [examId, user, authLoading, navigate]);
 
   const calculateGrade = (percentage: number): string => {
     if (percentage >= 90) return 'A+';
