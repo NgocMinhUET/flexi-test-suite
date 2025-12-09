@@ -32,6 +32,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Trash2, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AddUserDialog } from '@/components/admin/AddUserDialog';
+import { ImportUsersDialog } from '@/components/admin/ImportUsersDialog';
 
 interface UserWithRole {
   id: string;
@@ -225,8 +227,12 @@ export default function UserManagement() {
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>Danh sách người dùng ({users.length})</CardTitle>
+            <div className="flex gap-2">
+              <ImportUsersDialog onUsersImported={fetchUsers} />
+              <AddUserDialog onUserAdded={fetchUsers} />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
