@@ -224,6 +224,20 @@ export const CodingEditor = ({
         <Textarea
           value={currentCode}
           onChange={(e) => onCodeChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              const target = e.target as HTMLTextAreaElement;
+              const start = target.selectionStart;
+              const end = target.selectionEnd;
+              const newValue = currentCode.substring(0, start) + '  ' + currentCode.substring(end);
+              onCodeChange(newValue);
+              // Set cursor position after the inserted spaces
+              setTimeout(() => {
+                target.selectionStart = target.selectionEnd = start + 2;
+              }, 0);
+            }
+          }}
           placeholder={`// Viết code ${languageConfig[currentLanguage].name} của bạn ở đây...`}
           className="min-h-[300px] font-mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card"
         />
