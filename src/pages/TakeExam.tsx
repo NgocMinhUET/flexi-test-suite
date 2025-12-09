@@ -124,7 +124,7 @@ const TakeExam = () => {
     return 'F';
   };
 
-  const calculateResults = useCallback((): ExamResult | null => {
+  const calculateResults = useCallback(async (): Promise<ExamResult | null> => {
     if (!exam) return null;
 
     const questionResults: QuestionResult[] = [];
@@ -143,11 +143,12 @@ const TakeExam = () => {
     let incorrectCount = 0;
     let unansweredCount = 0;
 
-    exam.questions.forEach((question) => {
+    for (const question of exam.questions) {
       const answer = answers.get(question.id);
       const userAnswer = answer?.answer || '';
       let isCorrect = false;
       let earnedPoints = 0;
+      let codingResults: QuestionResult['codingResults'] = undefined;
 
       byType[question.type].total += 1;
 
@@ -165,16 +166,65 @@ const TakeExam = () => {
         } else if (question.type === 'essay') {
           earnedPoints = userAnswer ? Math.ceil(question.points * 0.7) : 0;
           isCorrect = earnedPoints > 0;
-        } else if (question.type === 'coding') {
-          earnedPoints = userAnswer ? Math.ceil(question.points * 0.8) : 0;
-          isCorrect = earnedPoints > 0;
+        } else if (question.type === 'coding' && question.coding) {
+          // Execute code with ALL test cases (including hidden) for grading
+          try {
+            const { data, error } = await supabase.functions.invoke('execute-code', {
+              body: {
+                code: userAnswer,
+                language: answer.language || question.coding.defaultLanguage,
+                testCases: question.coding.testCases.map((tc) => ({
+                  input: tc.input,
+                  expectedOutput: tc.expectedOutput,
+                  isHidden: tc.isHidden,
+                })),
+                timeLimit: question.coding.timeLimit || 5,
+                memoryLimit: question.coding.memoryLimit || 256,
+                includeHidden: true, // Include hidden tests for final grading
+              },
+            });
+
+            if (!error && data?.success) {
+              const totalTests = data.results.length;
+              const passedTests = data.results.filter((r: { passed: boolean }) => r.passed).length;
+              
+              // Calculate points based on percentage of tests passed
+              earnedPoints = Math.round((passedTests / totalTests) * question.points);
+              isCorrect = passedTests === totalTests;
+              
+              codingResults = {
+                passedTests,
+                totalTests,
+                testResults: data.results.map((r: { passed: boolean; actualOutput?: string; error?: string; executionTime?: number }, index: number) => ({
+                  testCaseId: question.coding!.testCases[index]?.id || `test-${index}`,
+                  passed: r.passed,
+                  actualOutput: r.actualOutput,
+                  error: r.error,
+                  executionTime: r.executionTime,
+                })),
+              };
+            } else {
+              // If execution fails, give 0 points
+              earnedPoints = 0;
+              isCorrect = false;
+            }
+          } catch (err) {
+            console.error('Error executing code for grading:', err);
+            earnedPoints = 0;
+            isCorrect = false;
+          }
         }
 
         if (isCorrect) {
           correctCount++;
           byType[question.type].correct += 1;
-        } else {
+        } else if (question.type !== 'coding' || earnedPoints === 0) {
+          // For coding, only count as incorrect if no points earned
           incorrectCount++;
+        } else {
+          // Partial credit for coding - count as correct if any points earned
+          correctCount++;
+          byType[question.type].correct += 1;
         }
 
         byType[question.type].points += earnedPoints;
@@ -188,13 +238,9 @@ const TakeExam = () => {
         maxPoints: question.points,
         userAnswer,
         correctAnswer: question.correctAnswer,
-        codingResults: question.type === 'coding' && answer ? {
-          passedTests: 2,
-          totalTests: 3,
-          testResults: [],
-        } : undefined,
+        codingResults,
       });
-    });
+    }
 
     const percentage = totalPoints > 0 ? (totalEarned / totalPoints) * 100 : 0;
     const durationMs = Date.now() - startTimeRef.current;
@@ -250,16 +296,16 @@ const TakeExam = () => {
     }
   };
 
-  const handleTimeUp = useCallback(() => {
+  const handleTimeUp = useCallback(async () => {
     if (!exam) return;
     
     toast.error('Hết thời gian làm bài!', {
       description: 'Bài thi của bạn sẽ được nộp tự động.',
     });
     
-    const result = calculateResults();
+    const result = await calculateResults();
     if (result) {
-      saveResultToDatabase(result);
+      await saveResultToDatabase(result);
       setTimeout(() => {
         navigate(`/exam/${exam.id}/result`, {
           state: { result, questions: exam.questions },
@@ -314,21 +360,27 @@ const TakeExam = () => {
     if (!exam) return;
     
     setIsSubmitting(true);
-    const result = calculateResults();
     
-    if (result) {
-      await saveResultToDatabase(result);
+    try {
+      const result = await calculateResults();
       
-      toast.success('Nộp bài thành công!', {
-        description: `Bạn đã trả lời ${answers.size}/${exam.totalQuestions} câu hỏi.`,
-      });
-      
-      navigate(`/exam/${exam.id}/result`, {
-        state: { result, questions: exam.questions },
-      });
+      if (result) {
+        await saveResultToDatabase(result);
+        
+        toast.success('Nộp bài thành công!', {
+          description: `Bạn đã trả lời ${answers.size}/${exam.totalQuestions} câu hỏi.`,
+        });
+        
+        navigate(`/exam/${exam.id}/result`, {
+          state: { result, questions: exam.questions },
+        });
+      }
+    } catch (err) {
+      console.error('Error submitting exam:', err);
+      toast.error('Lỗi khi nộp bài. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
   };
 
   // Loading state
