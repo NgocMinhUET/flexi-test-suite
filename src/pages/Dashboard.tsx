@@ -20,6 +20,8 @@ import {
   BookOpen,
   CheckCircle,
   XCircle,
+  UserPlus,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -33,6 +35,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { AssignStudentsDialog } from '@/components/exam/AssignStudentsDialog';
+import { ImportStudentsToExamDialog } from '@/components/exam/ImportStudentsToExamDialog';
 
 interface Exam {
   id: string;
@@ -51,11 +55,17 @@ interface ExamResultSummary {
   avg_percentage: number;
 }
 
+interface AssignmentCount {
+  exam_id: string;
+  count: number;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, isAdmin, isTeacher, isLoading: authLoading, signOut } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [resultSummaries, setResultSummaries] = useState<ExamResultSummary[]>([]);
+  const [assignmentCounts, setAssignmentCounts] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalExams: 0,
@@ -63,6 +73,11 @@ const Dashboard = () => {
     avgScore: 0,
     publishedExams: 0,
   });
+  
+  // Dialog states
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -97,6 +112,19 @@ const Dashboard = () => {
         .select('exam_id, percentage');
 
       if (resultsError) throw resultsError;
+
+      // Fetch assignment counts
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('exam_assignments')
+        .select('exam_id');
+
+      if (assignmentsError) throw assignmentsError;
+
+      const countMap = new Map<string, number>();
+      (assignmentsData || []).forEach(a => {
+        countMap.set(a.exam_id, (countMap.get(a.exam_id) || 0) + 1);
+      });
+      setAssignmentCounts(countMap);
 
       // Calculate summaries
       const summaryMap = new Map<string, { total: number; sum: number }>();
@@ -323,6 +351,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 {exams.map((exam) => {
                   const summary = resultSummaries.find((s) => s.exam_id === exam.id);
+                  const assignedCount = assignmentCounts.get(exam.id) || 0;
                   return (
                     <div
                       key={exam.id}
@@ -348,6 +377,10 @@ const Dashboard = () => {
                             <FileText className="w-3.5 h-3.5" />
                             {exam.total_questions} câu
                           </span>
+                          <span className="flex items-center gap-1">
+                            <UserPlus className="w-3.5 h-3.5" />
+                            {assignedCount} thí sinh
+                          </span>
                           {summary && (
                             <span className="flex items-center gap-1">
                               <Users className="w-3.5 h-3.5" />
@@ -357,6 +390,28 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Gán thí sinh"
+                          onClick={() => {
+                            setSelectedExam(exam);
+                            setAssignDialogOpen(true);
+                          }}
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Import thí sinh"
+                          onClick={() => {
+                            setSelectedExam(exam);
+                            setImportDialogOpen(true);
+                          }}
+                        >
+                          <Upload className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
