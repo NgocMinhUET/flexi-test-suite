@@ -32,6 +32,35 @@ export function useAuth(): UseAuthReturn {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const fetchProfileAndRolesAsync = async (userId: string) => {
+      try {
+        // Fetch profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (isMounted && profileData) {
+          setProfile(profileData as Profile);
+        }
+
+        // Fetch roles
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId);
+        
+        if (isMounted && rolesData) {
+          setRoles(rolesData.map(r => r.role as AppRole));
+        }
+      } catch (error) {
+        console.error('Error fetching profile and roles:', error);
+      }
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -41,7 +70,7 @@ export function useAuth(): UseAuthReturn {
         // Defer fetching profile and roles to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            fetchProfileAndRoles(session.user.id);
+            fetchProfileAndRolesAsync(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -51,44 +80,30 @@ export function useAuth(): UseAuthReturn {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!isMounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
-        fetchProfileAndRoles(session.user.id);
+        await fetchProfileAndRolesAsync(session.user.id);
       }
-      setIsLoading(false);
-    });
+      
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchProfileAndRoles = async (userId: string) => {
-    try {
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (profileData) {
-        setProfile(profileData as Profile);
-      }
-
-      // Fetch roles
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-      
-      if (rolesData) {
-        setRoles(rolesData.map(r => r.role as AppRole));
-      }
-    } catch (error) {
-      console.error('Error fetching profile and roles:', error);
-    }
-  };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
