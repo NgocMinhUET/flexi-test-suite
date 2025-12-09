@@ -31,6 +31,7 @@ export interface Question {
   options?: QuestionOption[];
   points: number;
   coding?: CodingQuestion;
+  correctAnswer?: string | string[]; // For grading
 }
 
 export interface ExamData {
@@ -56,4 +57,39 @@ export interface TestResult {
   actualOutput?: string;
   error?: string;
   executionTime?: number;
+}
+
+// Exam Result types
+export interface QuestionResult {
+  questionId: number;
+  isCorrect: boolean;
+  earnedPoints: number;
+  maxPoints: number;
+  userAnswer: string | string[];
+  correctAnswer?: string | string[];
+  codingResults?: {
+    passedTests: number;
+    totalTests: number;
+    testResults: TestResult[];
+  };
+}
+
+export interface ExamResult {
+  examId: string;
+  examTitle: string;
+  subject: string;
+  submittedAt: Date;
+  duration: number; // time taken in minutes
+  totalPoints: number;
+  earnedPoints: number;
+  percentage: number;
+  grade: string;
+  questionResults: QuestionResult[];
+  statistics: {
+    totalQuestions: number;
+    correctAnswers: number;
+    incorrectAnswers: number;
+    unanswered: number;
+    byType: Record<QuestionType, { correct: number; total: number; points: number }>;
+  };
 }
