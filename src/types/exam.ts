@@ -13,6 +13,7 @@ export interface TestCase {
   expectedOutput: string;
   isHidden: boolean;
   description?: string;
+  weight?: number; // Weight for scoring (default 1)
 }
 
 export interface CodingQuestion {
@@ -22,6 +23,7 @@ export interface CodingQuestion {
   testCases: TestCase[];
   timeLimit?: number; // in seconds
   memoryLimit?: number; // in MB
+  scoringMethod?: 'proportional' | 'all-or-nothing' | 'weighted'; // Default: proportional
 }
 
 export interface Question {
@@ -55,8 +57,30 @@ export interface TestResult {
   testCaseId: string;
   passed: boolean;
   actualOutput?: string;
+  expectedOutput?: string;
+  input?: string;
   error?: string;
   executionTime?: number;
+  isHidden: boolean;
+  weight?: number;
+}
+
+// Detailed coding grading result
+export interface CodingGradingResult {
+  passedTests: number;
+  totalTests: number;
+  visibleTests: {
+    passed: number;
+    total: number;
+  };
+  hiddenTests: {
+    passed: number;
+    total: number;
+  };
+  earnedPoints: number;
+  maxPoints: number;
+  testResults: TestResult[];
+  scoringMethod: 'proportional' | 'all-or-nothing' | 'weighted';
 }
 
 // Exam Result types
@@ -67,11 +91,7 @@ export interface QuestionResult {
   maxPoints: number;
   userAnswer: string | string[];
   correctAnswer?: string | string[];
-  codingResults?: {
-    passedTests: number;
-    totalTests: number;
-    testResults: TestResult[];
-  };
+  codingResults?: CodingGradingResult;
 }
 
 export interface ExamResult {
@@ -90,6 +110,7 @@ export interface ExamResult {
     correctAnswers: number;
     incorrectAnswers: number;
     unanswered: number;
-    byType: Record<QuestionType, { correct: number; total: number; points: number }>;
+    partialCredit: number; // New: for partial credit questions
+    byType: Record<QuestionType, { correct: number; total: number; points: number; partial?: number }>;
   };
 }

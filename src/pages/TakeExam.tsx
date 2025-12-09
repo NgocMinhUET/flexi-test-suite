@@ -156,6 +156,65 @@ const TakeExam = () => {
     return 'F';
   };
 
+  // Calculate coding question score based on test results
+  const calculateCodingScore = (
+    testResults: { passed: boolean; isHidden: boolean }[],
+    testCases: { isHidden: boolean; weight?: number }[],
+    maxPoints: number,
+    scoringMethod: 'proportional' | 'all-or-nothing' | 'weighted' = 'proportional'
+  ): { earnedPoints: number; isCorrect: boolean; isPartial: boolean } => {
+    const totalTests = testResults.length;
+    const passedTests = testResults.filter(r => r.passed).length;
+    
+    if (totalTests === 0) {
+      return { earnedPoints: 0, isCorrect: false, isPartial: false };
+    }
+
+    switch (scoringMethod) {
+      case 'all-or-nothing':
+        // Full points only if ALL tests pass
+        const allPassed = passedTests === totalTests;
+        return { 
+          earnedPoints: allPassed ? maxPoints : 0, 
+          isCorrect: allPassed,
+          isPartial: false
+        };
+      
+      case 'weighted':
+        // Calculate based on weight of each test case
+        let totalWeight = 0;
+        let earnedWeight = 0;
+        
+        testResults.forEach((result, index) => {
+          const weight = testCases[index]?.weight || 1;
+          totalWeight += weight;
+          if (result.passed) {
+            earnedWeight += weight;
+          }
+        });
+        
+        const weightedPoints = totalWeight > 0 
+          ? Math.round((earnedWeight / totalWeight) * maxPoints * 100) / 100
+          : 0;
+        
+        return { 
+          earnedPoints: weightedPoints, 
+          isCorrect: passedTests === totalTests,
+          isPartial: passedTests > 0 && passedTests < totalTests
+        };
+      
+      case 'proportional':
+      default:
+        // Points proportional to passed tests
+        const proportionalPoints = Math.round((passedTests / totalTests) * maxPoints * 100) / 100;
+        return { 
+          earnedPoints: proportionalPoints, 
+          isCorrect: passedTests === totalTests,
+          isPartial: passedTests > 0 && passedTests < totalTests
+        };
+    }
+  };
+
   const calculateResults = useCallback(async (): Promise<ExamResult | null> => {
     if (!exam) return null;
 
@@ -172,28 +231,30 @@ const TakeExam = () => {
       setGradingProgress({ current: 0, total: totalCodingQuestions });
     }
     
-    const byType: Record<QuestionType, { correct: number; total: number; points: number }> = {
-      'multiple-choice': { correct: 0, total: 0, points: 0 },
-      'short-answer': { correct: 0, total: 0, points: 0 },
-      'essay': { correct: 0, total: 0, points: 0 },
-      'drag-drop': { correct: 0, total: 0, points: 0 },
-      'coding': { correct: 0, total: 0, points: 0 },
+    const byType: Record<QuestionType, { correct: number; total: number; points: number; partial: number }> = {
+      'multiple-choice': { correct: 0, total: 0, points: 0, partial: 0 },
+      'short-answer': { correct: 0, total: 0, points: 0, partial: 0 },
+      'essay': { correct: 0, total: 0, points: 0, partial: 0 },
+      'drag-drop': { correct: 0, total: 0, points: 0, partial: 0 },
+      'coding': { correct: 0, total: 0, points: 0, partial: 0 },
     };
 
     let correctCount = 0;
     let incorrectCount = 0;
     let unansweredCount = 0;
+    let partialCreditCount = 0;
 
     for (const question of exam.questions) {
       const answer = answers.get(question.id);
       const userAnswer = answer?.answer || '';
       let isCorrect = false;
+      let isPartial = false;
       let earnedPoints = 0;
       let codingResults: QuestionResult['codingResults'] = undefined;
 
       byType[question.type].total += 1;
 
-      if (!answer) {
+      if (!answer || (typeof userAnswer === 'string' && !userAnswer.trim())) {
         unansweredCount++;
       } else {
         if (question.type === 'multiple-choice') {
@@ -205,7 +266,20 @@ const TakeExam = () => {
           isCorrect = normalizedUser === normalizedCorrect;
           earnedPoints = isCorrect ? question.points : 0;
         } else if (question.type === 'essay') {
-          earnedPoints = userAnswer ? Math.ceil(question.points * 0.7) : 0;
+          // Essay gets partial credit based on content
+          const wordCount = String(userAnswer).trim().split(/\s+/).length;
+          if (wordCount >= 50) {
+            earnedPoints = Math.ceil(question.points * 0.7);
+            isPartial = true;
+          } else if (wordCount >= 20) {
+            earnedPoints = Math.ceil(question.points * 0.5);
+            isPartial = true;
+          } else if (wordCount >= 5) {
+            earnedPoints = Math.ceil(question.points * 0.3);
+            isPartial = true;
+          } else {
+            earnedPoints = 0;
+          }
           isCorrect = earnedPoints > 0;
         } else if (question.type === 'coding' && question.coding) {
           // Execute code with ALL test cases (including hidden) for grading
@@ -221,6 +295,7 @@ const TakeExam = () => {
                   input: tc.input,
                   expectedOutput: tc.expectedOutput,
                   isHidden: tc.isHidden,
+                  weight: tc.weight || 1,
                 })),
                 timeLimit: question.coding.timeLimit || 5,
                 memoryLimit: question.coding.memoryLimit || 256,
@@ -229,28 +304,86 @@ const TakeExam = () => {
             });
 
             if (!error && data?.success) {
-              const totalTests = data.results.length;
-              const passedTests = data.results.filter((r: { passed: boolean }) => r.passed).length;
+              const testResults = data.results;
+              const scoringMethod = question.coding.scoringMethod || 'proportional';
               
-              // Calculate points based on percentage of tests passed
-              earnedPoints = Math.round((passedTests / totalTests) * question.points);
-              isCorrect = passedTests === totalTests;
+              // Calculate score
+              const scoreResult = calculateCodingScore(
+                testResults.map((r: { passed: boolean }, idx: number) => ({
+                  passed: r.passed,
+                  isHidden: question.coding!.testCases[idx]?.isHidden || false
+                })),
+                question.coding.testCases,
+                question.points,
+                scoringMethod
+              );
+              
+              earnedPoints = scoreResult.earnedPoints;
+              isCorrect = scoreResult.isCorrect;
+              isPartial = scoreResult.isPartial;
+              
+              // Count visible and hidden test results
+              const visibleResults = testResults.filter((_: unknown, idx: number) => 
+                !question.coding!.testCases[idx]?.isHidden
+              );
+              const hiddenResults = testResults.filter((_: unknown, idx: number) => 
+                question.coding!.testCases[idx]?.isHidden
+              );
               
               codingResults = {
-                passedTests,
-                totalTests,
-                testResults: data.results.map((r: { passed: boolean; actualOutput?: string; error?: string; executionTime?: number }, index: number) => ({
+                passedTests: testResults.filter((r: { passed: boolean }) => r.passed).length,
+                totalTests: testResults.length,
+                visibleTests: {
+                  passed: visibleResults.filter((r: { passed: boolean }) => r.passed).length,
+                  total: visibleResults.length,
+                },
+                hiddenTests: {
+                  passed: hiddenResults.filter((r: { passed: boolean }) => r.passed).length,
+                  total: hiddenResults.length,
+                },
+                earnedPoints,
+                maxPoints: question.points,
+                scoringMethod,
+                testResults: testResults.map((r: { 
+                  passed: boolean; 
+                  input: string;
+                  expectedOutput: string;
+                  actualOutput?: string; 
+                  error?: string; 
+                  executionTime?: number;
+                  isHidden: boolean;
+                }, index: number) => ({
                   testCaseId: question.coding!.testCases[index]?.id || `test-${index}`,
                   passed: r.passed,
+                  input: r.input,
+                  expectedOutput: r.expectedOutput,
                   actualOutput: r.actualOutput,
                   error: r.error,
                   executionTime: r.executionTime,
+                  isHidden: r.isHidden,
+                  weight: question.coding!.testCases[index]?.weight || 1,
                 })),
               };
             } else {
               // If execution fails, give 0 points
               earnedPoints = 0;
               isCorrect = false;
+              codingResults = {
+                passedTests: 0,
+                totalTests: question.coding.testCases.length,
+                visibleTests: {
+                  passed: 0,
+                  total: question.coding.testCases.filter(tc => !tc.isHidden).length,
+                },
+                hiddenTests: {
+                  passed: 0,
+                  total: question.coding.testCases.filter(tc => tc.isHidden).length,
+                },
+                earnedPoints: 0,
+                maxPoints: question.points,
+                scoringMethod: question.coding.scoringMethod || 'proportional',
+                testResults: [],
+              };
             }
           } catch (err) {
             console.error('Error executing code for grading:', err);
@@ -259,16 +392,15 @@ const TakeExam = () => {
           }
         }
 
+        // Update counters
         if (isCorrect) {
           correctCount++;
           byType[question.type].correct += 1;
-        } else if (question.type !== 'coding' || earnedPoints === 0) {
-          // For coding, only count as incorrect if no points earned
-          incorrectCount++;
+        } else if (isPartial) {
+          partialCreditCount++;
+          byType[question.type].partial = (byType[question.type].partial || 0) + 1;
         } else {
-          // Partial credit for coding - count as correct if any points earned
-          correctCount++;
-          byType[question.type].correct += 1;
+          incorrectCount++;
         }
 
         byType[question.type].points += earnedPoints;
@@ -306,6 +438,7 @@ const TakeExam = () => {
         correctAnswers: correctCount,
         incorrectAnswers: incorrectCount,
         unanswered: unansweredCount,
+        partialCredit: partialCreditCount,
         byType,
       },
     };
