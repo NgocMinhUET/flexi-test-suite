@@ -5,7 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Question, QuestionStatus, Answer } from '@/types/exam';
+import { Question, QuestionStatus, Answer, ProgrammingLanguage } from '@/types/exam';
+import { CodingEditor } from './CodingEditor';
 
 interface QuestionDisplayProps {
   question: Question;
@@ -40,6 +41,10 @@ export const QuestionDisplay = ({
 }: QuestionDisplayProps) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [textAnswer, setTextAnswer] = useState('');
+  const [codeAnswer, setCodeAnswer] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<ProgrammingLanguage>(
+    question.coding?.defaultLanguage || 'python'
+  );
 
   // Sync with current answer
   useEffect(() => {
@@ -49,6 +54,11 @@ export const QuestionDisplay = ({
       } else {
         if (question.type === 'multiple-choice') {
           setSelectedOption(currentAnswer.answer);
+        } else if (question.type === 'coding') {
+          setCodeAnswer(currentAnswer.answer);
+          if (currentAnswer.language) {
+            setSelectedLanguage(currentAnswer.language);
+          }
         } else {
           setTextAnswer(currentAnswer.answer);
         }
@@ -56,8 +66,16 @@ export const QuestionDisplay = ({
     } else {
       setSelectedOption(null);
       setTextAnswer('');
+      setCodeAnswer(question.coding?.starterCode[selectedLanguage] || '');
     }
-  }, [currentAnswer, question.id, question.type]);
+  }, [currentAnswer, question.id, question.type, question.coding, selectedLanguage]);
+
+  // Reset language when question changes
+  useEffect(() => {
+    if (question.coding) {
+      setSelectedLanguage(question.coding.defaultLanguage);
+    }
+  }, [question.id, question.coding]);
 
   const handleOptionSelect = (optionId: string) => {
     setSelectedOption(optionId);
@@ -71,9 +89,26 @@ export const QuestionDisplay = ({
     }
   };
 
+  const handleCodeChange = (code: string) => {
+    setCodeAnswer(code);
+    if (code.trim()) {
+      onAnswer({ questionId: question.id, answer: code, language: selectedLanguage });
+    }
+  };
+
+  const handleLanguageChange = (language: ProgrammingLanguage) => {
+    setSelectedLanguage(language);
+    const starterCode = question.coding?.starterCode[language] || '';
+    setCodeAnswer(starterCode);
+    onAnswer({ questionId: question.id, answer: starterCode, language });
+  };
+
   return (
     <div className="ml-72 pt-24 pb-8 px-8">
-      <Card variant="elevated" className="max-w-4xl mx-auto p-8">
+      <Card variant="elevated" className={cn(
+        "mx-auto p-8",
+        question.type === 'coding' ? 'max-w-6xl' : 'max-w-4xl'
+      )}>
         {/* Question Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -105,7 +140,9 @@ export const QuestionDisplay = ({
 
         {/* Question Content */}
         <div className="mb-8">
-          <p className="text-lg text-foreground leading-relaxed">{question.content}</p>
+          <p className="text-lg text-foreground leading-relaxed whitespace-pre-wrap">
+            {question.content}
+          </p>
         </div>
 
         {/* Answer Area */}
@@ -158,23 +195,14 @@ export const QuestionDisplay = ({
             />
           )}
 
-          {question.type === 'coding' && (
-            <div className="rounded-xl overflow-hidden border border-border">
-              <div className="bg-muted px-4 py-2 border-b border-border flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-warning/60" />
-                  <div className="w-3 h-3 rounded-full bg-success/60" />
-                </div>
-                <span className="text-sm text-muted-foreground ml-2">code.py</span>
-              </div>
-              <Textarea
-                value={textAnswer}
-                onChange={(e) => handleTextChange(e.target.value)}
-                placeholder="# Viết code của bạn ở đây..."
-                className="min-h-[300px] font-mono text-sm border-0 rounded-none focus-visible:ring-0"
-              />
-            </div>
+          {question.type === 'coding' && question.coding && (
+            <CodingEditor
+              codingQuestion={question.coding}
+              currentCode={codeAnswer}
+              currentLanguage={selectedLanguage}
+              onCodeChange={handleCodeChange}
+              onLanguageChange={handleLanguageChange}
+            />
           )}
         </div>
 

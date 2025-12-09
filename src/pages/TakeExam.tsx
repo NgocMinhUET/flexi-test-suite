@@ -79,8 +79,116 @@ const mockExam: ExamData = {
     {
       id: 7,
       type: 'coding',
-      content: 'Viết chương trình Python tính giai thừa của số n (n nhập từ bàn phím). Yêu cầu sử dụng đệ quy.',
-      points: 2,
+      content: `Viết hàm tính giai thừa của số nguyên n.
+
+Yêu cầu:
+- Hàm nhận đầu vào là một số nguyên n (0 ≤ n ≤ 20)
+- Trả về giá trị giai thừa của n
+- Sử dụng phương pháp đệ quy
+
+Ví dụ:
+- factorial(0) = 1
+- factorial(5) = 120
+- factorial(10) = 3628800`,
+      points: 3,
+      coding: {
+        languages: ['python', 'javascript', 'java', 'cpp'],
+        defaultLanguage: 'python',
+        starterCode: {
+          python: `def factorial(n: int) -> int:
+    # Viết code của bạn ở đây
+    pass
+
+# Đọc input và in kết quả
+if __name__ == "__main__":
+    n = int(input())
+    print(factorial(n))`,
+          javascript: `function factorial(n) {
+    // Viết code của bạn ở đây
+}
+
+// Đọc input và in kết quả
+const n = parseInt(readline());
+console.log(factorial(n));`,
+          java: `import java.util.Scanner;
+
+public class Solution {
+    public static long factorial(int n) {
+        // Viết code của bạn ở đây
+        return 0;
+    }
+    
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
+        System.out.println(factorial(n));
+    }
+}`,
+          cpp: `#include <iostream>
+using namespace std;
+
+long long factorial(int n) {
+    // Viết code của bạn ở đây
+    return 0;
+}
+
+int main() {
+    int n;
+    cin >> n;
+    cout << factorial(n) << endl;
+    return 0;
+}`,
+          c: '',
+          go: '',
+          rust: '',
+        },
+        testCases: [
+          {
+            id: 'tc1',
+            input: '0',
+            expectedOutput: '1',
+            isHidden: false,
+            description: 'Giai thừa của 0',
+          },
+          {
+            id: 'tc2',
+            input: '5',
+            expectedOutput: '120',
+            isHidden: false,
+            description: 'Giai thừa của 5',
+          },
+          {
+            id: 'tc3',
+            input: '10',
+            expectedOutput: '3628800',
+            isHidden: false,
+            description: 'Giai thừa của 10',
+          },
+          {
+            id: 'tc4',
+            input: '1',
+            expectedOutput: '1',
+            isHidden: true,
+            description: 'Edge case: n = 1',
+          },
+          {
+            id: 'tc5',
+            input: '15',
+            expectedOutput: '1307674368000',
+            isHidden: true,
+            description: 'Số lớn',
+          },
+          {
+            id: 'tc6',
+            input: '20',
+            expectedOutput: '2432902008176640000',
+            isHidden: true,
+            description: 'Giới hạn tối đa',
+          },
+        ],
+        timeLimit: 2,
+        memoryLimit: 256,
+      },
     },
     {
       id: 8,
