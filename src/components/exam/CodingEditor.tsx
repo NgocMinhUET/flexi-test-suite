@@ -65,7 +65,7 @@ const executeCode = async (
     return { results: [], error: data.error };
   }
 
-  // Map API results to our TestResult type
+  // Map API results to our TestResult type (only visible tests shown during exam)
   const results: TestResult[] = testCases
     .filter((tc) => !tc.isHidden)
     .map((tc, index) => {
@@ -75,6 +75,9 @@ const executeCode = async (
         passed: apiResult?.passed ?? false,
         actualOutput: apiResult?.actualOutput ?? '',
         executionTime: apiResult?.executionTime ?? 0,
+        isHidden: false,
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
       };
     });
 
