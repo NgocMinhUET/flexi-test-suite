@@ -222,7 +222,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Quản lý đề thi và xem thống kê</p>
           </div>
           <Button variant="hero" asChild>
-            <Link to="/dashboard/exams/create">
+            <Link to="/exam/new">
               <Plus className="w-4 h-4 mr-2" />
               Tạo đề thi mới
             </Link>
@@ -303,7 +303,7 @@ const Dashboard = () => {
                 <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">Chưa có đề thi nào</p>
                 <Button variant="outline" className="mt-4" asChild>
-                  <Link to="/dashboard/exams/create">
+                  <Link to="/exam/new">
                     <Plus className="w-4 h-4 mr-2" />
                     Tạo đề thi đầu tiên
                   </Link>
@@ -365,7 +365,7 @@ const Dashboard = () => {
                           </Link>
                         </Button>
                         <Button variant="ghost" size="icon" asChild>
-                          <Link to={`/dashboard/exams/${exam.id}/edit`} title="Chỉnh sửa">
+                          <Link to={`/exam/${exam.id}/edit`} title="Chỉnh sửa">
                             <Edit className="w-4 h-4" />
                           </Link>
                         </Button>
@@ -428,7 +428,7 @@ const Dashboard = () => {
                         </div>
                       </div>
                       <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                        <Link to={`/dashboard/exams/${summary.exam_id}/results`}>
+                        <Link to={`/exam/${summary.exam_id}/results`}>
                           Xem chi tiết
                         </Link>
                       </Button>

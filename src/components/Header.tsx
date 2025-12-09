@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Code2, BookOpen, Trophy, Users } from "lucide-react";
+import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user, isAdmin, isTeacher, isLoading, signOut } = useAuth();
 
   const navItems = [
     { label: "Bài thi", href: "#exams", icon: BookOpen },
@@ -12,19 +16,25 @@ const Header = () => {
     { label: "Cộng đồng", href: "#community", icon: Users },
   ];
 
+  const handleSignOut = async () => {
+    await signOut();
+    setIsMenuOpen(false);
+    navigate('/');
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
               <Code2 className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-bold text-foreground">
               Exam<span className="text-gradient">Pro</span>
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
@@ -42,12 +52,33 @@ const Header = () => {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Đăng nhập
-            </Button>
-            <Button variant="hero" size="sm">
-              Bắt đầu miễn phí
-            </Button>
+            {isLoading ? (
+              <div className="w-20 h-9 bg-muted animate-pulse rounded-lg" />
+            ) : user ? (
+              <>
+                {(isAdmin || isTeacher) && (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/dashboard">
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Đăng xuất
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/auth">Đăng nhập</Link>
+                </Button>
+                <Button variant="hero" size="sm" asChild>
+                  <Link to="/auth">Bắt đầu miễn phí</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -76,12 +107,33 @@ const Header = () => {
               ))}
             </nav>
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
-              <Button variant="ghost" className="w-full justify-center">
-                Đăng nhập
-              </Button>
-              <Button variant="hero" className="w-full justify-center">
-                Bắt đầu miễn phí
-              </Button>
+              {isLoading ? (
+                <div className="w-full h-10 bg-muted animate-pulse rounded-lg" />
+              ) : user ? (
+                <>
+                  {(isAdmin || isTeacher) && (
+                    <Button variant="ghost" className="w-full justify-center" asChild>
+                      <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        Dashboard
+                      </Link>
+                    </Button>
+                  )}
+                  <Button variant="ghost" className="w-full justify-center" onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Đăng xuất
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" className="w-full justify-center" asChild>
+                    <Link to="/auth" onClick={() => setIsMenuOpen(false)}>Đăng nhập</Link>
+                  </Button>
+                  <Button variant="hero" className="w-full justify-center" asChild>
+                    <Link to="/auth" onClick={() => setIsMenuOpen(false)}>Bắt đầu miễn phí</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
