@@ -26,7 +26,22 @@ const TakeExam = () => {
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gradingProgress, setGradingProgress] = useState<{ current: number; total: number } | null>(null);
   const startTimeRef = useRef(Date.now());
+
+  // Prevent accidental page leave while taking exam
+  useEffect(() => {
+    if (!exam || isSubmitting) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Bạn đang làm bài thi. Bạn có chắc muốn rời trang?';
+      return e.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [exam, isSubmitting]);
 
   // Fetch exam data and check assignment
   useEffect(() => {
@@ -148,6 +163,15 @@ const TakeExam = () => {
     let totalEarned = 0;
     const totalPoints = exam.questions.reduce((sum, q) => sum + q.points, 0);
     
+    // Count coding questions for progress tracking
+    const codingQuestions = exam.questions.filter(q => q.type === 'coding');
+    const totalCodingQuestions = codingQuestions.length;
+    let processedCodingQuestions = 0;
+    
+    if (totalCodingQuestions > 0) {
+      setGradingProgress({ current: 0, total: totalCodingQuestions });
+    }
+    
     const byType: Record<QuestionType, { correct: number; total: number; points: number }> = {
       'multiple-choice': { correct: 0, total: 0, points: 0 },
       'short-answer': { correct: 0, total: 0, points: 0 },
@@ -186,6 +210,9 @@ const TakeExam = () => {
         } else if (question.type === 'coding' && question.coding) {
           // Execute code with ALL test cases (including hidden) for grading
           try {
+            processedCodingQuestions++;
+            setGradingProgress({ current: processedCodingQuestions, total: totalCodingQuestions });
+            
             const { data, error } = await supabase.functions.invoke('execute-code', {
               body: {
                 code: userAnswer,
@@ -377,6 +404,7 @@ const TakeExam = () => {
     if (!exam) return;
     
     setIsSubmitting(true);
+    setShowSubmitDialog(false);
     
     try {
       const result = await calculateResults();
@@ -397,6 +425,7 @@ const TakeExam = () => {
       toast.error('Lỗi khi nộp bài. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
+      setGradingProgress(null);
     }
   };
 
@@ -473,6 +502,31 @@ const TakeExam = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Submitting Overlay with Grading Progress */}
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-xl p-8 shadow-2xl max-w-md w-full mx-4 text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Đang nộp bài...</h2>
+            {gradingProgress && gradingProgress.total > 0 ? (
+              <div className="space-y-3">
+                <p className="text-muted-foreground">
+                  Đang chấm câu lập trình {gradingProgress.current}/{gradingProgress.total}
+                </p>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(gradingProgress.current / gradingProgress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Vui lòng chờ trong giây lát...</p>
+            )}
+          </div>
+        </div>
+      )}
+
       <ExamHeader
         title={exam.title}
         subject={exam.subject}
