@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Play, Sparkles, CheckCircle2 } from "lucide-react";
@@ -60,10 +61,12 @@ const HeroSection = () => {
                 Bắt đầu ngay
                 <ArrowRight className="w-5 h-5" />
               </Button>
-              <Button variant="glass" size="xl">
-                <Play className="w-5 h-5" />
-                Xem demo
-              </Button>
+              <Link to="/exam/demo">
+                <Button variant="glass" size="xl">
+                  <Play className="w-5 h-5" />
+                  Thử làm bài thi
+                </Button>
+              </Link>
             </div>
 
             {/* Stats */}
