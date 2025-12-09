@@ -1,0 +1,383 @@
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { 
+  Trophy, 
+  Target, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  MinusCircle,
+  ChevronDown,
+  ChevronUp,
+  Home,
+  RotateCcw,
+  FileText,
+  Code2,
+  MessageSquare,
+  List
+} from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import { ExamResult, QuestionResult, QuestionType, Question } from '@/types/exam';
+
+const gradeColors: Record<string, string> = {
+  'A+': 'text-success',
+  'A': 'text-success',
+  'B+': 'text-primary',
+  'B': 'text-primary',
+  'C+': 'text-warning',
+  'C': 'text-warning',
+  'D': 'text-orange-500',
+  'F': 'text-destructive',
+};
+
+const questionTypeIcons: Record<QuestionType, React.ReactNode> = {
+  'multiple-choice': <List className="w-4 h-4" />,
+  'short-answer': <MessageSquare className="w-4 h-4" />,
+  'essay': <FileText className="w-4 h-4" />,
+  'drag-drop': <Target className="w-4 h-4" />,
+  'coding': <Code2 className="w-4 h-4" />,
+};
+
+const questionTypeLabels: Record<QuestionType, string> = {
+  'multiple-choice': 'Trắc nghiệm',
+  'short-answer': 'Tự luận ngắn',
+  'essay': 'Tự luận',
+  'drag-drop': 'Kéo thả',
+  'coding': 'Lập trình',
+};
+
+interface LocationState {
+  result: ExamResult;
+  questions: Question[];
+}
+
+const ExamResultPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+
+  const state = location.state as LocationState | null;
+
+  if (!state?.result) {
+    return <Navigate to="/" replace />;
+  }
+
+  const { result, questions } = state;
+
+  const toggleQuestion = (questionId: number) => {
+    setExpandedQuestions((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
+  };
+
+  const getQuestion = (questionId: number) => {
+    return questions.find((q) => q.id === questionId);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-lg border-b border-border">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">{result.examTitle}</h1>
+              <p className="text-sm text-muted-foreground">{result.subject}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => navigate('/')}>
+                <Home className="w-4 h-4 mr-2" />
+                Về trang chủ
+              </Button>
+              <Button onClick={() => navigate('/exam/demo')}>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Làm lại
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {/* Score Overview */}
+        <Card className="p-8 mb-8">
+          <div className="grid md:grid-cols-4 gap-8">
+            {/* Main Score */}
+            <div className="md:col-span-1 flex flex-col items-center justify-center text-center">
+              <div className="relative">
+                <div className={cn(
+                  "text-7xl font-bold",
+                  gradeColors[result.grade] || 'text-foreground'
+                )}>
+                  {result.grade}
+                </div>
+                <Trophy className={cn(
+                  "absolute -top-2 -right-4 w-8 h-8",
+                  result.percentage >= 80 ? 'text-warning' : 'text-muted-foreground/30'
+                )} />
+              </div>
+              <div className="mt-2 text-3xl font-semibold text-foreground">
+                {result.earnedPoints}/{result.totalPoints}
+              </div>
+              <div className="text-sm text-muted-foreground">điểm</div>
+            </div>
+
+            {/* Progress & Stats */}
+            <div className="md:col-span-3 space-y-6">
+              <div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm font-medium text-foreground">Tỷ lệ hoàn thành</span>
+                  <span className="text-sm font-bold text-primary">{result.percentage.toFixed(1)}%</span>
+                </div>
+                <Progress value={result.percentage} className="h-3" />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-success/10 rounded-xl">
+                  <CheckCircle2 className="w-6 h-6 text-success mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-success">{result.statistics.correctAnswers}</div>
+                  <div className="text-xs text-muted-foreground">Đúng</div>
+                </div>
+                <div className="text-center p-4 bg-destructive/10 rounded-xl">
+                  <XCircle className="w-6 h-6 text-destructive mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-destructive">{result.statistics.incorrectAnswers}</div>
+                  <div className="text-xs text-muted-foreground">Sai</div>
+                </div>
+                <div className="text-center p-4 bg-muted rounded-xl">
+                  <MinusCircle className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-muted-foreground">{result.statistics.unanswered}</div>
+                  <div className="text-xs text-muted-foreground">Bỏ qua</div>
+                </div>
+                <div className="text-center p-4 bg-primary/10 rounded-xl">
+                  <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-primary">{result.duration}</div>
+                  <div className="text-xs text-muted-foreground">phút</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Stats by Type */}
+        <Card className="p-6 mb-8">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Thống kê theo loại câu hỏi</h2>
+          <div className="grid md:grid-cols-5 gap-4">
+            {(Object.entries(result.statistics.byType) as [QuestionType, { correct: number; total: number; points: number }][])
+              .filter(([, stats]) => stats.total > 0)
+              .map(([type, stats]) => (
+                <div key={type} className="p-4 bg-muted/30 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    {questionTypeIcons[type]}
+                    <span className="text-sm font-medium text-foreground">{questionTypeLabels[type]}</span>
+                  </div>
+                  <div className="text-xl font-bold text-foreground">
+                    {stats.correct}/{stats.total}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{stats.points} điểm</div>
+                </div>
+              ))}
+          </div>
+        </Card>
+
+        {/* Question Review */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Chi tiết từng câu hỏi</h2>
+          <div className="space-y-4">
+            {result.questionResults.map((qResult, index) => {
+              const question = getQuestion(qResult.questionId);
+              if (!question) return null;
+
+              const isExpanded = expandedQuestions.has(qResult.questionId);
+
+              return (
+                <div
+                  key={qResult.questionId}
+                  className={cn(
+                    "border rounded-xl overflow-hidden transition-colors",
+                    qResult.isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
+                  )}
+                >
+                  {/* Question Header */}
+                  <div
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20"
+                    onClick={() => toggleQuestion(qResult.questionId)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                        qResult.isCorrect 
+                          ? "bg-success text-success-foreground" 
+                          : "bg-destructive text-destructive-foreground"
+                      )}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="gap-1">
+                            {questionTypeIcons[question.type]}
+                            {questionTypeLabels[question.type]}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {qResult.earnedPoints}/{qResult.maxPoints} điểm
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground mt-1 line-clamp-1">
+                          {question.content.substring(0, 100)}...
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {qResult.isCorrect ? (
+                        <Badge variant="success">Đúng</Badge>
+                      ) : (
+                        <Badge variant="destructive">Sai</Badge>
+                      )}
+                      {isExpanded ? (
+                        <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 space-y-4">
+                      <Separator />
+                      
+                      {/* Question Content */}
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">Nội dung câu hỏi</h4>
+                        <p className="text-foreground whitespace-pre-wrap">{question.content}</p>
+                      </div>
+
+                      {/* Options for multiple choice */}
+                      {question.type === 'multiple-choice' && question.options && (
+                        <div className="space-y-2">
+                          {question.options.map((opt) => {
+                            const isUserAnswer = qResult.userAnswer === opt.id;
+                            const isCorrectAnswer = qResult.correctAnswer === opt.id;
+
+                            return (
+                              <div
+                                key={opt.id}
+                                className={cn(
+                                  "p-3 rounded-lg border",
+                                  isCorrectAnswer && "border-success bg-success/10",
+                                  isUserAnswer && !isCorrectAnswer && "border-destructive bg-destructive/10",
+                                  !isUserAnswer && !isCorrectAnswer && "border-border bg-muted/30"
+                                )}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{opt.id.toUpperCase()}.</span>
+                                  <span>{opt.text}</span>
+                                  {isCorrectAnswer && (
+                                    <CheckCircle2 className="w-4 h-4 text-success ml-auto" />
+                                  )}
+                                  {isUserAnswer && !isCorrectAnswer && (
+                                    <XCircle className="w-4 h-4 text-destructive ml-auto" />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Text answers */}
+                      {(question.type === 'short-answer' || question.type === 'essay') && (
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Câu trả lời của bạn</h4>
+                            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                              <p className="text-foreground whitespace-pre-wrap">
+                                {qResult.userAnswer || '(Không trả lời)'}
+                              </p>
+                            </div>
+                          </div>
+                          {qResult.correctAnswer && (
+                            <div>
+                              <h4 className="text-sm font-medium text-success mb-2">Đáp án đúng</h4>
+                              <div className="p-3 rounded-lg bg-success/10 border border-success/30">
+                                <p className="text-foreground whitespace-pre-wrap">{qResult.correctAnswer}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Coding results */}
+                      {question.type === 'coding' && qResult.codingResults && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={qResult.codingResults.passedTests === qResult.codingResults.totalTests ? 'success' : 'warning'}>
+                              {qResult.codingResults.passedTests}/{qResult.codingResults.totalTests} test passed
+                            </Badge>
+                          </div>
+                          
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Code của bạn</h4>
+                            <pre className="p-4 bg-muted/50 rounded-lg overflow-x-auto text-sm font-mono">
+                              {qResult.userAnswer || '(Không có code)'}
+                            </pre>
+                          </div>
+
+                          {qResult.codingResults.testResults.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground mb-2">Kết quả test</h4>
+                              <div className="space-y-2">
+                                {qResult.codingResults.testResults.map((tr, idx) => (
+                                  <div
+                                    key={tr.testCaseId}
+                                    className={cn(
+                                      "p-3 rounded-lg border",
+                                      tr.passed ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {tr.passed ? (
+                                        <CheckCircle2 className="w-4 h-4 text-success" />
+                                      ) : (
+                                        <XCircle className="w-4 h-4 text-destructive" />
+                                      )}
+                                      <span className="text-sm font-medium">Test {idx + 1}</span>
+                                      {tr.executionTime && (
+                                        <span className="text-xs text-muted-foreground ml-auto">
+                                          {tr.executionTime}ms
+                                        </span>
+                                      )}
+                                    </div>
+                                    {tr.error && (
+                                      <p className="text-xs text-destructive mt-1">{tr.error}</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </main>
+    </div>
+  );
+};
+
+export default ExamResultPage;

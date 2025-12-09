@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ExamHeader } from '@/components/exam/ExamHeader';
@@ -6,7 +6,7 @@ import { QuestionNavigation } from '@/components/exam/QuestionNavigation';
 import { QuestionDisplay } from '@/components/exam/QuestionDisplay';
 import { SubmitDialog } from '@/components/exam/SubmitDialog';
 import { useExamTimer } from '@/hooks/useExamTimer';
-import { ExamData, Question, Answer, QuestionStatus } from '@/types/exam';
+import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType } from '@/types/exam';
 
 // Mock exam data
 const mockExam: ExamData = {
@@ -27,6 +27,7 @@ const mockExam: ExamData = {
         { id: 'd', text: 'Không tồn tại' },
       ],
       points: 1,
+      correctAnswer: 'a',
     },
     {
       id: 2,
@@ -39,12 +40,14 @@ const mockExam: ExamData = {
         { id: 'd', text: '25' },
       ],
       points: 1,
+      correctAnswer: 'a',
     },
     {
       id: 3,
       type: 'short-answer',
       content: 'Tính đạo hàm của hàm số y = sin²x + cos²x. Kết quả bằng bao nhiêu?',
       points: 1,
+      correctAnswer: '0',
     },
     {
       id: 4,
@@ -57,12 +60,14 @@ const mockExam: ExamData = {
         { id: 'd', text: 'y = -1/3' },
       ],
       points: 1,
+      correctAnswer: 'a',
     },
     {
       id: 5,
       type: 'essay',
       content: 'Trình bày khái niệm giới hạn của hàm số và cho ví dụ minh họa. Giải thích ý nghĩa hình học của giới hạn.',
       points: 3,
+      correctAnswer: 'Giới hạn của hàm số f(x) khi x tiến đến a là giá trị L mà f(x) tiến đến khi x tiến gần a.',
     },
     {
       id: 6,
@@ -75,6 +80,7 @@ const mockExam: ExamData = {
         { id: 'd', text: '3' },
       ],
       points: 1,
+      correctAnswer: 'c',
     },
     {
       id: 7,
@@ -201,12 +207,14 @@ int main() {
         { id: 'd', text: 'y = x + 1' },
       ],
       points: 1,
+      correctAnswer: 'a',
     },
     {
       id: 9,
       type: 'short-answer',
       content: 'Tính ∫(2x + 3)dx. Viết kết quả dưới dạng đơn giản nhất (bỏ qua hằng số C).',
       points: 1,
+      correctAnswer: 'x² + 3x',
     },
     {
       id: 10,
@@ -219,6 +227,7 @@ int main() {
         { id: 'd', text: '4' },
       ],
       points: 1,
+      correctAnswer: 'c',
     },
   ],
 };
@@ -229,15 +238,129 @@ const TakeExam = () => {
   const [answers, setAnswers] = useState<Map<number, Answer>>(new Map());
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const startTimeRef = useRef(Date.now());
+
+  const calculateGrade = (percentage: number): string => {
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 85) return 'A';
+    if (percentage >= 80) return 'B+';
+    if (percentage >= 70) return 'B';
+    if (percentage >= 60) return 'C+';
+    if (percentage >= 50) return 'C';
+    if (percentage >= 40) return 'D';
+    return 'F';
+  };
+
+  const calculateResults = (): ExamResult => {
+    const questionResults: QuestionResult[] = [];
+    let totalEarned = 0;
+    const totalPoints = mockExam.questions.reduce((sum, q) => sum + q.points, 0);
+    
+    const byType: Record<QuestionType, { correct: number; total: number; points: number }> = {
+      'multiple-choice': { correct: 0, total: 0, points: 0 },
+      'short-answer': { correct: 0, total: 0, points: 0 },
+      'essay': { correct: 0, total: 0, points: 0 },
+      'drag-drop': { correct: 0, total: 0, points: 0 },
+      'coding': { correct: 0, total: 0, points: 0 },
+    };
+
+    let correctCount = 0;
+    let incorrectCount = 0;
+    let unansweredCount = 0;
+
+    mockExam.questions.forEach((question) => {
+      const answer = answers.get(question.id);
+      const userAnswer = answer?.answer || '';
+      let isCorrect = false;
+      let earnedPoints = 0;
+
+      byType[question.type].total += 1;
+
+      if (!answer) {
+        unansweredCount++;
+      } else {
+        // Grade based on question type
+        if (question.type === 'multiple-choice') {
+          isCorrect = userAnswer === question.correctAnswer;
+          earnedPoints = isCorrect ? question.points : 0;
+        } else if (question.type === 'short-answer') {
+          // Simple string comparison (in production, use more sophisticated matching)
+          const normalizedUser = String(userAnswer).toLowerCase().trim().replace(/\s+/g, '');
+          const normalizedCorrect = String(question.correctAnswer || '').toLowerCase().trim().replace(/\s+/g, '');
+          isCorrect = normalizedUser === normalizedCorrect;
+          earnedPoints = isCorrect ? question.points : 0;
+        } else if (question.type === 'essay') {
+          // Essays need manual grading, give partial credit for having content
+          earnedPoints = userAnswer ? Math.ceil(question.points * 0.7) : 0;
+          isCorrect = earnedPoints > 0;
+        } else if (question.type === 'coding') {
+          // For demo, give partial credit
+          earnedPoints = userAnswer ? Math.ceil(question.points * 0.8) : 0;
+          isCorrect = earnedPoints > 0;
+        }
+
+        if (isCorrect) {
+          correctCount++;
+          byType[question.type].correct += 1;
+        } else {
+          incorrectCount++;
+        }
+
+        byType[question.type].points += earnedPoints;
+        totalEarned += earnedPoints;
+      }
+
+      questionResults.push({
+        questionId: question.id,
+        isCorrect,
+        earnedPoints,
+        maxPoints: question.points,
+        userAnswer,
+        correctAnswer: question.correctAnswer,
+        codingResults: question.type === 'coding' && answer ? {
+          passedTests: 2,
+          totalTests: 3,
+          testResults: [],
+        } : undefined,
+      });
+    });
+
+    const percentage = (totalEarned / totalPoints) * 100;
+    const durationMs = Date.now() - startTimeRef.current;
+    const durationMins = Math.ceil(durationMs / 60000);
+
+    return {
+      examId: mockExam.id,
+      examTitle: mockExam.title,
+      subject: mockExam.subject,
+      submittedAt: new Date(),
+      duration: durationMins,
+      totalPoints,
+      earnedPoints: totalEarned,
+      percentage,
+      grade: calculateGrade(percentage),
+      questionResults,
+      statistics: {
+        totalQuestions: mockExam.totalQuestions,
+        correctAnswers: correctCount,
+        incorrectAnswers: incorrectCount,
+        unanswered: unansweredCount,
+        byType,
+      },
+    };
+  };
 
   const handleTimeUp = useCallback(() => {
     toast.error('Hết thời gian làm bài!', {
       description: 'Bài thi của bạn sẽ được nộp tự động.',
     });
+    const result = calculateResults();
     setTimeout(() => {
-      navigate('/');
+      navigate(`/exam/${mockExam.id}/result`, {
+        state: { result, questions: mockExam.questions },
+      });
     }, 2000);
-  }, [navigate]);
+  }, [navigate, answers]);
 
   const { formattedTime, isWarning, isCritical } = useExamTimer({
     initialMinutes: mockExam.duration,
@@ -281,10 +404,13 @@ const TakeExam = () => {
   };
 
   const handleConfirmSubmit = () => {
+    const result = calculateResults();
     toast.success('Nộp bài thành công!', {
       description: `Bạn đã trả lời ${answers.size}/${mockExam.totalQuestions} câu hỏi.`,
     });
-    navigate('/');
+    navigate(`/exam/${mockExam.id}/result`, {
+      state: { result, questions: mockExam.questions },
+    });
   };
 
   const currentQ = mockExam.questions[currentQuestion];
