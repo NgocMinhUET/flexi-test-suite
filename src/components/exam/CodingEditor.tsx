@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { CodingQuestion, ProgrammingLanguage, TestCase, TestResult } from '@/types/exam';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface CodingEditorProps {
   codingQuestion: CodingQuestion;
@@ -32,26 +34,51 @@ const languageConfig: Record<ProgrammingLanguage, { name: string; extension: str
   rust: { name: 'Rust', extension: '.rs', icon: '🦀' },
 };
 
-// Mock code execution - in production, this would call an edge function
-const mockExecuteCode = async (
+// Execute code using Lovable Cloud edge function
+const executeCode = async (
   code: string,
   language: ProgrammingLanguage,
-  testCases: TestCase[]
-): Promise<TestResult[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate execution time
+  testCases: TestCase[],
+  timeLimit: number,
+  memoryLimit: number
+): Promise<{ results: TestResult[]; error?: string }> => {
+  const { data, error } = await supabase.functions.invoke('execute-code', {
+    body: {
+      code,
+      language,
+      testCases: testCases.map((tc) => ({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        isHidden: tc.isHidden,
+      })),
+      timeLimit,
+      memoryLimit,
+      includeHidden: false, // Only run visible tests during exam
+    },
+  });
 
-  return testCases
+  if (error) {
+    return { results: [], error: error.message };
+  }
+
+  if (!data.success) {
+    return { results: [], error: data.error };
+  }
+
+  // Map API results to our TestResult type
+  const results: TestResult[] = testCases
     .filter((tc) => !tc.isHidden)
-    .map((tc) => {
-      // Mock execution - randomly pass/fail for demo
-      const passed = Math.random() > 0.3;
+    .map((tc, index) => {
+      const apiResult = data.results[index];
       return {
         testCaseId: tc.id,
-        passed,
-        actualOutput: passed ? tc.expectedOutput : 'Wrong output',
-        executionTime: Math.floor(Math.random() * 100) + 10,
+        passed: apiResult?.passed ?? false,
+        actualOutput: apiResult?.actualOutput ?? '',
+        executionTime: apiResult?.executionTime ?? 0,
       };
     });
+
+  return { results };
 };
 
 export const CodingEditor = ({
@@ -64,6 +91,7 @@ export const CodingEditor = ({
   const [isRunning, setIsRunning] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [showTestCases, setShowTestCases] = useState(true);
+  const { toast } = useToast();
 
   const visibleTestCases = codingQuestion.testCases.filter((tc) => !tc.isHidden);
   const hiddenTestCount = codingQuestion.testCases.filter((tc) => tc.isHidden).length;
@@ -81,10 +109,36 @@ export const CodingEditor = ({
     setTestResults([]);
 
     try {
-      const results = await mockExecuteCode(currentCode, currentLanguage, codingQuestion.testCases);
-      setTestResults(results);
+      const { results, error } = await executeCode(
+        currentCode,
+        currentLanguage,
+        codingQuestion.testCases,
+        codingQuestion.timeLimit || 5,
+        codingQuestion.memoryLimit || 256
+      );
+
+      if (error) {
+        toast({
+          title: 'Lỗi thực thi',
+          description: error,
+          variant: 'destructive',
+        });
+      } else {
+        setTestResults(results);
+        const passed = results.filter((r) => r.passed).length;
+        toast({
+          title: 'Kết quả chạy thử',
+          description: `${passed}/${results.length} test cases passed`,
+          variant: passed === results.length ? 'default' : 'destructive',
+        });
+      }
     } catch (error) {
       console.error('Execution error:', error);
+      toast({
+        title: 'Lỗi',
+        description: 'Không thể kết nối đến server',
+        variant: 'destructive',
+      });
     } finally {
       setIsRunning(false);
     }
