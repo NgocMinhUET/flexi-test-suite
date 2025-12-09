@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isAdmin, isTeacher, isLoading, signOut } = useAuth();
+
+  const isStudent = user && !isAdmin && !isTeacher;
 
   const navItems = [
     { label: "Bài thi", href: "#exams", icon: BookOpen },
@@ -56,6 +58,14 @@ const Header = () => {
               <div className="w-20 h-9 bg-muted animate-pulse rounded-lg" />
             ) : user ? (
               <>
+                {isStudent && (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/my-exams">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Bài thi của tôi
+                    </Link>
+                  </Button>
+                )}
                 {(isAdmin || isTeacher) && (
                   <Button variant="ghost" size="sm" asChild>
                     <Link to="/dashboard">
@@ -111,6 +121,14 @@ const Header = () => {
                 <div className="w-full h-10 bg-muted animate-pulse rounded-lg" />
               ) : user ? (
                 <>
+                  {isStudent && (
+                    <Button variant="ghost" className="w-full justify-center" asChild>
+                      <Link to="/my-exams" onClick={() => setIsMenuOpen(false)}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Bài thi của tôi
+                      </Link>
+                    </Button>
+                  )}
                   {(isAdmin || isTeacher) && (
                     <Button variant="ghost" className="w-full justify-center" asChild>
                       <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
