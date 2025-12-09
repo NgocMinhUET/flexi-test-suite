@@ -28,7 +28,7 @@ const TakeExam = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const startTimeRef = useRef(Date.now());
 
-  // Fetch exam data
+  // Fetch exam data and check assignment
   useEffect(() => {
     const fetchExam = async () => {
       if (!examId) {
@@ -37,7 +37,42 @@ const TakeExam = () => {
         return;
       }
 
+      if (!user) {
+        setIsLoadingExam(false);
+        return;
+      }
+
       try {
+        // First check if user is assigned to this exam
+        const { data: assignment, error: assignmentError } = await supabase
+          .from('exam_assignments')
+          .select('*')
+          .eq('exam_id', examId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (assignmentError) throw assignmentError;
+
+        if (!assignment) {
+          setError('Bạn không được phép làm bài thi này');
+          setIsLoadingExam(false);
+          return;
+        }
+
+        // Check time constraints if set
+        const now = new Date();
+        if (assignment.start_time && now < new Date(assignment.start_time)) {
+          setError(`Bài thi chưa bắt đầu. Thời gian bắt đầu: ${new Date(assignment.start_time).toLocaleString('vi-VN')}`);
+          setIsLoadingExam(false);
+          return;
+        }
+        if (assignment.end_time && now > new Date(assignment.end_time)) {
+          setError(`Bài thi đã kết thúc vào: ${new Date(assignment.end_time).toLocaleString('vi-VN')}`);
+          setIsLoadingExam(false);
+          return;
+        }
+
+        // Fetch exam data
         const { data, error: fetchError } = await supabase
           .from('exams')
           .select('*')
@@ -73,8 +108,10 @@ const TakeExam = () => {
       }
     };
 
-    fetchExam();
-  }, [examId]);
+    if (!authLoading) {
+      fetchExam();
+    }
+  }, [examId, user, authLoading]);
 
   const calculateGrade = (percentage: number): string => {
     if (percentage >= 90) return 'A+';

@@ -505,6 +505,26 @@ const Dashboard = () => {
           </Card>
         )}
       </main>
+
+      {/* Dialogs */}
+      {selectedExam && (
+        <>
+          <AssignStudentsDialog
+            open={assignDialogOpen}
+            onOpenChange={setAssignDialogOpen}
+            examId={selectedExam.id}
+            examTitle={selectedExam.title}
+            onSuccess={fetchData}
+          />
+          <ImportStudentsToExamDialog
+            open={importDialogOpen}
+            onOpenChange={setImportDialogOpen}
+            examId={selectedExam.id}
+            examTitle={selectedExam.title}
+            onSuccess={fetchData}
+          />
+        </>
+      )}
     </div>
   );
 };
