@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
   Trophy, 
   Target, 
@@ -9,13 +9,14 @@ import {
   ChevronDown,
   ChevronUp,
   Home,
-  RotateCcw,
   FileText,
   Code2,
   MessageSquare,
-  List
+  List,
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,8 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ExamResult, QuestionResult, QuestionType, Question } from '@/types/exam';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 const gradeColors: Record<string, string> = {
   'A+': 'text-success',
@@ -59,15 +62,108 @@ interface LocationState {
 const ExamResultPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { id: examId } = useParams<{ id: string }>();
+  const { user, isLoading: authLoading } = useAuth();
+  
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<ExamResult | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
+  // Check if we have state from navigation
   const state = location.state as LocationState | null;
 
-  if (!state?.result) {
-    return <Navigate to="/" replace />;
-  }
+  useEffect(() => {
+    // If we have state from navigation, use it
+    if (state?.result && state?.questions) {
+      setResult(state.result);
+      setQuestions(state.questions);
+      return;
+    }
 
-  const { result, questions } = state;
+    // Otherwise, fetch from database
+    if (!authLoading && user && examId) {
+      fetchResultFromDatabase();
+    } else if (!authLoading && !user) {
+      setError('Vui lòng đăng nhập để xem kết quả');
+    }
+  }, [state, authLoading, user, examId]);
+
+  const fetchResultFromDatabase = async () => {
+    if (!user || !examId) return;
+
+    setIsLoading(true);
+    try {
+      // Fetch exam result
+      const { data: resultData, error: resultError } = await supabase
+        .from('exam_results')
+        .select('*')
+        .eq('exam_id', examId)
+        .eq('user_id', user.id)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (resultError) throw resultError;
+
+      if (!resultData) {
+        setError('Không tìm thấy kết quả thi');
+        return;
+      }
+
+      // Fetch exam data for questions
+      const { data: examData, error: examError } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('id', examId)
+        .maybeSingle();
+
+      if (examError) throw examError;
+
+      if (!examData) {
+        setError('Không tìm thấy đề thi');
+        return;
+      }
+
+      // Parse and set data
+      const examQuestions = (examData.questions as unknown as Question[]) || [];
+      setQuestions(examQuestions);
+
+      const examResult: ExamResult = {
+        examId: examData.id,
+        examTitle: examData.title,
+        subject: examData.subject,
+        submittedAt: new Date(resultData.submitted_at),
+        duration: resultData.duration || 0,
+        totalPoints: Number(resultData.total_points),
+        earnedPoints: Number(resultData.earned_points),
+        percentage: Number(resultData.percentage),
+        grade: resultData.grade || 'F',
+        questionResults: (resultData.question_results as unknown as QuestionResult[]) || [],
+        statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
+          totalQuestions: examData.total_questions,
+          correctAnswers: 0,
+          incorrectAnswers: 0,
+          unanswered: 0,
+          byType: {
+            'multiple-choice': { correct: 0, total: 0, points: 0 },
+            'short-answer': { correct: 0, total: 0, points: 0 },
+            'essay': { correct: 0, total: 0, points: 0 },
+            'drag-drop': { correct: 0, total: 0, points: 0 },
+            'coding': { correct: 0, total: 0, points: 0 },
+          },
+        },
+      };
+
+      setResult(examResult);
+    } catch (err) {
+      console.error('Error fetching result:', err);
+      setError('Lỗi khi tải kết quả');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleQuestion = (questionId: number) => {
     setExpandedQuestions((prev) => {
@@ -85,26 +181,59 @@ const ExamResultPage = () => {
     return questions.find((q) => q.id === questionId);
   };
 
+  // Loading state
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Đang tải kết quả...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !result) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground mb-2">
+            {error || 'Không tìm thấy kết quả'}
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            Vui lòng kiểm tra lại hoặc liên hệ giáo viên.
+          </p>
+          <Button onClick={() => navigate('/my-exams')} variant="hero">
+            Về danh sách bài thi
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{result.examTitle}</h1>
-              <p className="text-sm text-muted-foreground">{result.subject}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={() => navigate('/')}>
-                <Home className="w-4 h-4 mr-2" />
-                Về trang chủ
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/my-exams')}>
+                <ArrowLeft className="w-5 h-5" />
               </Button>
-              <Button onClick={() => navigate('/exam/demo')}>
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Làm lại
-              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">{result.examTitle}</h1>
+                <p className="text-sm text-muted-foreground">{result.subject}</p>
+              </div>
             </div>
+            <Button variant="outline" onClick={() => navigate('/')}>
+              <Home className="w-4 h-4 mr-2" />
+              Về trang chủ
+            </Button>
           </div>
         </div>
       </header>
