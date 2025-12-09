@@ -13,6 +13,7 @@ import ExamEditor from "./pages/ExamEditor";
 import ExamResults from "./pages/ExamResults";
 import UserManagement from "./pages/UserManagement";
 import StudentExams from "./pages/StudentExams";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/my-exams" element={<StudentExams />} />
