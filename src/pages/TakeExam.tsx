@@ -8,9 +8,10 @@ import { SubmitDialog } from '@/components/exam/SubmitDialog';
 import { useExamTimer } from '@/hooks/useExamTimer';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType } from '@/types/exam';
-import { Loader2 } from 'lucide-react';
+import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats } from '@/types/exam';
+import { Loader2, Maximize, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const TakeExam = () => {
   const navigate = useNavigate();
@@ -28,6 +29,64 @@ const TakeExam = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gradingProgress, setGradingProgress] = useState<{ current: number; total: number } | null>(null);
   const startTimeRef = useRef(Date.now());
+  
+  // Fullscreen and violation tracking
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [examStarted, setExamStarted] = useState(false);
+  const violationStatsRef = useRef<ViolationStats>({ tabSwitchCount: 0, fullscreenExitCount: 0 });
+  const [showViolationWarning, setShowViolationWarning] = useState(false);
+
+  // Fullscreen management
+  const enterFullscreen = useCallback(async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } catch (err) {
+      console.error('Failed to enter fullscreen:', err);
+      toast.error('Không thể vào chế độ toàn màn hình');
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(console.error);
+    }
+    setIsFullscreen(false);
+  }, []);
+
+  // Handle fullscreen change detection
+  useEffect(() => {
+    if (!examStarted || isSubmitting) return;
+
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      if (!isCurrentlyFullscreen && examStarted && !isSubmitting) {
+        violationStatsRef.current.fullscreenExitCount += 1;
+        setShowViolationWarning(true);
+        toast.warning(`Cảnh báo: Bạn đã thoát chế độ toàn màn hình (${violationStatsRef.current.fullscreenExitCount} lần)`);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [examStarted, isSubmitting]);
+
+  // Handle tab visibility change detection
+  useEffect(() => {
+    if (!examStarted || isSubmitting) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        violationStatsRef.current.tabSwitchCount += 1;
+        toast.warning(`Cảnh báo: Bạn đã chuyển tab (${violationStatsRef.current.tabSwitchCount} lần)`);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [examStarted, isSubmitting]);
 
   // Prevent accidental page leave while taking exam
   useEffect(() => {
@@ -433,6 +492,10 @@ const TakeExam = () => {
       percentage,
       grade: calculateGrade(percentage),
       questionResults,
+      violationStats: {
+        tabSwitchCount: violationStatsRef.current.tabSwitchCount,
+        fullscreenExitCount: violationStatsRef.current.fullscreenExitCount,
+      },
       statistics: {
         totalQuestions: exam.totalQuestions,
         correctAnswers: correctCount,
@@ -451,6 +514,12 @@ const TakeExam = () => {
     }
 
     try {
+      // Include violationStats in the statistics object for database storage
+      const statisticsWithViolations = {
+        ...result.statistics,
+        violationStats: result.violationStats,
+      };
+
       const { error: insertError } = await supabase
         .from('exam_results')
         .insert([{
@@ -462,7 +531,7 @@ const TakeExam = () => {
           grade: result.grade,
           duration: result.duration,
           question_results: JSON.parse(JSON.stringify(result.questionResults)),
-          statistics: JSON.parse(JSON.stringify(result.statistics)),
+          statistics: JSON.parse(JSON.stringify(statisticsWithViolations)),
         }]);
 
       if (insertError) throw insertError;
@@ -539,6 +608,9 @@ const TakeExam = () => {
     setIsSubmitting(true);
     setShowSubmitDialog(false);
     
+    // Exit fullscreen before navigating
+    exitFullscreen();
+    
     try {
       const result = await calculateResults();
       
@@ -560,6 +632,13 @@ const TakeExam = () => {
       setIsSubmitting(false);
       setGradingProgress(null);
     }
+  };
+
+  // Start exam and enter fullscreen
+  const handleStartExam = async () => {
+    await enterFullscreen();
+    setExamStarted(true);
+    startTimeRef.current = Date.now();
   };
 
   // Loading state
@@ -633,8 +712,82 @@ const TakeExam = () => {
     );
   }
 
+  // Show start exam screen if exam not started yet
+  if (!examStarted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-lg mx-auto px-4">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Maximize className="w-10 h-10 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">{exam.title}</h1>
+          <p className="text-muted-foreground mb-6">{exam.subject}</p>
+          
+          <div className="bg-card border border-border rounded-lg p-6 mb-6 text-left">
+            <h2 className="font-semibold text-foreground mb-4">Lưu ý trước khi làm bài:</h2>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                Bài thi sẽ được thực hiện ở chế độ toàn màn hình
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                Hệ thống sẽ ghi lại nếu bạn chuyển tab hoặc thoát toàn màn hình
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                Thời gian làm bài: {exam.duration} phút
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-1">•</span>
+                Số câu hỏi: {exam.totalQuestions} câu
+              </li>
+            </ul>
+          </div>
+
+          <Button onClick={handleStartExam} variant="hero" size="lg" className="gap-2">
+            <Maximize className="w-5 h-5" />
+            Bắt đầu làm bài
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Violation Warning Overlay */}
+      {showViolationWarning && !isFullscreen && (
+        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card border border-destructive/50 rounded-xl p-8 shadow-2xl max-w-md w-full mx-4 text-center">
+            <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Cảnh báo vi phạm!</h2>
+            <p className="text-muted-foreground mb-4">
+              Bạn đã thoát khỏi chế độ toàn màn hình. Hành vi này đã được ghi lại.
+            </p>
+            <div className="bg-destructive/10 rounded-lg p-4 mb-6 text-sm">
+              <p className="text-foreground">
+                Số lần chuyển tab: <strong>{violationStatsRef.current.tabSwitchCount}</strong>
+              </p>
+              <p className="text-foreground">
+                Số lần thoát toàn màn hình: <strong>{violationStatsRef.current.fullscreenExitCount}</strong>
+              </p>
+            </div>
+            <Button 
+              onClick={() => {
+                enterFullscreen();
+                setShowViolationWarning(false);
+              }} 
+              variant="hero" 
+              className="gap-2"
+            >
+              <Maximize className="w-4 h-4" />
+              Quay lại chế độ toàn màn hình
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Submitting Overlay with Grading Progress */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -657,6 +810,18 @@ const TakeExam = () => {
               <p className="text-muted-foreground">Vui lòng chờ trong giây lát...</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Violation Stats Badge */}
+      {(violationStatsRef.current.tabSwitchCount > 0 || violationStatsRef.current.fullscreenExitCount > 0) && (
+        <div className="fixed top-20 right-4 z-40">
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 py-2 px-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Vi phạm: {violationStatsRef.current.tabSwitchCount + violationStatsRef.current.fullscreenExitCount} lần
+            </AlertDescription>
+          </Alert>
         </div>
       )}
 

@@ -94,6 +94,11 @@ export interface QuestionResult {
   codingResults?: CodingGradingResult;
 }
 
+export interface ViolationStats {
+  tabSwitchCount: number;
+  fullscreenExitCount: number;
+}
+
 export interface ExamResult {
   examId: string;
   examTitle: string;
@@ -105,6 +110,7 @@ export interface ExamResult {
   percentage: number;
   grade: string;
   questionResults: QuestionResult[];
+  violationStats?: ViolationStats;
   statistics: {
     totalQuestions: number;
     correctAnswers: number;
