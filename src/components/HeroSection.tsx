@@ -26,19 +26,18 @@ const HeroSection = () => {
           <div className="text-center lg:text-left animate-slide-up">
             <Badge variant="accent" className="mb-6 animate-fade-in">
               <Sparkles className="w-3 h-3 mr-1" />
-              Nền tảng thi trực tuyến #1 Việt Nam
+              Nền tảng thi ExamPro
             </Badge>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight mb-6">
-              Thi trắc nghiệm &{" "}
-              <span className="text-gradient">Lập trình</span>
+              Thi trắc nghiệm & <span className="text-gradient">Lập trình</span>
               <br />
               mọi lúc, mọi nơi
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
-              Nền tảng thi toàn diện với đa dạng hình thức: trắc nghiệm, tự luận, 
-              kéo thả, và đặc biệt là thi lập trình với chấm điểm tự động.
+              Nền tảng thi toàn diện với đa dạng hình thức: trắc nghiệm, tự luận, kéo thả, và đặc biệt là thi lập trình
+              với chấm điểm tự động.
             </p>
 
             {/* Feature Pills */}
@@ -89,7 +88,7 @@ const HeroSection = () => {
           </div>
 
           {/* Right Content - Exam Preview */}
-          <div className="relative animate-fade-in" style={{ animationDelay: '300ms' }}>
+          <div className="relative animate-fade-in" style={{ animationDelay: "300ms" }}>
             <div className="relative">
               {/* Main Card */}
               <div className="bg-card rounded-2xl border border-border/50 shadow-xl overflow-hidden">
@@ -104,9 +103,7 @@ const HeroSection = () => {
                       <p className="text-primary-foreground/70 text-xs">Thời gian: 02:30</p>
                     </div>
                   </div>
-                  <Badge className="bg-primary-foreground/20 text-primary-foreground border-0">
-                    1/20
-                  </Badge>
+                  <Badge className="bg-primary-foreground/20 text-primary-foreground border-0">1/20</Badge>
                 </div>
 
                 {/* Question */}
@@ -131,9 +128,7 @@ const HeroSection = () => {
                             index === 1 ? "border-primary bg-primary" : "border-muted-foreground"
                           }`}
                         >
-                          {index === 1 && (
-                            <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                          )}
+                          {index === 1 && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
                         </div>
                         <span className={index === 1 ? "text-foreground font-medium" : "text-muted-foreground"}>
                           {option}
