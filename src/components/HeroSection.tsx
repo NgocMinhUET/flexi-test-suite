@@ -32,12 +32,11 @@ const HeroSection = () => {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight mb-6">
               Thi trắc nghiệm & <span className="text-gradient">Lập trình</span>
               <br />
-              mọi lúc, mọi nơi
+              ...
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
-              Nền tảng thi toàn diện với đa dạng hình thức: trắc nghiệm, tự luận, kéo thả, và đặc biệt là thi lập trình
-              với chấm điểm tự động.
+              Nền tảng thi toàn diện với đa dạng hình thức và đặc biệt là thi lập trình.
             </p>
 
             {/* Feature Pills */}
