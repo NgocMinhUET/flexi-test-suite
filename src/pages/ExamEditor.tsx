@@ -373,14 +373,17 @@ const ExamEditor = () => {
                     </Select>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      value={question.points}
-                      onChange={(e) => updateQuestion(qIndex, { points: parseInt(e.target.value) || 0 })}
-                      className="w-20"
-                      placeholder="Điểm"
-                    />
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Điểm:</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={question.points}
+                        onChange={(e) => updateQuestion(qIndex, { points: parseFloat(e.target.value) || 0 })}
+                        className="w-20"
+                      />
+                    </div>
                     <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
@@ -519,23 +522,22 @@ const ExamEditor = () => {
                       </div>
                       {question.coding.testCases.map((testCase, tIndex) => (
                         <Card key={testCase.id} className="p-4">
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <span className="text-sm font-medium text-foreground">Test case {tIndex + 1}</span>
-                            <div className="flex items-center gap-3">
-                              {question.coding?.scoringMethod === 'weighted' && (
-                                <div className="flex items-center gap-1">
-                                  <Label className="text-xs text-muted-foreground">Trọng số:</Label>
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    value={testCase.weight || 1}
-                                    onChange={(e) =>
-                                      updateTestCase(qIndex, tIndex, { weight: parseInt(e.target.value) || 1 })
-                                    }
-                                    className="w-16 h-7 text-xs"
-                                  />
-                                </div>
-                              )}
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <Label className="text-xs text-muted-foreground whitespace-nowrap">Trọng số:</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={testCase.weight || 1}
+                                  onChange={(e) =>
+                                    updateTestCase(qIndex, tIndex, { weight: parseInt(e.target.value) || 1 })
+                                  }
+                                  className="w-16 h-7 text-xs"
+                                  disabled={question.coding?.scoringMethod !== 'weighted'}
+                                />
+                              </div>
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={testCase.isHidden}
