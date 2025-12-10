@@ -37,8 +37,8 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Logo & Tên ứng dụng */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center bg-primary/10">
-              <Code2 className="w-4 h-4 text-primary" />
+            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+              <Code2 className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="text-lg font-bold text-foreground">
               Exam<span className="text-primary">Pro</span>
