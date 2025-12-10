@@ -1,34 +1,57 @@
 import { Code2, Facebook, Youtube, MessageCircle } from "lucide-react";
-
 const Footer = () => {
   const links = {
-    product: [
-      { label: "Tính năng", href: "#" },
-      { label: "Bảng giá", href: "#" },
-      { label: "Thi lập trình", href: "#" },
-      { label: "API", href: "#" },
-    ],
-    resources: [
-      { label: "Hướng dẫn", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Cộng đồng", href: "#" },
-      { label: "Changelog", href: "#" },
-    ],
-    company: [
-      { label: "Về chúng tôi", href: "#" },
-      { label: "Liên hệ", href: "#" },
-      { label: "Tuyển dụng", href: "#" },
-      { label: "Đối tác", href: "#" },
-    ],
-    legal: [
-      { label: "Điều khoản", href: "#" },
-      { label: "Bảo mật", href: "#" },
-      { label: "Cookie", href: "#" },
-    ],
+    product: [{
+      label: "Tính năng",
+      href: "#"
+    }, {
+      label: "Bảng giá",
+      href: "#"
+    }, {
+      label: "Thi lập trình",
+      href: "#"
+    }, {
+      label: "API",
+      href: "#"
+    }],
+    resources: [{
+      label: "Hướng dẫn",
+      href: "#"
+    }, {
+      label: "Blog",
+      href: "#"
+    }, {
+      label: "Cộng đồng",
+      href: "#"
+    }, {
+      label: "Changelog",
+      href: "#"
+    }],
+    company: [{
+      label: "Về chúng tôi",
+      href: "#"
+    }, {
+      label: "Liên hệ",
+      href: "#"
+    }, {
+      label: "Tuyển dụng",
+      href: "#"
+    }, {
+      label: "Đối tác",
+      href: "#"
+    }],
+    legal: [{
+      label: "Điều khoản",
+      href: "#"
+    }, {
+      label: "Bảo mật",
+      href: "#"
+    }, {
+      label: "Cookie",
+      href: "#"
+    }]
   };
-
-  return (
-    <footer className="bg-card border-t border-border">
+  return <footer className="bg-card border-t border-border">
       <div className="container mx-auto px-4 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
@@ -41,9 +64,7 @@ const Footer = () => {
                 Exam<span className="text-gradient">Pro</span>
               </span>
             </a>
-            <p className="text-sm text-muted-foreground mb-4">
-              Nền tảng thi trực tuyến toàn diện cho giáo dục và doanh nghiệp.
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">Nền tảng thi trực tuyến toàn diện </p>
             <div className="flex gap-3">
               <a href="#" className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">
                 <Facebook className="w-4 h-4" />
@@ -61,68 +82,55 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-foreground mb-4">Sản phẩm</h4>
             <ul className="space-y-2">
-              {links.product.map((link, index) => (
-                <li key={index}>
+              {links.product.map((link, index) => <li key={index}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold text-foreground mb-4">Tài nguyên</h4>
             <ul className="space-y-2">
-              {links.resources.map((link, index) => (
-                <li key={index}>
+              {links.resources.map((link, index) => <li key={index}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold text-foreground mb-4">Công ty</h4>
             <ul className="space-y-2">
-              {links.company.map((link, index) => (
-                <li key={index}>
+              {links.company.map((link, index) => <li key={index}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold text-foreground mb-4">Pháp lý</h4>
             <ul className="space-y-2">
-              {links.legal.map((link, index) => (
-                <li key={index}>
+              {links.legal.map((link, index) => <li key={index}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
         </div>
 
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">© 2025 ExamPro. All rights reserved.</p>
           <p className="text-sm text-muted-foreground">
-            © 2024 ExamPro. All rights reserved.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Made with ❤️ in Vietnam
-          </p>
+        </p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
-
 export default Footer;
