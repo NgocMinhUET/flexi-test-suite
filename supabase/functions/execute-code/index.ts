@@ -152,6 +152,28 @@ function normalizeOutput(output: string): string {
   return output.replace(/\r\n/g, "\n").trim();
 }
 
+// Simple in-memory rate limiting (per function instance)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 20; // Max requests per minute
+const RATE_WINDOW = 60000; // 1 minute in milliseconds
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (userLimit.count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  userLimit.count++;
+  return true;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -159,8 +181,60 @@ serve(async (req) => {
   }
 
   try {
+    // Extract user ID from JWT for rate limiting
+    const authHeader = req.headers.get('authorization');
+    const userId = authHeader ? authHeader.split('.')[1] || 'anonymous' : 'anonymous';
+    
+    // Check rate limit
+    if (!checkRateLimit(userId)) {
+      console.log(`Rate limit exceeded for user: ${userId}`);
+      return new Response(
+        JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait before trying again." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const body: ExecuteRequest = await req.json();
     const { code, language, testCases, timeLimit, memoryLimit, includeHidden } = body;
+
+    // Input validation
+    if (!code || typeof code !== 'string') {
+      return new Response(
+        JSON.stringify({ success: false, error: "Code is required and must be a string" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (code.length > 50000) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Code exceeds maximum length of 50,000 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!language || !languageMap[language]) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Unsupported language: ${language}. Supported: ${Object.keys(languageMap).join(', ')}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!testCases || !Array.isArray(testCases)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Test cases must be an array" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (testCases.length > 50) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Maximum 50 test cases allowed" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Enforce safe limits
+    const safeTimeLimit = Math.min(Math.max(1, timeLimit || 5), 30);
 
     console.log(`Executing ${language} code with ${testCases.length} test cases`);
 
@@ -176,7 +250,7 @@ serve(async (req) => {
         code,
         language,
         testCase.input,
-        timeLimit
+        safeTimeLimit
       );
 
       const normalizedExpected = normalizeOutput(testCase.expectedOutput);
