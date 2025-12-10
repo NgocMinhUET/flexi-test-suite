@@ -62,7 +62,7 @@ const HeroSection = () => {
               <Link to="/exam/demo">
                 <Button variant="glass" size="xl">
                   <Play className="w-5 h-5" />
-                  Thử làm bài thi
+                  Làm bài thi
                 </Button>
               </Link>
             </div>
@@ -71,16 +71,16 @@ const HeroSection = () => {
             <div className="flex items-center justify-center lg:justify-start gap-8 mt-12">
               <div className="text-center">
                 <div className="text-3xl font-bold text-foreground">50K+</div>
-                <div className="text-sm text-muted-foreground">Học viên</div>
+                <div className="text-sm text-muted-foreground">Sinh viên</div>
               </div>
               <div className="w-px h-12 bg-border" />
               <div className="text-center">
-                <div className="text-3xl font-bold text-foreground">1000+</div>
-                <div className="text-sm text-muted-foreground">Bài thi</div>
+                <div className="text-3xl font-bold text-foreground">..</div>
+                <div className="text-sm text-muted-foreground">Đề thi</div>
               </div>
               <div className="w-px h-12 bg-border" />
               <div className="text-center">
-                <div className="text-3xl font-bold text-foreground">99%</div>
+                <div className="text-3xl font-bold text-foreground">..</div>
                 <div className="text-sm text-muted-foreground">Hài lòng</div>
               </div>
             </div>
