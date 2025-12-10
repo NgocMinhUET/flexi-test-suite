@@ -15,7 +15,9 @@ import {
   List,
   Loader2,
   ArrowLeft,
-  Star
+  Star,
+  AlertTriangle,
+  MonitorOff
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -24,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { ExamResult, QuestionResult, QuestionType, Question, CodingGradingResult } from '@/types/exam';
+import { ExamResult, QuestionResult, QuestionType, Question, CodingGradingResult, ViolationStats } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import CodingResultsDisplay from '@/components/exam/CodingResultsDisplay';
@@ -143,6 +145,7 @@ const ExamResultPage = () => {
         percentage: Number(resultData.percentage),
         grade: resultData.grade || 'F',
         questionResults: (resultData.question_results as unknown as QuestionResult[]) || [],
+        violationStats: (resultData.statistics as unknown as { violationStats?: ViolationStats })?.violationStats,
         statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
           totalQuestions: examData.total_questions,
           correctAnswers: 0,
@@ -307,6 +310,40 @@ const ExamResultPage = () => {
             </div>
           </div>
         </Card>
+
+        {/* Violation Stats */}
+        {result.violationStats && (result.violationStats.tabSwitchCount > 0 || result.violationStats.fullscreenExitCount > 0) && (
+          <Card className="p-6 mb-8 border-destructive/30 bg-destructive/5">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <h2 className="text-lg font-semibold text-foreground">Thống kê vi phạm</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="p-4 bg-destructive/10 rounded-xl flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
+                  <MonitorOff className="w-6 h-6 text-destructive" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-destructive">
+                    {result.violationStats.fullscreenExitCount}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Lần thoát toàn màn hình</div>
+                </div>
+              </div>
+              <div className="p-4 bg-destructive/10 rounded-xl flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-destructive" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-destructive">
+                    {result.violationStats.tabSwitchCount}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Lần chuyển tab</div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Stats by Type */}
         <Card className="p-6 mb-8">
