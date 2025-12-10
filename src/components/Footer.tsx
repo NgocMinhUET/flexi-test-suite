@@ -46,9 +46,7 @@ const Footer = () => {
           </div>
 
           {/* Dòng bản quyền đơn giản */}
-          <p className="text-sm text-muted-foreground text-center md:text-right">
-            © 2025 ExamPro. Hệ thống thi trực tuyến.
-          </p>
+          <p className="text-sm text-muted-foreground text-center md:text-right">© 2025 ExamPro. DoNgocMinh</p>
         </div>
 
         {/* --- PHẦN GIAO DIỆN CŨ (Đã ẩn - Bỏ comment bên dưới để mở rộng) --- */}
