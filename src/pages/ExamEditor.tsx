@@ -39,6 +39,12 @@ const programmingLanguages: { value: ProgrammingLanguage; label: string }[] = [
   { value: 'rust', label: 'Rust' },
 ];
 
+const scoringMethods: { value: 'proportional' | 'all-or-nothing' | 'weighted'; label: string; description: string }[] = [
+  { value: 'proportional', label: 'Tỷ lệ', description: 'Điểm tính theo % test cases đạt' },
+  { value: 'all-or-nothing', label: 'Tất cả hoặc không', description: 'Chỉ được điểm khi đạt tất cả test cases' },
+  { value: 'weighted', label: 'Trọng số', description: 'Điểm tính theo trọng số từng test case' },
+];
+
 const ExamEditor = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -120,7 +126,8 @@ const ExamEditor = () => {
         languages: ['python'],
         defaultLanguage: 'python',
         starterCode: { python: '# Write your code here\n', javascript: '// Write your code here\n', java: '// Write your code here\n', cpp: '// Write your code here\n', c: '// Write your code here\n', go: '// Write your code here\n', rust: '// Write your code here\n' },
-        testCases: [{ id: '1', input: '', expectedOutput: '', isHidden: false }],
+        testCases: [{ id: '1', input: '', expectedOutput: '', isHidden: false, weight: 1 }],
+        scoringMethod: 'proportional',
       } : undefined,
     };
     setQuestions([...questions, newQuestion]);
@@ -153,6 +160,7 @@ const ExamEditor = () => {
         input: '',
         expectedOutput: '',
         isHidden: false,
+        weight: 1,
       }];
       updateQuestion(questionIndex, {
         coding: { ...question.coding, testCases: newTestCases },
@@ -431,27 +439,55 @@ const ExamEditor = () => {
                 {/* Coding Question */}
                 {question.type === 'coding' && question.coding && (
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Ngôn ngữ mặc định</Label>
-                      <Select
-                        value={question.coding.defaultLanguage}
-                        onValueChange={(value: ProgrammingLanguage) =>
-                          updateQuestion(qIndex, {
-                            coding: { ...question.coding!, defaultLanguage: value },
-                          })
-                        }
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {programmingLanguages.map((lang) => (
-                            <SelectItem key={lang.value} value={lang.value}>
-                              {lang.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Ngôn ngữ mặc định</Label>
+                        <Select
+                          value={question.coding.defaultLanguage}
+                          onValueChange={(value: ProgrammingLanguage) =>
+                            updateQuestion(qIndex, {
+                              coding: { ...question.coding!, defaultLanguage: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {programmingLanguages.map((lang) => (
+                              <SelectItem key={lang.value} value={lang.value}>
+                                {lang.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Phương pháp tính điểm</Label>
+                        <Select
+                          value={question.coding.scoringMethod || 'proportional'}
+                          onValueChange={(value: 'proportional' | 'all-or-nothing' | 'weighted') =>
+                            updateQuestion(qIndex, {
+                              coding: { ...question.coding!, scoringMethod: value },
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {scoringMethods.map((method) => (
+                              <SelectItem key={method.value} value={method.value}>
+                                {method.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {scoringMethods.find(m => m.value === (question.coding?.scoringMethod || 'proportional'))?.description}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -486,6 +522,20 @@ const ExamEditor = () => {
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-medium text-foreground">Test case {tIndex + 1}</span>
                             <div className="flex items-center gap-3">
+                              {question.coding?.scoringMethod === 'weighted' && (
+                                <div className="flex items-center gap-1">
+                                  <Label className="text-xs text-muted-foreground">Trọng số:</Label>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={testCase.weight || 1}
+                                    onChange={(e) =>
+                                      updateTestCase(qIndex, tIndex, { weight: parseInt(e.target.value) || 1 })
+                                    }
+                                    className="w-16 h-7 text-xs"
+                                  />
+                                </div>
+                              )}
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={testCase.isHidden}
