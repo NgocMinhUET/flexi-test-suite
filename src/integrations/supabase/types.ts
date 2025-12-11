@@ -218,6 +218,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      owns_exam: { Args: { _exam_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
