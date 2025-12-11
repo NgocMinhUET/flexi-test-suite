@@ -113,45 +113,53 @@ user3@example.com,password123,Le Van C,student`;
 
       const importResults: ImportResult[] = [];
       
+      // Get current session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Phiên đăng nhập đã hết hạn');
+        setIsImporting(false);
+        return;
+      }
+
       for (let i = 0; i < users.length; i++) {
         const user = users[i];
         setProgress(Math.round(((i + 1) / users.length) * 100));
 
         try {
-          // Create user
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: user.email,
-            password: user.password,
-            options: {
-              data: {
-                full_name: user.full_name,
-              },
+          // Call edge function to create user (bypasses rate limits)
+          const { data, error } = await supabase.functions.invoke('admin-create-user', {
+            body: {
+              email: user.email,
+              password: user.password,
+              full_name: user.full_name,
+              role: user.role,
             },
           });
 
-          if (authError) throw authError;
-
-          // Update role if needed
-          if (authData.user && user.role !== 'student') {
-            await supabase
-              .from('user_roles')
-              .update({ role: user.role })
-              .eq('user_id', authData.user.id);
-          }
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
 
           importResults.push({
             email: user.email,
             status: 'success',
-            message: 'Tạo thành công',
+            message: data?.warning || 'Tạo thành công',
           });
         } catch (error: any) {
+          const errorMessage = error.message || 'Lỗi không xác định';
           importResults.push({
             email: user.email,
             status: 'error',
-            message: error.message?.includes('already registered') 
+            message: errorMessage.includes('already been registered') 
               ? 'Email đã tồn tại' 
-              : error.message || 'Lỗi không xác định',
+              : errorMessage.includes('rate limit')
+              ? 'Quá giới hạn request'
+              : errorMessage,
           });
+        }
+
+        // Small delay to avoid overwhelming the edge function
+        if (i < users.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
