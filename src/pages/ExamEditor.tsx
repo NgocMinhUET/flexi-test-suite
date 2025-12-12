@@ -16,11 +16,14 @@ import {
   Trash2,
   Save,
   Loader2,
-  GripVertical,
+  ChevronsUpDown,
+  ChevronsDownUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Question, QuestionType, ProgrammingLanguage, TestCase } from '@/types/exam';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { CollapsibleQuestion } from '@/components/exam/CollapsibleQuestion';
 
 const questionTypes: { value: QuestionType; label: string }[] = [
   { value: 'multiple-choice', label: 'Trắc nghiệm' },
@@ -53,6 +56,8 @@ const ExamEditor = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [allCollapsed, setAllCollapsed] = useState(false);
+  const [collapseKey, setCollapseKey] = useState(0);
   const [examData, setExamData] = useState({
     title: '',
     subject: '',
@@ -131,6 +136,9 @@ const ExamEditor = () => {
       } : undefined,
     };
     setQuestions([...questions, newQuestion]);
+    // Auto expand when adding new question
+    setAllCollapsed(false);
+    setCollapseKey(prev => prev + 1);
   };
 
   const updateQuestion = (index: number, updates: Partial<Question>) => {
@@ -187,6 +195,11 @@ const ExamEditor = () => {
         coding: { ...question.coding, testCases: newTestCases },
       });
     }
+  };
+
+  const toggleCollapseAll = () => {
+    setAllCollapsed(!allCollapsed);
+    setCollapseKey(prev => prev + 1);
   };
 
   const handleSave = async () => {
@@ -347,66 +360,50 @@ const ExamEditor = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-foreground">Câu hỏi ({questions.length})</h2>
+            {questions.length > 0 && (
+              <Button variant="outline" size="sm" onClick={toggleCollapseAll}>
+                {allCollapsed ? (
+                  <>
+                    <ChevronsUpDown className="w-4 h-4 mr-2" />
+                    Mở rộng tất cả
+                  </>
+                ) : (
+                  <>
+                    <ChevronsDownUp className="w-4 h-4 mr-2" />
+                    Thu gọn tất cả
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {questions.map((question, qIndex) => (
-            <Card key={question.id} className="relative">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
-                    <span className="font-medium text-foreground">Câu {qIndex + 1}</span>
-                    <Select
-                      value={question.type}
-                      onValueChange={(value: QuestionType) => updateQuestion(qIndex, { type: value })}
-                    >
-                      <SelectTrigger className="w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {questionTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Điểm:</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        value={question.points}
-                        onChange={(e) => updateQuestion(qIndex, { points: parseFloat(e.target.value) || 0 })}
-                        className="w-20"
-                      />
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nội dung câu hỏi</Label>
-                  <Textarea
-                    value={question.content}
-                    onChange={(e) => updateQuestion(qIndex, { content: e.target.value })}
-                    placeholder="Nhập nội dung câu hỏi..."
-                    rows={3}
-                  />
-                </div>
+            <CollapsibleQuestion
+              key={`${question.id}-${collapseKey}`}
+              question={question}
+              questionIndex={qIndex}
+              onTypeChange={(type) => updateQuestion(qIndex, { type })}
+              onPointsChange={(points) => updateQuestion(qIndex, { points })}
+              onRemove={() => removeQuestion(qIndex)}
+              defaultOpen={!allCollapsed}
+            >
+              {/* Question Content */}
+              <div className="space-y-2">
+                <Label>Nội dung câu hỏi</Label>
+                <RichTextEditor
+                  value={question.content}
+                  onChange={(content) => updateQuestion(qIndex, { content })}
+                  placeholder="Nhập nội dung câu hỏi..."
+                />
+              </div>
 
-                {/* Multiple Choice Options */}
-                {question.type === 'multiple-choice' && question.options && (
-                  <div className="space-y-3">
-                    <Label>Các lựa chọn</Label>
-                    {question.options.map((option, oIndex) => (
-                      <div key={option.id} className="flex items-center gap-2">
+              {/* Multiple Choice Options */}
+              {question.type === 'multiple-choice' && question.options && (
+                <div className="space-y-3">
+                  <Label>Các lựa chọn</Label>
+                  {question.options.map((option, oIndex) => (
+                    <div key={option.id} className="flex items-start gap-3">
+                      <div className="pt-3">
                         <input
                           type="radio"
                           name={`correct-${question.id}`}
@@ -414,183 +411,186 @@ const ExamEditor = () => {
                           onChange={() => updateQuestion(qIndex, { correctAnswer: option.id })}
                           className="w-4 h-4"
                         />
-                        <Input
+                      </div>
+                      <div className="flex-1">
+                        <RichTextEditor
                           value={option.text}
-                          onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                          onChange={(text) => updateOption(qIndex, oIndex, text)}
                           placeholder={`Lựa chọn ${String.fromCharCode(65 + oIndex)}`}
+                          compact
                         />
                       </div>
-                    ))}
-                    <p className="text-xs text-muted-foreground">
-                      Chọn đáp án đúng bằng cách click vào radio button
-                    </p>
-                  </div>
-                )}
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">
+                    Chọn đáp án đúng bằng cách click vào radio button
+                  </p>
+                </div>
+              )}
 
-                {/* Short Answer */}
-                {question.type === 'short-answer' && (
-                  <div className="space-y-2">
-                    <Label>Đáp án đúng</Label>
-                    <Input
-                      value={question.correctAnswer as string || ''}
-                      onChange={(e) => updateQuestion(qIndex, { correctAnswer: e.target.value })}
-                      placeholder="Nhập đáp án đúng"
-                    />
-                  </div>
-                )}
+              {/* Short Answer */}
+              {question.type === 'short-answer' && (
+                <div className="space-y-2">
+                  <Label>Đáp án đúng</Label>
+                  <Input
+                    value={question.correctAnswer as string || ''}
+                    onChange={(e) => updateQuestion(qIndex, { correctAnswer: e.target.value })}
+                    placeholder="Nhập đáp án đúng"
+                  />
+                </div>
+              )}
 
-                {/* Coding Question */}
-                {question.type === 'coding' && question.coding && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Ngôn ngữ mặc định</Label>
-                        <Select
-                          value={question.coding.defaultLanguage}
-                          onValueChange={(value: ProgrammingLanguage) =>
-                            updateQuestion(qIndex, {
-                              coding: { ...question.coding!, defaultLanguage: value },
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {programmingLanguages.map((lang) => (
-                              <SelectItem key={lang.value} value={lang.value}>
-                                {lang.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Phương pháp tính điểm</Label>
-                        <Select
-                          value={question.coding.scoringMethod || 'proportional'}
-                          onValueChange={(value: 'proportional' | 'all-or-nothing' | 'weighted') =>
-                            updateQuestion(qIndex, {
-                              coding: { ...question.coding!, scoringMethod: value },
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {scoringMethods.map((method) => (
-                              <SelectItem key={method.value} value={method.value}>
-                                {method.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          {scoringMethods.find(m => m.value === (question.coding?.scoringMethod || 'proportional'))?.description}
-                        </p>
-                      </div>
+              {/* Coding Question */}
+              {question.type === 'coding' && question.coding && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Ngôn ngữ mặc định</Label>
+                      <Select
+                        value={question.coding.defaultLanguage}
+                        onValueChange={(value: ProgrammingLanguage) =>
+                          updateQuestion(qIndex, {
+                            coding: { ...question.coding!, defaultLanguage: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {programmingLanguages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              {lang.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Code mẫu</Label>
-                      <Textarea
-                        value={question.coding.starterCode[question.coding.defaultLanguage] || ''}
-                        onChange={(e) => {
-                          const newStarterCode = {
-                            ...question.coding!.starterCode,
-                            [question.coding!.defaultLanguage]: e.target.value,
-                          };
+                      <Label>Phương pháp tính điểm</Label>
+                      <Select
+                        value={question.coding.scoringMethod || 'proportional'}
+                        onValueChange={(value: 'proportional' | 'all-or-nothing' | 'weighted') =>
                           updateQuestion(qIndex, {
-                            coding: { ...question.coding!, starterCode: newStarterCode },
-                          });
-                        }}
-                        placeholder="Code khởi đầu cho sinh viên"
-                        rows={4}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label>Test Cases</Label>
-                        <Button variant="outline" size="sm" onClick={() => addTestCase(qIndex)}>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Thêm test case
-                        </Button>
-                      </div>
-                      {question.coding.testCases.map((testCase, tIndex) => (
-                        <Card key={testCase.id} className="p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <span className="text-sm font-medium text-foreground">Test case {tIndex + 1}</span>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <div className="flex items-center gap-1">
-                                <Label className="text-xs text-muted-foreground whitespace-nowrap">Trọng số:</Label>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  value={testCase.weight || 1}
-                                  onChange={(e) =>
-                                    updateTestCase(qIndex, tIndex, { weight: parseInt(e.target.value) || 1 })
-                                  }
-                                  className="w-16 h-7 text-xs"
-                                  disabled={question.coding?.scoringMethod !== 'weighted'}
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={testCase.isHidden}
-                                  onCheckedChange={(checked) =>
-                                    updateTestCase(qIndex, tIndex, { isHidden: checked })
-                                  }
-                                />
-                                <span className="text-xs text-muted-foreground">Ẩn</span>
-                              </div>
-                              {question.coding!.testCases.length > 1 && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeTestCase(qIndex, tIndex)}
-                                >
-                                  <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label className="text-xs">Input</Label>
-                              <Textarea
-                                value={testCase.input}
-                                onChange={(e) =>
-                                  updateTestCase(qIndex, tIndex, { input: e.target.value })
-                                }
-                                placeholder="Dữ liệu đầu vào"
-                                rows={2}
-                                className="font-mono text-sm"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs">Expected Output</Label>
-                              <Textarea
-                                value={testCase.expectedOutput}
-                                onChange={(e) =>
-                                  updateTestCase(qIndex, tIndex, { expectedOutput: e.target.value })
-                                }
-                                placeholder="Kết quả mong đợi"
-                                rows={2}
-                                className="font-mono text-sm"
-                              />
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
+                            coding: { ...question.coding!, scoringMethod: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {scoringMethods.map((method) => (
+                            <SelectItem key={method.value} value={method.value}>
+                              {method.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {scoringMethods.find(m => m.value === (question.coding?.scoringMethod || 'proportional'))?.description}
+                      </p>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+
+                  <div className="space-y-2">
+                    <Label>Code mẫu</Label>
+                    <Textarea
+                      value={question.coding.starterCode[question.coding.defaultLanguage] || ''}
+                      onChange={(e) => {
+                        const newStarterCode = {
+                          ...question.coding!.starterCode,
+                          [question.coding!.defaultLanguage]: e.target.value,
+                        };
+                        updateQuestion(qIndex, {
+                          coding: { ...question.coding!, starterCode: newStarterCode },
+                        });
+                      }}
+                      placeholder="Code khởi đầu cho sinh viên"
+                      rows={4}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Test Cases</Label>
+                      <Button variant="outline" size="sm" onClick={() => addTestCase(qIndex)}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Thêm test case
+                      </Button>
+                    </div>
+                    {question.coding.testCases.map((testCase, tIndex) => (
+                      <Card key={testCase.id} className="p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                          <span className="text-sm font-medium text-foreground">Test case {tIndex + 1}</span>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs text-muted-foreground whitespace-nowrap">Trọng số:</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={testCase.weight || 1}
+                                onChange={(e) =>
+                                  updateTestCase(qIndex, tIndex, { weight: parseInt(e.target.value) || 1 })
+                                }
+                                className="w-16 h-7 text-xs"
+                                disabled={question.coding?.scoringMethod !== 'weighted'}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={testCase.isHidden}
+                                onCheckedChange={(checked) =>
+                                  updateTestCase(qIndex, tIndex, { isHidden: checked })
+                                }
+                              />
+                              <span className="text-xs text-muted-foreground">Ẩn</span>
+                            </div>
+                            {question.coding!.testCases.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeTestCase(qIndex, tIndex)}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Input</Label>
+                            <Textarea
+                              value={testCase.input}
+                              onChange={(e) =>
+                                updateTestCase(qIndex, tIndex, { input: e.target.value })
+                              }
+                              placeholder="Dữ liệu đầu vào"
+                              rows={2}
+                              className="font-mono text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Expected Output</Label>
+                            <Textarea
+                              value={testCase.expectedOutput}
+                              onChange={(e) =>
+                                updateTestCase(qIndex, tIndex, { expectedOutput: e.target.value })
+                              }
+                              placeholder="Kết quả mong đợi"
+                              rows={2}
+                              className="font-mono text-sm"
+                            />
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CollapsibleQuestion>
           ))}
 
           {/* Add Question Buttons */}
