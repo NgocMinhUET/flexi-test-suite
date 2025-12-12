@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Play, CheckCircle2, XCircle, Clock, Eye, EyeOff, Code2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
@@ -15,6 +14,14 @@ import { cn } from '@/lib/utils';
 import { CodingQuestion, ProgrammingLanguage, TestCase, TestResult } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import CodeMirror from '@uiw/react-codemirror';
+import { python } from '@codemirror/lang-python';
+import { javascript } from '@codemirror/lang-javascript';
+import { java } from '@codemirror/lang-java';
+import { cpp } from '@codemirror/lang-cpp';
+import { rust } from '@codemirror/lang-rust';
+import { go } from '@codemirror/lang-go';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 
 interface CodingEditorProps {
   codingQuestion: CodingQuestion;
@@ -99,6 +106,27 @@ export const CodingEditor = ({
   const visibleTestCases = codingQuestion.testCases.filter((tc) => !tc.isHidden);
   const hiddenTestCount = codingQuestion.testCases.filter((tc) => tc.isHidden).length;
   const passedTests = testResults.filter((r) => r.passed).length;
+
+  // Get language extension for CodeMirror
+  const languageExtension = useMemo(() => {
+    switch (currentLanguage) {
+      case 'python':
+        return python();
+      case 'javascript':
+        return javascript();
+      case 'java':
+        return java();
+      case 'cpp':
+      case 'c':
+        return cpp();
+      case 'rust':
+        return rust();
+      case 'go':
+        return go();
+      default:
+        return python();
+    }
+  }, [currentLanguage]);
 
   // Initialize with starter code when language changes
   useEffect(() => {
@@ -224,25 +252,24 @@ export const CodingEditor = ({
             {languageConfig[currentLanguage].name}
           </span>
         </div>
-        <Textarea
+        <CodeMirror
           value={currentCode}
-          onChange={(e) => onCodeChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Tab') {
-              e.preventDefault();
-              const target = e.target as HTMLTextAreaElement;
-              const start = target.selectionStart;
-              const end = target.selectionEnd;
-              const newValue = currentCode.substring(0, start) + '  ' + currentCode.substring(end);
-              onCodeChange(newValue);
-              // Set cursor position after the inserted spaces
-              setTimeout(() => {
-                target.selectionStart = target.selectionEnd = start + 2;
-              }, 0);
-            }
-          }}
+          onChange={(value) => onCodeChange(value)}
+          extensions={[languageExtension]}
+          theme={vscodeDark}
           placeholder={`// Viết code ${languageConfig[currentLanguage].name} của bạn ở đây...`}
-          className="min-h-[300px] font-mono text-sm border-0 rounded-none focus-visible:ring-0 bg-card"
+          minHeight="300px"
+          className="text-sm"
+          basicSetup={{
+            lineNumbers: true,
+            highlightActiveLineGutter: true,
+            highlightActiveLine: true,
+            foldGutter: true,
+            autocompletion: true,
+            bracketMatching: true,
+            closeBrackets: true,
+            indentOnInput: true,
+          }}
         />
       </div>
 
