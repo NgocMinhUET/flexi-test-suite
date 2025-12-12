@@ -22,10 +22,16 @@ import {
   Clock,
   Award,
   Download,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+
+interface ViolationStats {
+  tabSwitchCount: number;
+  fullscreenExitCount: number;
+}
 
 interface ExamResultItem {
   id: string;
@@ -36,6 +42,9 @@ interface ExamResultItem {
   grade: string | null;
   duration: number | null;
   submitted_at: string;
+  statistics: {
+    violationStats?: ViolationStats;
+  } | null;
   profiles: {
     full_name: string | null;
     email: string | null;
@@ -119,6 +128,7 @@ const ExamResults = () => {
       
       const resultsWithProfiles: ExamResultItem[] = (resultsData || []).map(r => ({
         ...r,
+        statistics: r.statistics as { violationStats?: ViolationStats } | null,
         profiles: profilesMap.get(r.user_id) || null,
       }));
       
@@ -159,16 +169,21 @@ const ExamResults = () => {
       return;
     }
 
-    const headers = ['Họ tên', 'Email', 'Điểm', 'Phần trăm', 'Xếp loại', 'Thời gian làm bài', 'Ngày nộp'];
-    const rows = results.map((r) => [
-      escapeCSV(r.profiles?.full_name || 'N/A'),
-      escapeCSV(r.profiles?.email || 'N/A'),
-      `${r.earned_points}/${r.total_points}`,
-      `${r.percentage}%`,
-      escapeCSV(r.grade || 'N/A'),
-      r.duration ? `${r.duration} phút` : 'N/A',
-      format(new Date(r.submitted_at), 'dd/MM/yyyy HH:mm', { locale: vi }),
-    ]);
+    const headers = ['Họ tên', 'Email', 'Điểm', 'Phần trăm', 'Xếp loại', 'Thời gian làm bài', 'Chuyển tab', 'Thoát fullscreen', 'Ngày nộp'];
+    const rows = results.map((r) => {
+      const violations = r.statistics?.violationStats;
+      return [
+        escapeCSV(r.profiles?.full_name || 'N/A'),
+        escapeCSV(r.profiles?.email || 'N/A'),
+        `${r.earned_points}/${r.total_points}`,
+        `${r.percentage}%`,
+        escapeCSV(r.grade || 'N/A'),
+        r.duration ? `${r.duration} phút` : 'N/A',
+        String(violations?.tabSwitchCount ?? 0),
+        String(violations?.fullscreenExitCount ?? 0),
+        format(new Date(r.submitted_at), 'dd/MM/yyyy HH:mm', { locale: vi }),
+      ];
+    });
 
     const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -284,6 +299,7 @@ const ExamResults = () => {
                       <TableHead>Phần trăm</TableHead>
                       <TableHead>Xếp loại</TableHead>
                       <TableHead>Thời gian</TableHead>
+                      <TableHead>Vi phạm</TableHead>
                       <TableHead>Ngày nộp</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -323,6 +339,23 @@ const ExamResults = () => {
                             <Clock className="w-3.5 h-3.5" />
                             {result.duration ? `${result.duration} phút` : '-'}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const violations = result.statistics?.violationStats;
+                            const total = (violations?.tabSwitchCount ?? 0) + (violations?.fullscreenExitCount ?? 0);
+                            if (total === 0) {
+                              return <span className="text-muted-foreground">-</span>;
+                            }
+                            return (
+                              <div className="flex items-center gap-1 text-destructive">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                <span title={`Chuyển tab: ${violations?.tabSwitchCount ?? 0}, Thoát fullscreen: ${violations?.fullscreenExitCount ?? 0}`}>
+                                  {total}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">
