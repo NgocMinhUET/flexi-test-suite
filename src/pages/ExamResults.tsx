@@ -146,6 +146,13 @@ const ExamResults = () => {
     }
   };
 
+  const escapeCSV = (value: string): string => {
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
   const exportToCSV = () => {
     if (results.length === 0) {
       toast.error('Không có dữ liệu để xuất');
@@ -154,11 +161,11 @@ const ExamResults = () => {
 
     const headers = ['Họ tên', 'Email', 'Điểm', 'Phần trăm', 'Xếp loại', 'Thời gian làm bài', 'Ngày nộp'];
     const rows = results.map((r) => [
-      r.profiles?.full_name || 'N/A',
-      r.profiles?.email || 'N/A',
+      escapeCSV(r.profiles?.full_name || 'N/A'),
+      escapeCSV(r.profiles?.email || 'N/A'),
       `${r.earned_points}/${r.total_points}`,
       `${r.percentage}%`,
-      r.grade || 'N/A',
+      escapeCSV(r.grade || 'N/A'),
       r.duration ? `${r.duration} phút` : 'N/A',
       format(new Date(r.submitted_at), 'dd/MM/yyyy HH:mm', { locale: vi }),
     ]);
