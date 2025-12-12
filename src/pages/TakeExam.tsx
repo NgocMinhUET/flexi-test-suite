@@ -73,19 +73,43 @@ const TakeExam = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [examStarted, isSubmitting]);
 
-  // Handle tab visibility change detection
+  // Handle window focus loss detection (Alt+Tab, click outside, etc.)
   useEffect(() => {
     if (!examStarted || isSubmitting) return;
 
+    let lastBlurTime = 0;
+    const DEBOUNCE_MS = 500; // Avoid duplicate counting
+
+    const handleWindowBlur = () => {
+      const now = Date.now();
+      if (now - lastBlurTime < DEBOUNCE_MS) return;
+      lastBlurTime = now;
+
+      violationStatsRef.current.tabSwitchCount += 1;
+      setShowViolationWarning(true);
+      toast.warning(`Cảnh báo: Bạn đã rời khỏi cửa sổ thi (${violationStatsRef.current.tabSwitchCount} lần)`);
+    };
+
     const handleVisibilityChange = () => {
+      // Only count if not already counted by blur (debounce)
       if (document.hidden) {
+        const now = Date.now();
+        if (now - lastBlurTime < DEBOUNCE_MS) return;
+        lastBlurTime = now;
+
         violationStatsRef.current.tabSwitchCount += 1;
-        toast.warning(`Cảnh báo: Bạn đã chuyển tab (${violationStatsRef.current.tabSwitchCount} lần)`);
+        setShowViolationWarning(true);
+        toast.warning(`Cảnh báo: Bạn đã rời khỏi cửa sổ thi (${violationStatsRef.current.tabSwitchCount} lần)`);
       }
     };
 
+    window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [examStarted, isSubmitting]);
 
   // Prevent accidental page leave while taking exam
