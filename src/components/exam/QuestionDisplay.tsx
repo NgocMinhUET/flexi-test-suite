@@ -46,9 +46,13 @@ export const QuestionDisplay = ({
     question.coding?.defaultLanguage || 'python'
   );
 
-  // Sync with current answer
+  // Track if user has entered their own code (not just starter code)
+  const [hasUserCode, setHasUserCode] = useState(false);
+
+  // Sync with current answer when navigating between questions
   useEffect(() => {
     if (currentAnswer) {
+      // Restore saved answer
       if (Array.isArray(currentAnswer.answer)) {
         setSelectedOption(currentAnswer.answer[0] || null);
       } else {
@@ -56,6 +60,7 @@ export const QuestionDisplay = ({
           setSelectedOption(currentAnswer.answer);
         } else if (question.type === 'coding') {
           setCodeAnswer(currentAnswer.answer);
+          setHasUserCode(true); // User has saved code
           if (currentAnswer.language) {
             setSelectedLanguage(currentAnswer.language);
           }
@@ -64,18 +69,27 @@ export const QuestionDisplay = ({
         }
       }
     } else {
+      // No saved answer - reset to defaults
       setSelectedOption(null);
       setTextAnswer('');
-      setCodeAnswer(question.coding?.starterCode[selectedLanguage] || '');
+      setHasUserCode(false);
+      // Only set starter code if this is a coding question and no user code exists
+      if (question.type === 'coding' && question.coding) {
+        const defaultLang = question.coding.defaultLanguage;
+        setSelectedLanguage(defaultLang);
+        setCodeAnswer(question.coding.starterCode[defaultLang] || '');
+      } else {
+        setCodeAnswer('');
+      }
     }
-  }, [currentAnswer, question.id, question.type, question.coding, selectedLanguage]);
+  }, [currentAnswer, question.id, question.type]);
 
-  // Reset language when question changes
+  // Reset language when question changes (for coding questions)
   useEffect(() => {
-    if (question.coding) {
+    if (question.coding && !currentAnswer) {
       setSelectedLanguage(question.coding.defaultLanguage);
     }
-  }, [question.id, question.coding]);
+  }, [question.id, question.coding, currentAnswer]);
 
   const handleOptionSelect = (optionId: string) => {
     setSelectedOption(optionId);
@@ -91,9 +105,9 @@ export const QuestionDisplay = ({
 
   const handleCodeChange = (code: string) => {
     setCodeAnswer(code);
-    if (code.trim()) {
-      onAnswer({ questionId: question.id, answer: code, language: selectedLanguage });
-    }
+    setHasUserCode(true);
+    // Always save the code even if empty (user might be deleting to start fresh)
+    onAnswer({ questionId: question.id, answer: code, language: selectedLanguage });
   };
 
   const handleLanguageChange = (language: ProgrammingLanguage) => {

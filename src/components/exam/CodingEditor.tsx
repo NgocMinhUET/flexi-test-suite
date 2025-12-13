@@ -41,14 +41,17 @@ const languageConfig: Record<ProgrammingLanguage, { name: string; extension: str
   rust: { name: 'Rust', extension: '.rs', icon: '🦀' },
 };
 
-// Execute code using Lovable Cloud edge function
+// Execute code using Lovable Cloud edge function with retry logic
 const executeCode = async (
   code: string,
   language: ProgrammingLanguage,
   testCases: TestCase[],
   timeLimit: number,
-  memoryLimit: number
-): Promise<{ results: TestResult[]; error?: string }> => {
+  memoryLimit: number,
+  retryCount = 0
+): Promise<{ results: TestResult[]; error?: string; retryAfter?: number }> => {
+  const MAX_RETRIES = 2;
+  
   const { data, error } = await supabase.functions.invoke('execute-code', {
     body: {
       code,
@@ -65,10 +68,33 @@ const executeCode = async (
   });
 
   if (error) {
+    // Check if it's a rate limit error
+    if (error.message?.includes('429') || error.message?.includes('rate')) {
+      return { 
+        results: [], 
+        error: 'Hệ thống đang bận. Vui lòng thử lại sau 30 giây.',
+        retryAfter: 30
+      };
+    }
     return { results: [], error: error.message };
   }
 
   if (!data.success) {
+    // Handle rate limit response from edge function
+    if (data.retryAfter) {
+      return { 
+        results: [], 
+        error: data.error,
+        retryAfter: data.retryAfter
+      };
+    }
+    
+    // Retry on certain errors
+    if (data.error?.includes('bận') && retryCount < MAX_RETRIES) {
+      await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1)));
+      return executeCode(code, language, testCases, timeLimit, memoryLimit, retryCount + 1);
+    }
+    
     return { results: [], error: data.error };
   }
 
@@ -140,7 +166,7 @@ export const CodingEditor = ({
     setTestResults([]);
 
     try {
-      const { results, error } = await executeCode(
+      const { results, error, retryAfter } = await executeCode(
         currentCode,
         currentLanguage,
         codingQuestion.testCases,
@@ -150,8 +176,10 @@ export const CodingEditor = ({
 
       if (error) {
         toast({
-          title: 'Lỗi thực thi',
-          description: error,
+          title: retryAfter ? 'Hệ thống đang bận' : 'Lỗi thực thi',
+          description: retryAfter 
+            ? `Vui lòng thử lại sau ${retryAfter} giây.`
+            : error,
           variant: 'destructive',
         });
       } else {
@@ -167,7 +195,7 @@ export const CodingEditor = ({
       console.error('Execution error:', error);
       toast({
         title: 'Lỗi',
-        description: 'Không thể kết nối đến server',
+        description: 'Không thể kết nối đến server. Vui lòng thử lại.',
         variant: 'destructive',
       });
     } finally {

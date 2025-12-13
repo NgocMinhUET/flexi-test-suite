@@ -28,9 +28,16 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
+interface ViolationDetail {
+  type: 'tab-switch' | 'fullscreen-exit';
+  timestamp: number;
+  duration?: number;
+}
+
 interface ViolationStats {
   tabSwitchCount: number;
   fullscreenExitCount: number;
+  details?: ViolationDetail[];
 }
 
 interface ExamResultItem {
@@ -299,7 +306,7 @@ const ExamResults = () => {
                       <TableHead>Phần trăm</TableHead>
                       <TableHead>Xếp loại</TableHead>
                       <TableHead>Thời gian</TableHead>
-                      <TableHead>Vi phạm</TableHead>
+                      <TableHead className="min-w-[140px]">Vi phạm</TableHead>
                       <TableHead>Ngày nộp</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -343,16 +350,32 @@ const ExamResults = () => {
                         <TableCell>
                           {(() => {
                             const violations = result.statistics?.violationStats;
-                            const total = (violations?.tabSwitchCount ?? 0) + (violations?.fullscreenExitCount ?? 0);
+                            const tabSwitch = violations?.tabSwitchCount ?? 0;
+                            const fullscreenExit = violations?.fullscreenExitCount ?? 0;
+                            const total = tabSwitch + fullscreenExit;
+                            
                             if (total === 0) {
-                              return <span className="text-muted-foreground">-</span>;
+                              return <span className="text-success text-sm">✓ Không vi phạm</span>;
                             }
+                            
+                            // Color based on severity: 1-2 = warning, 3+ = destructive
+                            const isSerious = total >= 3;
+                            
                             return (
-                              <div className="flex items-center gap-1 text-destructive">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                <span title={`Chuyển tab: ${violations?.tabSwitchCount ?? 0}, Thoát fullscreen: ${violations?.fullscreenExitCount ?? 0}`}>
-                                  {total}
-                                </span>
+                              <div className={`flex flex-col gap-1 ${isSerious ? 'text-destructive' : 'text-warning'}`}>
+                                <div className="flex items-center gap-1">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  <span className="font-medium">{total} lần</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  <span title="Số lần rời cửa sổ thi (Alt+Tab, click ra ngoài...)">
+                                    Rời cửa sổ: {tabSwitch}
+                                  </span>
+                                  <span className="mx-1">|</span>
+                                  <span title="Số lần thoát chế độ toàn màn hình (Esc, Windows key...)">
+                                    Thoát FS: {fullscreenExit}
+                                  </span>
+                                </div>
                               </div>
                             );
                           })()}
