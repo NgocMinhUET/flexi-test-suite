@@ -94,9 +94,16 @@ export interface QuestionResult {
   codingResults?: CodingGradingResult;
 }
 
+export interface ViolationDetail {
+  type: 'tab-switch' | 'fullscreen-exit';
+  timestamp: number;
+  duration?: number; // milliseconds away (if applicable)
+}
+
 export interface ViolationStats {
   tabSwitchCount: number;
   fullscreenExitCount: number;
+  details?: ViolationDetail[];
 }
 
 export interface ExamResult {

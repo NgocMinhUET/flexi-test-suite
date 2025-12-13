@@ -41,11 +41,20 @@ const languageMap: Record<string, { language: string; version: string }> = {
   rust: { language: "rust", version: "1.68.2" },
 };
 
-async function executeCode(
+// Retry configuration
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function executeCodeWithRetry(
   code: string,
   language: string,
   input: string,
-  timeLimit: number
+  timeLimit: number,
+  retryCount = 0
 ): Promise<{ output: string; executionTime: number; error?: string }> {
   const startTime = Date.now();
   
@@ -78,9 +87,33 @@ async function executeCode(
       }),
     });
 
+    // Handle rate limiting with retry
+    if (response.status === 429) {
+      if (retryCount < MAX_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await sleep(delay);
+        return executeCodeWithRetry(code, language, input, timeLimit, retryCount + 1);
+      }
+      return {
+        output: "",
+        executionTime: Date.now() - startTime,
+        error: "Hệ thống đang bận. Vui lòng thử lại sau 30 giây.",
+      };
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Piston API error:", errorText);
+      
+      // Retry on server errors
+      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(`Server error, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await sleep(delay);
+        return executeCodeWithRetry(code, language, input, timeLimit, retryCount + 1);
+      }
+      
       return {
         output: "",
         executionTime: Date.now() - startTime,
@@ -126,6 +159,15 @@ async function executeCode(
     };
   } catch (error: unknown) {
     console.error("Execute error:", error);
+    
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES) {
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+      console.log(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await sleep(delay);
+      return executeCodeWithRetry(code, language, input, timeLimit, retryCount + 1);
+    }
+    
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return {
       output: "",
@@ -154,24 +196,69 @@ function normalizeOutput(output: string): string {
 
 // Simple in-memory rate limiting (per function instance)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 20; // Max requests per minute
+const RATE_LIMIT = 30; // Increased from 20 to 30 requests per minute
 const RATE_WINDOW = 60000; // 1 minute in milliseconds
 
-function checkRateLimit(userId: string): boolean {
+function checkRateLimit(userId: string): { allowed: boolean; waitTime?: number } {
   const now = Date.now();
   const userLimit = rateLimitMap.get(userId);
   
   if (!userLimit || now > userLimit.resetTime) {
     rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_WINDOW });
-    return true;
+    return { allowed: true };
   }
   
   if (userLimit.count >= RATE_LIMIT) {
-    return false;
+    const waitTime = Math.ceil((userLimit.resetTime - now) / 1000);
+    return { allowed: false, waitTime };
   }
   
   userLimit.count++;
-  return true;
+  return { allowed: true };
+}
+
+// Limit concurrent executions
+const MAX_CONCURRENT = 3;
+
+async function executeTestsWithConcurrencyLimit(
+  code: string,
+  language: string,
+  testCases: { input: string; expectedOutput: string; isHidden: boolean }[],
+  timeLimit: number
+): Promise<TestResult[]> {
+  const results: TestResult[] = [];
+  
+  // Process in batches of MAX_CONCURRENT
+  for (let i = 0; i < testCases.length; i += MAX_CONCURRENT) {
+    const batch = testCases.slice(i, i + MAX_CONCURRENT);
+    
+    const batchPromises = batch.map(async (testCase) => {
+      const { output, executionTime, error } = await executeCodeWithRetry(
+        code,
+        language,
+        testCase.input,
+        timeLimit
+      );
+
+      const normalizedExpected = normalizeOutput(testCase.expectedOutput);
+      const normalizedActual = normalizeOutput(output);
+
+      return {
+        passed: !error && normalizedActual === normalizedExpected,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput: error ? `Error: ${error}` : output,
+        executionTime,
+        error,
+        isHidden: testCase.isHidden,
+      };
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+  }
+  
+  return results;
 }
 
 serve(async (req) => {
@@ -186,11 +273,23 @@ serve(async (req) => {
     const userId = authHeader ? authHeader.split('.')[1] || 'anonymous' : 'anonymous';
     
     // Check rate limit
-    if (!checkRateLimit(userId)) {
+    const rateLimitResult = checkRateLimit(userId);
+    if (!rateLimitResult.allowed) {
       console.log(`Rate limit exceeded for user: ${userId}`);
       return new Response(
-        JSON.stringify({ success: false, error: "Rate limit exceeded. Please wait before trying again." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          success: false, 
+          error: `Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi ${rateLimitResult.waitTime} giây trước khi thử lại.`,
+          retryAfter: rateLimitResult.waitTime
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimitResult.waitTime || 60)
+          } 
+        }
       );
     }
 
@@ -243,29 +342,13 @@ serve(async (req) => {
       ? testCases 
       : testCases.filter(tc => !tc.isHidden);
 
-    const results: TestResult[] = [];
-
-    for (const testCase of casesToRun) {
-      const { output, executionTime, error } = await executeCode(
-        code,
-        language,
-        testCase.input,
-        safeTimeLimit
-      );
-
-      const normalizedExpected = normalizeOutput(testCase.expectedOutput);
-      const normalizedActual = normalizeOutput(output);
-
-      results.push({
-        passed: !error && normalizedActual === normalizedExpected,
-        input: testCase.input,
-        expectedOutput: testCase.expectedOutput,
-        actualOutput: error ? `Error: ${error}` : output,
-        executionTime,
-        error,
-        isHidden: testCase.isHidden,
-      });
-    }
+    // Execute with concurrency limit and retry logic
+    const results = await executeTestsWithConcurrencyLimit(
+      code,
+      language,
+      casesToRun,
+      safeTimeLimit
+    );
 
     const totalPassed = results.filter(r => r.passed).length;
     const totalTests = results.length;
