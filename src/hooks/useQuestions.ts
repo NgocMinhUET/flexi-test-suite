@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { Question, QuestionFormData, QuestionFilters, QuestionStatus } from '@/types/questionBank';
 import { toast } from 'sonner';
 
@@ -104,21 +105,31 @@ export function useCreateQuestion() {
         }
       }
 
+      const insertData = {
+        subject_id: formData.subject_id,
+        content: formData.content,
+        content_plain: contentPlain,
+        taxonomy_node_id: formData.taxonomy_node_id || null,
+        taxonomy_path: taxonomyPath as unknown as Json,
+        cognitive_level: formData.cognitive_level || null,
+        question_type: formData.question_type,
+        answer_data: formData.answer_data as unknown as Json,
+        labels: (formData.labels || []) as unknown as Json,
+        difficulty: formData.difficulty ?? 0.5,
+        estimated_time: formData.estimated_time ?? 60,
+        allow_shuffle: formData.allow_shuffle ?? true,
+        is_group_lead: formData.is_group_lead ?? false,
+        media: [] as unknown as Json,
+        group_id: formData.group_id || null,
+        group_order: formData.group_order || null,
+        code: formData.code || null,
+        status: 'draft' as const,
+        created_by: user.id,
+      };
+
       const { data, error } = await supabase
         .from('questions')
-        .insert({
-          ...formData,
-          content_plain: contentPlain,
-          taxonomy_path: taxonomyPath,
-          labels: formData.labels || [],
-          difficulty: formData.difficulty ?? 0.5,
-          estimated_time: formData.estimated_time ?? 60,
-          allow_shuffle: formData.allow_shuffle ?? true,
-          is_group_lead: formData.is_group_lead ?? false,
-          media: [],
-          status: 'draft' as QuestionStatus,
-          created_by: user.id,
-        })
+        .insert(insertData)
         .select()
         .single();
 
