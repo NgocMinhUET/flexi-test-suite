@@ -370,13 +370,15 @@ export function useBulkSubmitForReview() {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) return;
-      
-      const { error } = await supabase
-        .from('questions')
-        .update({ status: 'review' as QuestionStatus })
-        .in('id', ids);
 
-      if (error) throw error;
+      for (const id of ids) {
+        const { error } = await supabase
+          .from('questions')
+          .update({ status: 'review' as QuestionStatus })
+          .eq('id', id);
+
+        if (error) throw error;
+      }
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
@@ -395,20 +397,22 @@ export function useBulkApproveQuestions() {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) return;
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('questions')
-        .update({
-          status: 'approved' as QuestionStatus,
-          reviewed_by: user?.id,
-          reviewed_at: new Date().toISOString(),
-          rejection_reason: null,
-        })
-        .in('id', ids);
 
-      if (error) throw error;
+      const { data: { user } } = await supabase.auth.getUser();
+
+      for (const id of ids) {
+        const { error } = await supabase
+          .from('questions')
+          .update({
+            status: 'approved' as QuestionStatus,
+            reviewed_by: user?.id,
+            reviewed_at: new Date().toISOString(),
+            rejection_reason: null,
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+      }
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
@@ -427,13 +431,15 @@ export function useBulkPublishQuestions() {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) return;
-      
-      const { error } = await supabase
-        .from('questions')
-        .update({ status: 'published' as QuestionStatus })
-        .in('id', ids);
 
-      if (error) throw error;
+      for (const id of ids) {
+        const { error } = await supabase
+          .from('questions')
+          .update({ status: 'published' as QuestionStatus })
+          .eq('id', id);
+
+        if (error) throw error;
+      }
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
