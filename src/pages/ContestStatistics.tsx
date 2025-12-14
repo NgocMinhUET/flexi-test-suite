@@ -35,8 +35,10 @@ interface ExamResult {
   submitted_at: string;
   duration: number | null;
   statistics: {
-    tabSwitchCount?: number;
-    fullscreenExitCount?: number;
+    violationStats?: {
+      tabSwitchCount?: number;
+      fullscreenExitCount?: number;
+    };
   } | null;
 }
 
@@ -203,7 +205,7 @@ export default function ContestStatistics() {
     const rows = sortedResults.map((result, index) => {
       const profile = profiles[result.user_id];
       const variant = examVariantMap[result.exam_id];
-      const stats = result.statistics;
+      const stats = result.statistics?.violationStats;
       
       return [
         index + 1,
@@ -548,8 +550,8 @@ export default function ContestStatistics() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">
-                              {(() => {
-                                const stats = result.statistics;
+                            {(() => {
+                                const stats = result.statistics?.violationStats;
                                 const total = (stats?.tabSwitchCount ?? 0) + (stats?.fullscreenExitCount ?? 0);
                                 if (total === 0) {
                                   return <Badge variant="outline" className="text-green-600 border-green-600">0</Badge>;
