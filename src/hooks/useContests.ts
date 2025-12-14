@@ -326,6 +326,41 @@ export const useUpdateContestStatus = () => {
   });
 };
 
+// Update contest details
+export const useUpdateContest = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      contestId, 
+      data 
+    }: { 
+      contestId: string; 
+      data: { 
+        name?: string; 
+        description?: string; 
+        start_time?: string | null;
+        end_time?: string | null;
+      } 
+    }) => {
+      const { error } = await supabase
+        .from('contests')
+        .update(data)
+        .eq('id', contestId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { contestId }) => {
+      queryClient.invalidateQueries({ queryKey: ['contest', contestId] });
+      queryClient.invalidateQueries({ queryKey: ['contests'] });
+      toast.success('Đã cập nhật cuộc thi');
+    },
+    onError: (error) => {
+      toast.error('Lỗi: ' + error.message);
+    },
+  });
+};
+
 // Delete contest
 export const useDeleteContest = () => {
   const queryClient = useQueryClient();
