@@ -12,16 +12,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Loader2, TrendingUp, Users, Trophy, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Loader2, TrendingUp, Users, Trophy, BarChart3, Download, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExamResult {
   id: string;
@@ -32,6 +33,11 @@ interface ExamResult {
   total_points: number;
   grade: string | null;
   submitted_at: string;
+  duration: number | null;
+  statistics: {
+    tabSwitchCount?: number;
+    fullscreenExitCount?: number;
+  } | null;
 }
 
 export default function ContestStatistics() {
@@ -39,6 +45,7 @@ export default function ContestStatistics() {
   const navigate = useNavigate();
   const { user, isAdmin, isTeacher, isLoading: authLoading } = useAuth();
   const { data: contest, isLoading: contestLoading } = useContest(id);
+  const { toast } = useToast();
 
   // Fetch all exam results for this contest's exams
   const { data: results, isLoading: resultsLoading } = useQuery({
@@ -48,11 +55,14 @@ export default function ContestStatistics() {
       const examIds = contest.exams.map(e => e.exam_id);
       const { data, error } = await supabase
         .from('exam_results')
-        .select('id, exam_id, user_id, percentage, earned_points, total_points, grade, submitted_at')
+        .select('id, exam_id, user_id, percentage, earned_points, total_points, grade, submitted_at, duration, statistics')
         .in('exam_id', examIds);
       
       if (error) throw error;
-      return (data || []) as ExamResult[];
+      return (data || []).map(r => ({
+        ...r,
+        statistics: r.statistics as ExamResult['statistics'],
+      })) as ExamResult[];
     },
     enabled: !!contest?.exams.length,
   });
@@ -168,6 +178,71 @@ export default function ContestStatistics() {
       navigate('/auth');
     }
   }, [authLoading, user, isAdmin, isTeacher, navigate]);
+
+  // Export to CSV
+  const handleExportCSV = useCallback(() => {
+    if (!results?.length || !profiles) return;
+
+    const headers = [
+      'STT',
+      'Họ tên',
+      'Email',
+      'Mã đề',
+      'Điểm đạt',
+      'Điểm tối đa',
+      'Phần trăm',
+      'Xếp loại',
+      'Thời gian làm (phút)',
+      'Tab switch',
+      'Fullscreen exit',
+      'Thời gian nộp',
+    ];
+
+    const sortedResults = [...results].sort((a, b) => b.percentage - a.percentage);
+    
+    const rows = sortedResults.map((result, index) => {
+      const profile = profiles[result.user_id];
+      const variant = examVariantMap[result.exam_id];
+      const stats = result.statistics;
+      
+      return [
+        index + 1,
+        profile?.full_name || 'N/A',
+        profile?.email || 'N/A',
+        variant || 'N/A',
+        result.earned_points,
+        result.total_points,
+        result.percentage.toFixed(1),
+        result.grade || 'N/A',
+        result.duration || 'N/A',
+        stats?.tabSwitchCount ?? 0,
+        stats?.fullscreenExitCount ?? 0,
+        new Date(result.submitted_at).toLocaleString('vi-VN'),
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${contest?.name || 'contest'}_results_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    toast({
+      title: 'Xuất file thành công',
+      description: `Đã xuất ${results.length} kết quả ra file CSV`,
+    });
+  }, [results, profiles, examVariantMap, contest?.name, toast]);
+
+  // View exam result detail
+  const handleViewDetail = useCallback((resultId: string) => {
+    navigate(`/exam-result/${resultId}`);
+  }, [navigate]);
 
   if (authLoading || contestLoading) {
     return (
@@ -420,9 +495,15 @@ export default function ContestStatistics() {
 
             {/* Individual Results Table */}
             <Card>
-              <CardHeader>
-                <CardTitle>Kết quả chi tiết</CardTitle>
-                <CardDescription>Danh sách bài nộp của thí sinh</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Kết quả chi tiết</CardTitle>
+                  <CardDescription>Danh sách bài nộp của thí sinh</CardDescription>
+                </div>
+                <Button onClick={handleExportCSV} variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Xuất CSV
+                </Button>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -433,7 +514,9 @@ export default function ContestStatistics() {
                       <TableHead>Mã đề</TableHead>
                       <TableHead className="text-center">Điểm</TableHead>
                       <TableHead className="text-center">Phần trăm</TableHead>
+                      <TableHead className="text-center">Vi phạm</TableHead>
                       <TableHead>Thời gian nộp</TableHead>
+                      <TableHead className="text-center">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -464,8 +547,31 @@ export default function ContestStatistics() {
                                 {result.percentage.toFixed(1)}%
                               </Badge>
                             </TableCell>
+                            <TableCell className="text-center">
+                              {(() => {
+                                const stats = result.statistics;
+                                const total = (stats?.tabSwitchCount ?? 0) + (stats?.fullscreenExitCount ?? 0);
+                                if (total === 0) {
+                                  return <Badge variant="outline" className="text-green-600 border-green-600">0</Badge>;
+                                } else if (total <= 2) {
+                                  return <Badge variant="outline" className="text-yellow-600 border-yellow-600">{total}</Badge>;
+                                } else {
+                                  return <Badge variant="destructive">{total}</Badge>;
+                                }
+                              })()}
+                            </TableCell>
                             <TableCell className="text-muted-foreground">
                               {new Date(result.submitted_at).toLocaleString('vi-VN')}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleViewDetail(result.id)}
+                                title="Xem chi tiết bài làm"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );
