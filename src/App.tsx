@@ -19,6 +19,8 @@ import TaxonomyManagement from "./pages/TaxonomyManagement";
 import QuestionBank from "./pages/QuestionBank";
 import QuestionEditor from "./pages/QuestionEditor";
 import ExamGenerator from "./pages/ExamGenerator";
+import ContestManagement from "./pages/ContestManagement";
+import ContestDetail from "./pages/ContestDetail";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,8 @@ const App = () => (
           <Route path="/my-exams" element={<StudentExams />} />
           <Route path="/exam/new" element={<ExamEditor />} />
           <Route path="/exam/generate" element={<ExamGenerator />} />
+          <Route path="/contests" element={<ContestManagement />} />
+          <Route path="/contests/:id" element={<ContestDetail />} />
           <Route path="/exam/:id/edit" element={<ExamEditor />} />
           <Route path="/exam/:id" element={<TakeExam />} />
           <Route path="/exam/:id/result" element={<ExamResult />} />
