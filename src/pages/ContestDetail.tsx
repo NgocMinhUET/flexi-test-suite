@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2 } from 'lucide-react';
 import { AddExamsToContestDialog } from '@/components/contest/AddExamsToContestDialog';
 import { AddParticipantsDialog } from '@/components/contest/AddParticipantsDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +45,7 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 export default function ContestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isAdmin, isTeacher } = useAuth();
+  const { user, isAdmin, isTeacher, isLoading: authLoading } = useAuth();
   const { data: contest, isLoading } = useContest(id);
   const distributeExams = useDistributeExams();
   const updateStatus = useUpdateContestStatus();
@@ -95,15 +95,28 @@ export default function ContestDetail() {
     enabled: !!contest?.exams.length,
   });
 
+  useEffect(() => {
+    if (!authLoading && (!user || (!isAdmin && !isTeacher))) {
+      navigate('/auth');
+    }
+  }, [authLoading, user, isAdmin, isTeacher, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!user || (!isAdmin && !isTeacher)) {
-    navigate('/auth');
     return null;
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Đang tải...</div>
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
