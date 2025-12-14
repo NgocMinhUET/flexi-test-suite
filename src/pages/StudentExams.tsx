@@ -61,8 +61,8 @@ const StudentExams = () => {
 
     setIsLoading(true);
     try {
-      // Fetch assignments with exam details
-      const { data: assignmentsData, error: assignmentsError } = await supabase
+      // Fetch direct exam assignments
+      const { data: directAssignments, error: directError } = await supabase
         .from('exam_assignments')
         .select(`
           id,
@@ -81,7 +81,35 @@ const StudentExams = () => {
         `)
         .eq('user_id', user.id);
 
-      if (assignmentsError) throw assignmentsError;
+      if (directError) throw directError;
+
+      // Fetch contest-based assignments (where student is assigned an exam in a contest)
+      const { data: contestAssignments, error: contestError } = await supabase
+        .from('contest_participants')
+        .select(`
+          id,
+          assigned_exam_id,
+          assigned_at,
+          contest:contests (
+            id,
+            name,
+            start_time,
+            end_time,
+            status
+          ),
+          exam:exams (
+            id,
+            title,
+            subject,
+            duration,
+            total_questions,
+            description
+          )
+        `)
+        .eq('user_id', user.id)
+        .not('assigned_exam_id', 'is', null);
+
+      if (contestError) throw contestError;
 
       // Fetch submission status for each exam
       const { data: resultsData, error: resultsError } = await supabase
@@ -93,7 +121,8 @@ const StudentExams = () => {
 
       const submittedExamIds = new Set((resultsData || []).map(r => r.exam_id));
 
-      const processedAssignments: AssignedExam[] = (assignmentsData || [])
+      // Process direct assignments
+      const processedDirectAssignments: AssignedExam[] = (directAssignments || [])
         .filter(a => a.exam)
         .map(a => ({
           id: a.id,
@@ -105,7 +134,24 @@ const StudentExams = () => {
           has_submitted: submittedExamIds.has(a.exam_id),
         }));
 
-      setAssignments(processedAssignments);
+      // Process contest assignments (use contest start/end time)
+      const processedContestAssignments: AssignedExam[] = (contestAssignments || [])
+        .filter(a => a.exam && a.contest && (a.contest as any).status === 'ongoing')
+        .map(a => ({
+          id: a.id,
+          exam_id: a.assigned_exam_id!,
+          start_time: (a.contest as any)?.start_time || null,
+          end_time: (a.contest as any)?.end_time || null,
+          assigned_at: a.assigned_at || new Date().toISOString(),
+          exam: a.exam as AssignedExam['exam'],
+          has_submitted: submittedExamIds.has(a.assigned_exam_id!),
+        }));
+
+      // Combine and deduplicate by exam_id (prefer direct assignments)
+      const examIdSet = new Set(processedDirectAssignments.map(a => a.exam_id));
+      const uniqueContestAssignments = processedContestAssignments.filter(a => !examIdSet.has(a.exam_id));
+
+      setAssignments([...processedDirectAssignments, ...uniqueContestAssignments]);
     } catch (error) {
       console.error('Error fetching assigned exams:', error);
       toast.error('Lỗi khi tải danh sách bài thi');
