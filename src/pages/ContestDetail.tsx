@@ -5,7 +5,8 @@ import {
   useContest, 
   useDistributeExams, 
   useUpdateContestStatus,
-  useRemoveParticipant 
+  useRemoveParticipant,
+  useDeleteContest
 } from '@/hooks/useContests';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,10 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3, Pencil } from 'lucide-react';
 import { AddExamsToContestDialog } from '@/components/contest/AddExamsToContestDialog';
 import { AddParticipantsDialog } from '@/components/contest/AddParticipantsDialog';
 import { GenerateExamsDialog } from '@/components/contest/GenerateExamsDialog';
+import { EditContestDialog } from '@/components/contest/EditContestDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -51,11 +53,14 @@ export default function ContestDetail() {
   const distributeExams = useDistributeExams();
   const updateStatus = useUpdateContestStatus();
   const removeParticipant = useRemoveParticipant();
+  const deleteContest = useDeleteContest();
 
   const [addExamsOpen, setAddExamsOpen] = useState(false);
   const [addParticipantsOpen, setAddParticipantsOpen] = useState(false);
   const [distributeDialogOpen, setDistributeDialogOpen] = useState(false);
   const [generateExamsOpen, setGenerateExamsOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Fetch profiles for participants
   const { data: profiles } = useQuery({
@@ -149,6 +154,11 @@ export default function ContestDetail() {
     await updateStatus.mutateAsync({ contestId: contest.id, status: 'active' });
   };
 
+  const handleDelete = async () => {
+    await deleteContest.mutateAsync(contest.id);
+    navigate('/contests');
+  };
+
   const getAssignedVariant = (examId: string | undefined) => {
     if (!examId) return null;
     const contestExam = contest.exams.find(e => e.exam_id === examId);
@@ -170,10 +180,24 @@ export default function ContestDetail() {
               </div>
               <p className="text-muted-foreground">{contest.subject}</p>
             </div>
-            <Button variant="outline" onClick={() => navigate(`/contests/${id}/statistics`)}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Thống kê
-            </Button>
+            <div className="flex gap-2">
+              {canEdit && (
+                <>
+                  <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Sửa
+                  </Button>
+                  <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Xóa
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" onClick={() => navigate(`/contests/${id}/statistics`)}>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Thống kê
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -422,6 +446,34 @@ export default function ContestDetail() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={handleDistribute} disabled={distributeExams.isPending}>
               {distributeExams.isPending ? 'Đang phân phối...' : 'Phân phối'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <EditContestDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        contest={contest}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa cuộc thi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa cuộc thi "{contest.name}"? 
+              Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={deleteContest.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteContest.isPending ? 'Đang xóa...' : 'Xóa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
