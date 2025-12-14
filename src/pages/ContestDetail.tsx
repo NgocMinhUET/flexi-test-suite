@@ -29,9 +29,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2 } from 'lucide-react';
 import { AddExamsToContestDialog } from '@/components/contest/AddExamsToContestDialog';
 import { AddParticipantsDialog } from '@/components/contest/AddParticipantsDialog';
+import { GenerateExamsDialog } from '@/components/contest/GenerateExamsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -54,6 +55,7 @@ export default function ContestDetail() {
   const [addExamsOpen, setAddExamsOpen] = useState(false);
   const [addParticipantsOpen, setAddParticipantsOpen] = useState(false);
   const [distributeDialogOpen, setDistributeDialogOpen] = useState(false);
+  const [generateExamsOpen, setGenerateExamsOpen] = useState(false);
 
   // Fetch profiles for participants
   const { data: profiles } = useQuery({
@@ -262,10 +264,16 @@ export default function ContestDetail() {
                     <CardDescription>Các mã đề trong cuộc thi</CardDescription>
                   </div>
                   {canEdit && (
-                    <Button onClick={() => setAddExamsOpen(true)}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Thêm đề
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={() => setGenerateExamsOpen(true)} variant="default">
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Sinh đề từ ma trận
+                      </Button>
+                      <Button onClick={() => setAddExamsOpen(true)} variant="outline">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Thêm đề có sẵn
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -387,6 +395,13 @@ export default function ContestDetail() {
         onOpenChange={setAddParticipantsOpen}
         contestId={contest.id}
         existingUserIds={contest.participants.map(p => p.user_id)}
+      />
+
+      <GenerateExamsDialog
+        open={generateExamsOpen}
+        onOpenChange={setGenerateExamsOpen}
+        contestId={contest.id}
+        contestSubject={contest.subject}
       />
 
       <AlertDialog open={distributeDialogOpen} onOpenChange={setDistributeDialogOpen}>

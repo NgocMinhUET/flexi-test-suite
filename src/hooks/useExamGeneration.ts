@@ -25,6 +25,16 @@ interface GenerateExamsData {
   subjectName: string;
 }
 
+interface GenerateExamsForContestData {
+  contestId: string;
+  templateName: string;
+  subjectId: string;
+  subjectName: string;
+  matrixConfig: MatrixConfig;
+  constraints: GenerationConstraints;
+  variantCount: number;
+}
+
 // Convert Question Bank format to Exam format
 function convertToExamQuestion(question: any, position: number, points: number, optionOrder?: number[]) {
   const baseQuestion = {
@@ -292,6 +302,166 @@ export function useGenerateExams() {
       toast({ 
         title: 'Sinh đề thành công', 
         description: `Đã tạo ${data.length} mã đề` 
+      });
+    },
+    onError: (error) => {
+      toast({ title: 'Lỗi sinh đề', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+// Generate exams and add directly to a contest
+export function useGenerateExamsForContest() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      contestId,
+      templateName,
+      subjectId,
+      subjectName,
+      matrixConfig,
+      constraints,
+      variantCount,
+    }: GenerateExamsForContestData) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
+
+      // Create template first
+      const { data: template, error: templateError } = await supabase
+        .from('exam_templates')
+        .insert({
+          name: templateName,
+          subject_id: subjectId,
+          matrix_config: matrixConfig as unknown as Json,
+          constraints: constraints as unknown as Json,
+          created_by: user.user.id,
+        })
+        .select()
+        .single();
+
+      if (templateError) throw templateError;
+
+      // Fetch all published questions for this subject
+      const { data: allQuestions, error: questionsError } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .eq('status', 'published')
+        .is('deleted_at', null);
+
+      if (questionsError) throw questionsError;
+
+      const generatedExams = [];
+      const contestExamsToAdd: { exam_id: string; variant_code: string }[] = [];
+
+      for (let i = 0; i < variantCount; i++) {
+        const variantCode = String(i + 1).padStart(3, '0');
+        const seed = 1000 + i;
+        const rng = new SeededRandomClass(seed);
+
+        const selectedQuestions: Array<{ question: any; points: number; optionOrder?: number[] }> = [];
+        const questionMapping: QuestionMapping[] = [];
+
+        // For each cell in matrix, select questions
+        for (const cell of matrixConfig.cells) {
+          if (cell.count <= 0) continue;
+
+          const pool = allQuestions?.filter((q) => {
+            const matchTaxonomy = !cell.taxonomyNodeId || q.taxonomy_node_id === cell.taxonomyNodeId;
+            const matchCognitive = !cell.cognitiveLevel || q.cognitive_level === cell.cognitiveLevel;
+            const matchType = !cell.questionType || q.question_type === cell.questionType;
+            const notSelected = !selectedQuestions.some(sq => sq.question.id === q.id);
+            return matchTaxonomy && matchCognitive && matchType && notSelected;
+          }) || [];
+
+          const selected = rng.sample(pool, Math.min(cell.count, pool.length));
+
+          selected.forEach((q) => {
+            const answerData = q.answer_data as any;
+            let optionOrder: number[] | undefined;
+
+            if (constraints.shuffleOptions && q.question_type === 'MCQ_SINGLE') {
+              const optionCount = answerData?.options?.length || 0;
+              if (optionCount > 0) {
+                optionOrder = rng.shuffle([...Array(optionCount).keys()]);
+              }
+            }
+
+            selectedQuestions.push({ question: q, points: cell.points, optionOrder });
+          });
+        }
+
+        let finalQuestions = [...selectedQuestions];
+        if (constraints.allowShuffle) {
+          finalQuestions = rng.shuffle(finalQuestions);
+        }
+
+        const examQuestions = finalQuestions.map((sq, idx) => {
+          questionMapping.push({
+            bankQuestionId: sq.question.id,
+            examPosition: idx + 1,
+            optionOrder: sq.optionOrder,
+          });
+          return convertToExamQuestion(sq.question, idx + 1, sq.points, sq.optionOrder);
+        });
+
+        // Create exam
+        const { data: exam, error: examError } = await supabase
+          .from('exams')
+          .insert({
+            title: `${templateName} - Mã ${variantCode}`,
+            subject: subjectName,
+            duration: matrixConfig.duration,
+            total_questions: examQuestions.length,
+            questions: examQuestions as unknown as Json,
+            is_published: false,
+            created_by: user.user.id,
+          })
+          .select()
+          .single();
+
+        if (examError) throw examError;
+
+        // Create generated_exam record
+        const { error: genError } = await supabase
+          .from('generated_exams')
+          .insert({
+            template_id: template.id,
+            exam_id: exam.id,
+            variant_code: variantCode,
+            seed,
+            question_mapping: questionMapping as unknown as Json,
+          });
+
+        if (genError) throw genError;
+
+        generatedExams.push(exam);
+        contestExamsToAdd.push({ exam_id: exam.id, variant_code: variantCode });
+      }
+
+      // Add exams to contest
+      const { error: contestExamError } = await supabase
+        .from('contest_exams')
+        .insert(contestExamsToAdd.map(e => ({
+          contest_id: contestId,
+          exam_id: e.exam_id,
+          variant_code: e.variant_code,
+        })));
+
+      if (contestExamError) throw contestExamError;
+
+      return generatedExams;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      queryClient.invalidateQueries({ queryKey: ['exam-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['contest', variables.contestId] });
+      queryClient.invalidateQueries({ queryKey: ['contests'] });
+      toast({
+        title: 'Sinh đề thành công',
+        description: `Đã tạo ${data.length} mã đề và thêm vào cuộc thi`,
       });
     },
     onError: (error) => {
