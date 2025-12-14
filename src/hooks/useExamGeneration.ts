@@ -80,7 +80,23 @@ function convertToExamQuestion(question: any, position: number, points: number, 
       return {
         ...baseQuestion,
         type: 'short-answer' as const,
-        correctAnswer: answerData?.acceptedAnswers?.[0] || '',
+        correctAnswer: answerData?.correctAnswers?.[0] || answerData?.acceptedAnswers?.[0] || '',
+      };
+    }
+
+    case 'CODING': {
+      return {
+        ...baseQuestion,
+        type: 'coding' as const,
+        coding: {
+          languages: answerData?.languages || ['python'],
+          defaultLanguage: answerData?.defaultLanguage || 'python',
+          starterCode: answerData?.starterCode || {},
+          testCases: answerData?.testCases || [],
+          timeLimit: answerData?.timeLimit,
+          memoryLimit: answerData?.memoryLimit,
+          scoringMethod: answerData?.scoringMethod || 'proportional',
+        },
       };
     }
 

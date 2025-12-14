@@ -45,6 +45,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
   MCQ_SINGLE: 'Trắc nghiệm 4 chọn 1',
   TRUE_FALSE_4: 'Đúng/Sai 4 mệnh đề',
   SHORT_ANSWER: 'Trả lời ngắn',
+  CODING: 'Lập trình',
 };
 
 function generateId() {

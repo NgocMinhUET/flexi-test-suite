@@ -79,6 +79,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
   MCQ_SINGLE: 'Trắc nghiệm',
   TRUE_FALSE_4: 'Đúng/Sai',
   SHORT_ANSWER: 'Trả lời ngắn',
+  CODING: 'Lập trình',
 };
 
 function stripHtml(html: string): string {
