@@ -416,7 +416,7 @@ export function useGenerateExamsForContest() {
             duration: matrixConfig.duration,
             total_questions: examQuestions.length,
             questions: examQuestions as unknown as Json,
-            is_published: false,
+            is_published: true,
             created_by: user.user.id,
             source_type: 'contest',
             source_contest_id: contestId,
