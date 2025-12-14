@@ -272,6 +272,12 @@ const Dashboard = () => {
                 Ngân hàng câu hỏi
               </Link>
             </Button>
+            <Button variant="outline" asChild>
+              <Link to="/exam/generate">
+                <FileText className="w-4 h-4 mr-2" />
+                Sinh đề từ ma trận
+              </Link>
+            </Button>
             <Button variant="hero" asChild>
               <Link to="/exam/new">
                 <Plus className="w-4 h-4 mr-2" />
