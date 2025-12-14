@@ -190,6 +190,50 @@ export type Database = {
           },
         ]
       }
+      exam_templates: {
+        Row: {
+          constraints: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          matrix_config: Json
+          name: string
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          constraints?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          matrix_config?: Json
+          name: string
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          constraints?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          matrix_config?: Json
+          name?: string
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_templates_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exams: {
         Row: {
           created_at: string
@@ -231,6 +275,51 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      generated_exams: {
+        Row: {
+          created_at: string
+          exam_id: string | null
+          id: string
+          question_mapping: Json
+          seed: number
+          template_id: string | null
+          variant_code: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id?: string | null
+          id?: string
+          question_mapping?: Json
+          seed: number
+          template_id?: string | null
+          variant_code: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string | null
+          id?: string
+          question_mapping?: Json
+          seed?: number
+          template_id?: string | null
+          variant_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_exams_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_exams_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "exam_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

@@ -18,6 +18,7 @@ import SubjectsManagement from "./pages/SubjectsManagement";
 import TaxonomyManagement from "./pages/TaxonomyManagement";
 import QuestionBank from "./pages/QuestionBank";
 import QuestionEditor from "./pages/QuestionEditor";
+import ExamGenerator from "./pages/ExamGenerator";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/questions/:id/edit" element={<QuestionEditor />} />
           <Route path="/my-exams" element={<StudentExams />} />
           <Route path="/exam/new" element={<ExamEditor />} />
+          <Route path="/exam/generate" element={<ExamGenerator />} />
           <Route path="/exam/:id/edit" element={<ExamEditor />} />
           <Route path="/exam/:id" element={<TakeExam />} />
           <Route path="/exam/:id/result" element={<ExamResult />} />
