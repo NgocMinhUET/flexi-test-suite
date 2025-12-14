@@ -230,6 +230,7 @@ const TakeExam = () => {
 
         // Xác định quyền làm bài: gán trực tiếp hay qua cuộc thi
         let assignment: { start_time: string | null; end_time: string | null } | null = null;
+        let isContestExam = false;
 
         // 1) Gán trực tiếp qua exam_assignments
         const { data: directAssignment, error: assignmentError } = await supabase
@@ -281,6 +282,7 @@ const TakeExam = () => {
               start_time: contest.start_time,
               end_time: contest.end_time,
             };
+            isContestExam = true;
           }
         }
 
@@ -304,17 +306,23 @@ const TakeExam = () => {
         }
 
         // Fetch exam data
-        const { data, error: fetchError } = await supabase
+        // Đề cuộc thi: không cần check is_published (quản lý bởi trạng thái cuộc thi)
+        // Đề gán trực tiếp: vẫn cần check is_published
+        let query = supabase
           .from('exams')
           .select('*')
-          .eq('id', examId)
-          .eq('is_published', true)
-          .maybeSingle();
+          .eq('id', examId);
+        
+        if (!isContestExam) {
+          query = query.eq('is_published', true);
+        }
+        
+        const { data, error: fetchError } = await query.maybeSingle();
 
         if (fetchError) throw fetchError;
 
         if (!data) {
-          setError('Bài thi không tồn tại hoặc chưa được công khai');
+          setError(isContestExam ? 'Bài thi không tồn tại' : 'Bài thi không tồn tại hoặc chưa được công khai');
           setIsLoadingExam(false);
           return;
         }

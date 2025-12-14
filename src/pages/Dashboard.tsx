@@ -97,10 +97,11 @@ const Dashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch exams
+      // Fetch only standalone exams (exclude contest-generated exams)
       const { data: examsData, error: examsError } = await supabase
         .from('exams')
         .select('*')
+        .or('source_type.is.null,source_type.eq.standalone')
         .order('created_at', { ascending: false });
 
       if (examsError) throw examsError;
