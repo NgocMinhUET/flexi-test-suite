@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       exam_assignments: {
         Row: {
           assigned_at: string
@@ -226,6 +259,204 @@ export type Database = {
         }
         Relationships: []
       }
+      questions: {
+        Row: {
+          allow_shuffle: boolean | null
+          answer_data: Json
+          code: string | null
+          cognitive_level: string | null
+          content: string
+          content_plain: string | null
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          difficulty: number | null
+          estimated_time: number | null
+          group_id: string | null
+          group_order: number | null
+          id: string
+          is_group_lead: boolean | null
+          labels: Json | null
+          media: Json | null
+          question_type: Database["public"]["Enums"]["question_type"]
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["question_status"]
+          subject_id: string
+          taxonomy_node_id: string | null
+          taxonomy_path: Json | null
+          updated_at: string
+        }
+        Insert: {
+          allow_shuffle?: boolean | null
+          answer_data?: Json
+          code?: string | null
+          cognitive_level?: string | null
+          content: string
+          content_plain?: string | null
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          difficulty?: number | null
+          estimated_time?: number | null
+          group_id?: string | null
+          group_order?: number | null
+          id?: string
+          is_group_lead?: boolean | null
+          labels?: Json | null
+          media?: Json | null
+          question_type?: Database["public"]["Enums"]["question_type"]
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["question_status"]
+          subject_id: string
+          taxonomy_node_id?: string | null
+          taxonomy_path?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          allow_shuffle?: boolean | null
+          answer_data?: Json
+          code?: string | null
+          cognitive_level?: string | null
+          content?: string
+          content_plain?: string | null
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          difficulty?: number | null
+          estimated_time?: number | null
+          group_id?: string | null
+          group_order?: number | null
+          id?: string
+          is_group_lead?: boolean | null
+          labels?: Json | null
+          media?: Json | null
+          question_type?: Database["public"]["Enums"]["question_type"]
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["question_status"]
+          subject_id?: string
+          taxonomy_node_id?: string | null
+          taxonomy_path?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_taxonomy_node_id_fkey"
+            columns: ["taxonomy_node_id"]
+            isOneToOne: false
+            referencedRelation: "taxonomy_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          code: string
+          cognitive_levels: Json | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          id: string
+          name: string
+          question_types: Json | null
+          taxonomy_config: Json | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          cognitive_levels?: Json | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          question_types?: Json | null
+          taxonomy_config?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          cognitive_levels?: Json | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          question_types?: Json | null
+          taxonomy_config?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      taxonomy_nodes: {
+        Row: {
+          code: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          level: number
+          name: string
+          order_index: number | null
+          parent_id: string | null
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          level?: number
+          name: string
+          order_index?: number | null
+          parent_id?: string | null
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          level?: number
+          name?: string
+          order_index?: number | null
+          parent_id?: string | null
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taxonomy_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "taxonomy_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "taxonomy_nodes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -263,6 +494,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
+      question_status: "draft" | "review" | "approved" | "published"
+      question_type: "MCQ_SINGLE" | "TRUE_FALSE_4" | "SHORT_ANSWER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -391,6 +624,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "teacher", "student"],
+      question_status: ["draft", "review", "approved", "published"],
+      question_type: ["MCQ_SINGLE", "TRUE_FALSE_4", "SHORT_ANSWER"],
     },
   },
 } as const

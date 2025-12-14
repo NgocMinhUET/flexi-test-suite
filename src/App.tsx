@@ -14,6 +14,10 @@ import ExamResults from "./pages/ExamResults";
 import UserManagement from "./pages/UserManagement";
 import StudentExams from "./pages/StudentExams";
 import Profile from "./pages/Profile";
+import SubjectsManagement from "./pages/SubjectsManagement";
+import TaxonomyManagement from "./pages/TaxonomyManagement";
+import QuestionBank from "./pages/QuestionBank";
+import QuestionEditor from "./pages/QuestionEditor";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +33,11 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/subjects" element={<SubjectsManagement />} />
+          <Route path="/admin/subjects/:id/taxonomy" element={<TaxonomyManagement />} />
+          <Route path="/questions" element={<QuestionBank />} />
+          <Route path="/questions/new" element={<QuestionEditor />} />
+          <Route path="/questions/:id/edit" element={<QuestionEditor />} />
           <Route path="/my-exams" element={<StudentExams />} />
           <Route path="/exam/new" element={<ExamEditor />} />
           <Route path="/exam/:id/edit" element={<ExamEditor />} />
