@@ -58,7 +58,9 @@ import {
   Send,
   FileText,
   Filter,
+  Upload,
 } from 'lucide-react';
+import { ImportQuestionsDialog } from '@/components/question-bank/ImportQuestionsDialog';
 import { toast } from 'sonner';
 
 const statusLabels: Record<QuestionStatus, string> = {
@@ -101,6 +103,7 @@ export default function QuestionBank() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const bulkDelete = useBulkDeleteQuestions();
   const approveQuestion = useApproveQuestion();
@@ -222,12 +225,20 @@ export default function QuestionBank() {
             <h1 className="text-3xl font-bold text-foreground">Ngân hàng câu hỏi</h1>
             <p className="text-muted-foreground">Quản lý và tổ chức câu hỏi theo môn học</p>
           </div>
-          <Button variant="hero" asChild>
-            <Link to="/questions/new">
-              <Plus className="w-4 h-4 mr-2" />
-              Thêm câu hỏi
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            {selectedSubject && (
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Import Excel
+              </Button>
+            )}
+            <Button variant="hero" asChild>
+              <Link to="/questions/new">
+                <Plus className="w-4 h-4 mr-2" />
+                Thêm câu hỏi
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -564,6 +575,22 @@ export default function QuestionBank() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Dialog */}
+      {selectedSubject && (
+        <ImportQuestionsDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          subject={{
+            id: selectedSubject.id,
+            name: selectedSubject.name,
+            code: selectedSubject.code,
+            cognitive_levels: selectedSubject.cognitive_levels as string[],
+            taxonomy_config: selectedSubject.taxonomy_config as { levels: string[] },
+          }}
+          taxonomyNodes={taxonomyNodes || []}
+        />
+      )}
     </div>
   );
 }
