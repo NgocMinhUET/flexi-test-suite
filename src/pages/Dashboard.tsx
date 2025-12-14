@@ -249,15 +249,29 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
             <p className="text-muted-foreground">Quản lý đề thi và xem thống kê</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {isAdmin && (
-              <Button variant="outline" asChild>
-                <Link to="/admin/users">
-                  <Users className="w-4 h-4 mr-2" />
-                  Quản lý người dùng
-                </Link>
-              </Button>
+              <>
+                <Button variant="outline" asChild>
+                  <Link to="/admin/users">
+                    <Users className="w-4 h-4 mr-2" />
+                    Người dùng
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/admin/subjects">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Môn học
+                  </Link>
+                </Button>
+              </>
             )}
+            <Button variant="outline" asChild>
+              <Link to="/questions">
+                <FileText className="w-4 h-4 mr-2" />
+                Ngân hàng câu hỏi
+              </Link>
+            </Button>
             <Button variant="hero" asChild>
               <Link to="/exam/new">
                 <Plus className="w-4 h-4 mr-2" />
