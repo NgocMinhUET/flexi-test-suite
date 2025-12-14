@@ -6,12 +6,23 @@ import { QuestionNavigation } from '@/components/exam/QuestionNavigation';
 import { QuestionDisplay } from '@/components/exam/QuestionDisplay';
 import { SubmitDialog } from '@/components/exam/SubmitDialog';
 import { useExamTimer } from '@/hooks/useExamTimer';
+import { useExamAutoSave } from '@/hooks/useExamAutoSave';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats } from '@/types/exam';
-import { Loader2, Maximize, AlertTriangle } from 'lucide-react';
+import { Loader2, Maximize, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const TakeExam = () => {
   const navigate = useNavigate();
@@ -35,6 +46,65 @@ const TakeExam = () => {
   const [examStarted, setExamStarted] = useState(false);
   const violationStatsRef = useRef<ViolationStats>({ tabSwitchCount: 0, fullscreenExitCount: 0 });
   const [showViolationWarning, setShowViolationWarning] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+
+  // Auto-save hook
+  const {
+    saveStatus,
+    lastSavedAt,
+    hasDraft,
+    draftData,
+    restoreFromDraft,
+    clearDraft,
+    dismissDraft,
+  } = useExamAutoSave({
+    examId: examId || '',
+    userId: user?.id || '',
+    answers,
+    flaggedQuestions,
+    currentQuestion,
+    violationStats: violationStatsRef.current,
+    isEnabled: examStarted && !isSubmitting && !!exam,
+  });
+
+  // Show restore dialog when draft is found
+  useEffect(() => {
+    if (hasDraft && draftData && !examStarted) {
+      setShowRestoreDialog(true);
+    }
+  }, [hasDraft, draftData, examStarted]);
+
+  // Handle restore from draft
+  const handleRestoreDraft = useCallback(() => {
+    if (!draftData) return;
+
+    // Restore answers
+    const restoredAnswers = new Map<number, Answer>();
+    Object.entries(draftData.answers).forEach(([key, value]) => {
+      restoredAnswers.set(Number(key), value);
+    });
+    setAnswers(restoredAnswers);
+
+    // Restore flagged questions
+    setFlaggedQuestions(new Set(draftData.flaggedQuestions));
+
+    // Restore current question
+    setCurrentQuestion(draftData.currentQuestion);
+
+    // Restore violation stats
+    if (draftData.violationStats) {
+      violationStatsRef.current = draftData.violationStats;
+    }
+
+    restoreFromDraft();
+    setShowRestoreDialog(false);
+  }, [draftData, restoreFromDraft]);
+
+  // Handle dismiss draft
+  const handleDismissDraft = useCallback(() => {
+    dismissDraft();
+    setShowRestoreDialog(false);
+  }, [dismissDraft]);
 
   // Fullscreen management
   const enterFullscreen = useCallback(async () => {
@@ -641,6 +711,9 @@ const TakeExam = () => {
       if (result) {
         await saveResultToDatabase(result);
         
+        // Clear draft after successful submission
+        await clearDraft();
+        
         toast.success('Nộp bài thành công!', {
           description: `Bạn đã trả lời ${answers.size}/${exam.totalQuestions} câu hỏi.`,
         });
@@ -856,6 +929,8 @@ const TakeExam = () => {
         isWarning={isWarning}
         isCritical={isCritical}
         onSubmit={handleSubmit}
+        saveStatus={saveStatus}
+        lastSavedAt={lastSavedAt}
       />
 
       <QuestionNavigation
@@ -885,6 +960,37 @@ const TakeExam = () => {
         questionStatuses={questionStatuses}
         formattedTime={formattedTime}
       />
+
+      {/* Restore Draft Dialog */}
+      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-primary" />
+              Khôi phục bài làm trước đó?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Phát hiện bài làm chưa nộp từ phiên trước. Bạn có muốn tiếp tục từ nơi đã dừng lại không?
+              {draftData && (
+                <div className="mt-3 p-3 bg-muted rounded-lg text-sm">
+                  <p><strong>Đã trả lời:</strong> {Object.keys(draftData.answers).length} câu</p>
+                  <p><strong>Lần lưu cuối:</strong> {new Date(draftData.savedAt).toLocaleString('vi-VN')}</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDismissDraft} className="gap-2">
+              <X className="w-4 h-4" />
+              Bắt đầu mới
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Khôi phục
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
