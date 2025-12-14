@@ -22,6 +22,7 @@ import ExamGenerator from "./pages/ExamGenerator";
 import ContestManagement from "./pages/ContestManagement";
 import ContestDetail from "./pages/ContestDetail";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
