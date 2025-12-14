@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubjects } from '@/hooks/useSubjects';
 import { useTaxonomyNodes } from '@/hooks/useTaxonomy';
-import { useQuestions, useBulkDeleteQuestions, useApproveQuestion, useRejectQuestion, usePublishQuestion } from '@/hooks/useQuestions';
+import { useQuestions, useBulkDeleteQuestions, useApproveQuestion, useRejectQuestion, usePublishQuestion, useBulkSubmitForReview, useBulkApproveQuestions, useBulkPublishQuestions } from '@/hooks/useQuestions';
 import { Question, QuestionFilters, QuestionStatus, QuestionType } from '@/types/questionBank';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -106,6 +106,9 @@ export default function QuestionBank() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const bulkDelete = useBulkDeleteQuestions();
+  const bulkSubmitForReview = useBulkSubmitForReview();
+  const bulkApprove = useBulkApproveQuestions();
+  const bulkPublish = useBulkPublishQuestions();
   const approveQuestion = useApproveQuestion();
   const rejectQuestion = useRejectQuestion();
   const publishQuestion = usePublishQuestion();
@@ -154,6 +157,39 @@ export default function QuestionBank() {
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     await bulkDelete.mutateAsync(Array.from(selectedIds));
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkSubmitForReview = async () => {
+    if (selectedIds.size === 0) return;
+    const draftIds = questions?.filter(q => selectedIds.has(q.id) && q.status === 'draft').map(q => q.id) || [];
+    if (draftIds.length === 0) {
+      toast.error('Không có câu hỏi nháp nào được chọn');
+      return;
+    }
+    await bulkSubmitForReview.mutateAsync(draftIds);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    const reviewIds = questions?.filter(q => selectedIds.has(q.id) && q.status === 'review').map(q => q.id) || [];
+    if (reviewIds.length === 0) {
+      toast.error('Không có câu hỏi chờ duyệt nào được chọn');
+      return;
+    }
+    await bulkApprove.mutateAsync(reviewIds);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkPublish = async () => {
+    if (selectedIds.size === 0) return;
+    const approvedIds = questions?.filter(q => selectedIds.has(q.id) && q.status === 'approved').map(q => q.id) || [];
+    if (approvedIds.length === 0) {
+      toast.error('Không có câu hỏi đã duyệt nào được chọn');
+      return;
+    }
+    await bulkPublish.mutateAsync(approvedIds);
     setSelectedIds(new Set());
   };
 
@@ -374,10 +410,41 @@ export default function QuestionBank() {
 
         {/* Bulk Actions */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
-            <span className="text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
+            <span className="text-sm text-muted-foreground mr-2">
               Đã chọn {selectedIds.size} câu hỏi
             </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkSubmitForReview}
+              disabled={bulkSubmitForReview.isPending}
+            >
+              <Send className="w-4 h-4 mr-1" />
+              Gửi duyệt
+            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkApprove}
+                  disabled={bulkApprove.isPending}
+                >
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Duyệt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkPublish}
+                  disabled={bulkPublish.isPending}
+                >
+                  <FileText className="w-4 h-4 mr-1" />
+                  Xuất bản
+                </Button>
+              </>
+            )}
             <Button
               variant="destructive"
               size="sm"
