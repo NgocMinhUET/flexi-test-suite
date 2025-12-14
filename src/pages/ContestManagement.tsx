@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContests, useDeleteContest, useUpdateContestStatus } from '@/hooks/useContests';
@@ -51,8 +51,13 @@ export default function ContestManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedContest, setSelectedContest] = useState<ContestWithDetails | null>(null);
 
+  useEffect(() => {
+    if (!user || (!isAdmin && !isTeacher)) {
+      navigate('/auth');
+    }
+  }, [user, isAdmin, isTeacher, navigate]);
+
   if (!user || (!isAdmin && !isTeacher)) {
-    navigate('/auth');
     return null;
   }
 
