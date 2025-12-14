@@ -47,6 +47,129 @@ export type Database = {
         }
         Relationships: []
       }
+      contest_exams: {
+        Row: {
+          contest_id: string
+          created_at: string
+          exam_id: string
+          id: string
+          variant_code: string
+        }
+        Insert: {
+          contest_id: string
+          created_at?: string
+          exam_id: string
+          id?: string
+          variant_code: string
+        }
+        Update: {
+          contest_id?: string
+          created_at?: string
+          exam_id?: string
+          id?: string
+          variant_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_exams_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_exams_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contest_participants: {
+        Row: {
+          assigned_at: string | null
+          assigned_exam_id: string | null
+          contest_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_exam_id?: string | null
+          contest_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_exam_id?: string | null
+          contest_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_participants_assigned_exam_id_fkey"
+            columns: ["assigned_exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_participants_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          distribution_status: string
+          end_time: string | null
+          id: string
+          name: string
+          start_time: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          distribution_status?: string
+          end_time?: string | null
+          id?: string
+          name: string
+          start_time?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          distribution_status?: string
+          end_time?: string | null
+          id?: string
+          name?: string
+          start_time?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exam_assignments: {
         Row: {
           assigned_at: string

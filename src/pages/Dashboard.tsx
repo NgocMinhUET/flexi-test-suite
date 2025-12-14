@@ -273,6 +273,12 @@ const Dashboard = () => {
               </Link>
             </Button>
             <Button variant="outline" asChild>
+              <Link to="/contests">
+                <Users className="w-4 h-4 mr-2" />
+                Cuộc thi
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link to="/exam/generate">
                 <FileText className="w-4 h-4 mr-2" />
                 Sinh đề từ ma trận
