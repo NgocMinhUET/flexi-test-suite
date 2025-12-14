@@ -241,7 +241,7 @@ export default function ContestStatistics() {
 
   // View exam result detail
   const handleViewDetail = useCallback((resultId: string) => {
-    navigate(`/exam-result/${resultId}`);
+    navigate(`/results/${resultId}`);
   }, [navigate]);
 
   if (authLoading || contestLoading) {

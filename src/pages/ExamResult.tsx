@@ -66,8 +66,8 @@ interface LocationState {
 const ExamResultPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { id: examId } = useParams<{ id: string }>();
-  const { user, isLoading: authLoading } = useAuth();
+  const { id: examId, resultId } = useParams<{ id?: string; resultId?: string }>();
+  const { user, isAdmin, isTeacher, isLoading: authLoading } = useAuth();
   
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
@@ -87,12 +87,92 @@ const ExamResultPage = () => {
     }
 
     // Otherwise, fetch from database
-    if (!authLoading && user && examId) {
-      fetchResultFromDatabase();
+    if (!authLoading && user) {
+      if (resultId) {
+        // Fetch by result ID (for teachers viewing student results)
+        fetchResultById();
+      } else if (examId) {
+        // Fetch by exam ID (for students viewing their own result)
+        fetchResultFromDatabase();
+      }
     } else if (!authLoading && !user) {
       setError('Vui lòng đăng nhập để xem kết quả');
     }
-  }, [state, authLoading, user, examId]);
+  }, [state, authLoading, user, examId, resultId]);
+
+  const fetchResultById = async () => {
+    if (!user || !resultId) return;
+
+    setIsLoading(true);
+    try {
+      // Fetch exam result by ID
+      const { data: resultData, error: resultError } = await supabase
+        .from('exam_results')
+        .select('*')
+        .eq('id', resultId)
+        .maybeSingle();
+
+      if (resultError) throw resultError;
+
+      if (!resultData) {
+        setError('Không tìm thấy kết quả thi');
+        return;
+      }
+
+      // Fetch exam data for questions
+      const { data: examData, error: examError } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('id', resultData.exam_id)
+        .maybeSingle();
+
+      if (examError) throw examError;
+
+      if (!examData) {
+        setError('Không tìm thấy đề thi');
+        return;
+      }
+
+      // Parse and set data
+      const examQuestions = (examData.questions as unknown as Question[]) || [];
+      setQuestions(examQuestions);
+
+      const examResult: ExamResult = {
+        examId: examData.id,
+        examTitle: examData.title,
+        subject: examData.subject,
+        submittedAt: new Date(resultData.submitted_at),
+        duration: resultData.duration || 0,
+        totalPoints: Number(resultData.total_points),
+        earnedPoints: Number(resultData.earned_points),
+        percentage: Number(resultData.percentage),
+        grade: resultData.grade || 'F',
+        questionResults: (resultData.question_results as unknown as QuestionResult[]) || [],
+        violationStats: (resultData.statistics as unknown as { violationStats?: ViolationStats })?.violationStats,
+        statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
+          totalQuestions: examData.total_questions,
+          correctAnswers: 0,
+          incorrectAnswers: 0,
+          unanswered: 0,
+          partialCredit: 0,
+          byType: {
+            'multiple-choice': { correct: 0, total: 0, points: 0, partial: 0 },
+            'short-answer': { correct: 0, total: 0, points: 0, partial: 0 },
+            'essay': { correct: 0, total: 0, points: 0, partial: 0 },
+            'drag-drop': { correct: 0, total: 0, points: 0, partial: 0 },
+            'coding': { correct: 0, total: 0, points: 0, partial: 0 },
+          },
+        },
+      };
+
+      setResult(examResult);
+    } catch (err) {
+      console.error('Error fetching result:', err);
+      setError('Lỗi khi tải kết quả');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchResultFromDatabase = async () => {
     if (!user || !examId) return;
