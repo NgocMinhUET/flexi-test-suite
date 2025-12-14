@@ -26,6 +26,9 @@ const Dashboard = () => {
     totalSubmissions: 0,
     avgScore: 0,
     publishedExams: 0,
+    totalContests: 0,
+    totalContestParticipants: 0,
+    contestAvgScore: 0,
   });
 
   useEffect(() => {
@@ -57,9 +60,33 @@ const Dashboard = () => {
       // Fetch exam results
       const { data: resultsData, error: resultsError } = await supabase
         .from('exam_results')
-        .select('percentage');
+        .select('percentage, exam_id');
 
       if (resultsError) throw resultsError;
+
+      // Fetch contests
+      const { data: contestsData, error: contestsError } = await supabase
+        .from('contests')
+        .select('id');
+
+      if (contestsError) throw contestsError;
+
+      // Fetch contest participants
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('contest_participants')
+        .select('id');
+
+      if (participantsError) throw participantsError;
+
+      // Fetch contest exam IDs
+      const { data: contestExamsData, error: contestExamsError } = await supabase
+        .from('exams')
+        .select('id')
+        .eq('source_type', 'contest');
+
+      if (contestExamsError) throw contestExamsError;
+
+      const contestExamIds = new Set(contestExamsData?.map(e => e.id) || []);
 
       // Calculate stats
       const totalExams = examsData?.length || 0;
@@ -69,11 +96,24 @@ const Dashboard = () => {
         ? resultsData.reduce((acc, r) => acc + Number(r.percentage), 0) / resultsData.length
         : 0;
 
+      // Contest stats
+      const totalContests = contestsData?.length || 0;
+      const totalContestParticipants = participantsData?.length || 0;
+      
+      // Contest average score (from contest exams only)
+      const contestResults = resultsData?.filter(r => contestExamIds.has(r.exam_id)) || [];
+      const contestAvgScore = contestResults.length
+        ? contestResults.reduce((acc, r) => acc + Number(r.percentage), 0) / contestResults.length
+        : 0;
+
       setStats({
         totalExams,
         totalSubmissions,
         avgScore: Math.round(avgScore * 10) / 10,
         publishedExams,
+        totalContests,
+        totalContestParticipants,
+        contestAvgScore: Math.round(contestAvgScore * 10) / 10,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -171,8 +211,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Exam Stats */}
+        <h2 className="text-lg font-semibold text-foreground mb-4">Đề thi độc lập</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -224,6 +265,52 @@ const Dashboard = () => {
                 <div>
                   <p className="text-2xl font-bold text-foreground">{stats.avgScore}%</p>
                   <p className="text-sm text-muted-foreground">Điểm TB</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contest Stats */}
+        <h2 className="text-lg font-semibold text-foreground mb-4">Cuộc thi</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Trophy className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalContests}</p>
+                  <p className="text-sm text-muted-foreground">Số cuộc thi</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-accent" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalContestParticipants}</p>
+                  <p className="text-sm text-muted-foreground">Thí sinh tham gia</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-warning" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.contestAvgScore}%</p>
+                  <p className="text-sm text-muted-foreground">Điểm TB cuộc thi</p>
                 </div>
               </div>
             </CardContent>
