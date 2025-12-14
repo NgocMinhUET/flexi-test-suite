@@ -163,10 +163,10 @@ export function useDeleteTaxonomyNode() {
 
   return useMutation({
     mutationFn: async ({ id, subjectId }: { id: string; subjectId: string }) => {
-      // Soft delete the node and all its children
+      // Hard delete the node (RLS policy allows DELETE for admins)
       const { error } = await supabase
         .from('taxonomy_nodes')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', id);
 
       if (error) throw error;
