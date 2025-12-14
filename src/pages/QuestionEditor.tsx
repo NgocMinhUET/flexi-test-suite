@@ -10,8 +10,12 @@ import {
   MCQAnswerData,
   TrueFalseAnswerData,
   ShortAnswerData,
+  CodingAnswerData,
   MCQOption,
   TrueFalseStatement,
+  TestCase,
+  ProgrammingLanguage,
+  AnswerData,
 } from '@/types/questionBank';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +25,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -29,6 +35,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import CodeMirror from '@uiw/react-codemirror';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { python } from '@codemirror/lang-python';
+import { javascript } from '@codemirror/lang-javascript';
+import { java } from '@codemirror/lang-java';
+import { cpp } from '@codemirror/lang-cpp';
+import { go } from '@codemirror/lang-go';
+import { rust } from '@codemirror/lang-rust';
 import {
   Code2,
   LogOut,
@@ -39,8 +53,23 @@ import {
   Plus,
   Trash2,
   GripVertical,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const ALL_LANGUAGES: ProgrammingLanguage[] = ['python', 'javascript', 'java', 'cpp', 'c', 'go', 'rust'];
+
+const languageConfig: Record<ProgrammingLanguage, { name: string; extension: any }> = {
+  python: { name: 'Python', extension: python() },
+  javascript: { name: 'JavaScript', extension: javascript() },
+  java: { name: 'Java', extension: java() },
+  cpp: { name: 'C++', extension: cpp() },
+  c: { name: 'C', extension: cpp() },
+  go: { name: 'Go', extension: go() },
+  rust: { name: 'Rust', extension: rust() },
+};
+
 const questionTypeLabels: Record<QuestionType, string> = {
   MCQ_SINGLE: 'Trắc nghiệm 4 chọn 1',
   TRUE_FALSE_4: 'Đúng/Sai 4 mệnh đề',
@@ -65,6 +94,15 @@ const defaultTFStatements: TrueFalseStatement[] = [
   { id: generateId(), content: '', isTrue: false },
   { id: generateId(), content: '', isTrue: false },
 ];
+
+const defaultTestCase = (): TestCase => ({
+  id: generateId(),
+  input: '',
+  expectedOutput: '',
+  isHidden: false,
+  weight: 1,
+  description: '',
+});
 
 export default function QuestionEditor() {
   const { id } = useParams<{ id: string }>();
@@ -95,6 +133,16 @@ export default function QuestionEditor() {
   const [tfStatements, setTfStatements] = useState<TrueFalseStatement[]>(defaultTFStatements);
   const [shortAnswers, setShortAnswers] = useState<string[]>(['']);
   const [caseSensitive, setCaseSensitive] = useState(false);
+
+  // Coding answer data
+  const [codingLanguages, setCodingLanguages] = useState<ProgrammingLanguage[]>(['python']);
+  const [defaultLanguage, setDefaultLanguage] = useState<ProgrammingLanguage>('python');
+  const [starterCode, setStarterCode] = useState<Record<string, string>>({});
+  const [testCases, setTestCases] = useState<TestCase[]>([defaultTestCase()]);
+  const [timeLimit, setTimeLimit] = useState(5);
+  const [memoryLimit, setMemoryLimit] = useState(256);
+  const [scoringMethod, setScoringMethod] = useState<'proportional' | 'all-or-nothing' | 'weighted'>('proportional');
+  const [selectedLangTab, setSelectedLangTab] = useState<ProgrammingLanguage>('python');
 
   const { data: taxonomyNodes } = useTaxonomyNodes(subjectId || undefined);
   const selectedSubject = subjects?.find((s) => s.id === subjectId);
@@ -135,6 +183,17 @@ export default function QuestionEditor() {
         setShortAnswers(data.correctAnswers || ['']);
         setCaseSensitive(data.caseSensitive || false);
         setExplanation(data.explanation || '');
+      } else if (existingQuestion.question_type === 'CODING') {
+        const data = answerData as CodingAnswerData;
+        setCodingLanguages(data.languages || ['python']);
+        setDefaultLanguage(data.defaultLanguage || 'python');
+        setStarterCode(data.starterCode || {});
+        setTestCases(data.testCases?.length ? data.testCases : [defaultTestCase()]);
+        setTimeLimit(data.timeLimit || 5);
+        setMemoryLimit(data.memoryLimit || 256);
+        setScoringMethod(data.scoringMethod || 'proportional');
+        setSelectedLangTab(data.defaultLanguage || 'python');
+        setExplanation(data.explanation || '');
       }
     }
   }, [existingQuestion]);
@@ -151,7 +210,7 @@ export default function QuestionEditor() {
     navigate('/');
   };
 
-  const buildAnswerData = (): MCQAnswerData | TrueFalseAnswerData | ShortAnswerData => {
+  const buildAnswerData = (): AnswerData => {
     switch (questionType) {
       case 'MCQ_SINGLE':
         return { options: mcqOptions, explanation };
@@ -159,6 +218,17 @@ export default function QuestionEditor() {
         return { statements: tfStatements, explanation };
       case 'SHORT_ANSWER':
         return { correctAnswers: shortAnswers.filter(Boolean), caseSensitive, explanation };
+      case 'CODING':
+        return {
+          languages: codingLanguages,
+          defaultLanguage,
+          starterCode: starterCode as Record<ProgrammingLanguage, string>,
+          testCases,
+          timeLimit,
+          memoryLimit,
+          scoringMethod,
+          explanation,
+        };
     }
   };
 
@@ -200,7 +270,56 @@ export default function QuestionEditor() {
       }
     }
 
+    if (questionType === 'CODING') {
+      if (codingLanguages.length === 0) {
+        toast.error('Vui lòng chọn ít nhất một ngôn ngữ lập trình');
+        return false;
+      }
+      if (testCases.length === 0) {
+        toast.error('Vui lòng thêm ít nhất một test case');
+        return false;
+      }
+      const hasEmptyOutput = testCases.some(tc => !tc.expectedOutput.trim());
+      if (hasEmptyOutput) {
+        toast.error('Vui lòng nhập expected output cho tất cả test cases');
+        return false;
+      }
+    }
+
     return true;
+  };
+
+  // Coding helpers
+  const toggleLanguage = (lang: ProgrammingLanguage) => {
+    setCodingLanguages(prev => {
+      if (prev.includes(lang)) {
+        if (prev.length === 1) return prev; // Keep at least one
+        const newLangs = prev.filter(l => l !== lang);
+        if (defaultLanguage === lang) {
+          setDefaultLanguage(newLangs[0]);
+          setSelectedLangTab(newLangs[0]);
+        }
+        return newLangs;
+      }
+      return [...prev, lang];
+    });
+  };
+
+  const addTestCase = () => {
+    setTestCases(prev => [...prev, defaultTestCase()]);
+  };
+
+  const removeTestCase = (id: string) => {
+    if (testCases.length === 1) return;
+    setTestCases(prev => prev.filter(tc => tc.id !== id));
+  };
+
+  const updateTestCase = (id: string, field: keyof TestCase, value: any) => {
+    setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, [field]: value } : tc));
+  };
+
+  const updateStarterCode = (lang: ProgrammingLanguage, code: string) => {
+    setStarterCode(prev => ({ ...prev, [lang]: code }));
   };
 
   const handleSave = async (submitReview = false) => {
@@ -471,6 +590,7 @@ export default function QuestionEditor() {
                 {questionType === 'MCQ_SINGLE' && 'Chọn 1 đáp án đúng'}
                 {questionType === 'TRUE_FALSE_4' && 'Đánh dấu mệnh đề đúng/sai'}
                 {questionType === 'SHORT_ANSWER' && 'Nhập các đáp án được chấp nhận'}
+                {questionType === 'CODING' && 'Thiết lập ngôn ngữ, starter code và test cases'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -579,6 +699,198 @@ export default function QuestionEditor() {
                     <Label htmlFor="case">Phân biệt chữ hoa/thường</Label>
                   </div>
                 </>
+              )}
+
+              {questionType === 'CODING' && (
+                <div className="space-y-6">
+                  {/* Languages */}
+                  <div>
+                    <Label>Ngôn ngữ lập trình *</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {ALL_LANGUAGES.map(lang => (
+                        <Badge
+                          key={lang}
+                          variant={codingLanguages.includes(lang) ? 'default' : 'outline'}
+                          className="cursor-pointer transition-colors"
+                          onClick={() => toggleLanguage(lang)}
+                        >
+                          {languageConfig[lang].name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Default Language */}
+                  <div>
+                    <Label>Ngôn ngữ mặc định</Label>
+                    <Select value={defaultLanguage} onValueChange={(v) => setDefaultLanguage(v as ProgrammingLanguage)}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {codingLanguages.map(lang => (
+                          <SelectItem key={lang} value={lang}>
+                            {languageConfig[lang].name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Starter Code */}
+                  <div>
+                    <Label>Starter Code (tùy chọn)</Label>
+                    <Tabs value={selectedLangTab} onValueChange={(v) => setSelectedLangTab(v as ProgrammingLanguage)} className="mt-2">
+                      <TabsList>
+                        {codingLanguages.map(lang => (
+                          <TabsTrigger key={lang} value={lang}>
+                            {languageConfig[lang].name}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {codingLanguages.map(lang => (
+                        <TabsContent key={lang} value={lang}>
+                          <div className="border rounded-md overflow-hidden">
+                            <CodeMirror
+                              value={starterCode[lang] || ''}
+                              onChange={(value) => updateStarterCode(lang, value)}
+                              theme={vscodeDark}
+                              extensions={[languageConfig[lang].extension]}
+                              height="200px"
+                              placeholder={`// Starter code cho ${languageConfig[lang].name}...`}
+                            />
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </div>
+
+                  {/* Test Cases */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <Label>Test Cases *</Label>
+                      <Button variant="outline" size="sm" onClick={addTestCase}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Thêm test case
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {testCases.map((tc, index) => (
+                        <Card key={tc.id} className="border-border/50">
+                          <CardHeader className="py-3 px-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">Test Case {index + 1}</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <Checkbox
+                                    id={`hidden-${tc.id}`}
+                                    checked={tc.isHidden}
+                                    onCheckedChange={(c) => updateTestCase(tc.id, 'isHidden', c)}
+                                  />
+                                  <Label htmlFor={`hidden-${tc.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                                    {tc.isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                    Ẩn
+                                  </Label>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => removeTestCase(tc.id)}
+                                  disabled={testCases.length === 1}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0 px-4 pb-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-xs">Input</Label>
+                                <Textarea
+                                  value={tc.input}
+                                  onChange={(e) => updateTestCase(tc.id, 'input', e.target.value)}
+                                  placeholder="Stdin input..."
+                                  rows={3}
+                                  className="font-mono text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Expected Output *</Label>
+                                <Textarea
+                                  value={tc.expectedOutput}
+                                  onChange={(e) => updateTestCase(tc.id, 'expectedOutput', e.target.value)}
+                                  placeholder="Expected stdout..."
+                                  rows={3}
+                                  className="font-mono text-sm"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-xs">Mô tả (tùy chọn)</Label>
+                                <Input
+                                  value={tc.description || ''}
+                                  onChange={(e) => updateTestCase(tc.id, 'description', e.target.value)}
+                                  placeholder="Mô tả test case..."
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Trọng số</Label>
+                                <Input
+                                  type="number"
+                                  value={tc.weight || 1}
+                                  onChange={(e) => updateTestCase(tc.id, 'weight', parseInt(e.target.value) || 1)}
+                                  min={1}
+                                  max={100}
+                                />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Configuration */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Time Limit (giây)</Label>
+                      <Input
+                        type="number"
+                        value={timeLimit}
+                        onChange={(e) => setTimeLimit(parseInt(e.target.value) || 5)}
+                        min={1}
+                        max={30}
+                      />
+                    </div>
+                    <div>
+                      <Label>Memory Limit (MB)</Label>
+                      <Input
+                        type="number"
+                        value={memoryLimit}
+                        onChange={(e) => setMemoryLimit(parseInt(e.target.value) || 256)}
+                        min={64}
+                        max={512}
+                      />
+                    </div>
+                    <div>
+                      <Label>Phương thức chấm điểm</Label>
+                      <Select value={scoringMethod} onValueChange={(v) => setScoringMethod(v as any)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="proportional">Tỷ lệ (partial credit)</SelectItem>
+                          <SelectItem value="all-or-nothing">Tất cả hoặc không</SelectItem>
+                          <SelectItem value="weighted">Theo trọng số</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div>
