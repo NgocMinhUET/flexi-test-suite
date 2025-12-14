@@ -66,6 +66,47 @@ export type Database = {
           },
         ]
       }
+      exam_drafts: {
+        Row: {
+          answers: Json
+          current_question: number | null
+          exam_id: string
+          flagged_questions: number[] | null
+          id: string
+          saved_at: string
+          user_id: string
+          violation_stats: Json | null
+        }
+        Insert: {
+          answers?: Json
+          current_question?: number | null
+          exam_id: string
+          flagged_questions?: number[] | null
+          id?: string
+          saved_at?: string
+          user_id: string
+          violation_stats?: Json | null
+        }
+        Update: {
+          answers?: Json
+          current_question?: number | null
+          exam_id?: string
+          flagged_questions?: number[] | null
+          id?: string
+          saved_at?: string
+          user_id?: string
+          violation_stats?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_drafts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_results: {
         Row: {
           duration: number | null

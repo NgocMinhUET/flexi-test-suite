@@ -1,6 +1,12 @@
-import { Clock, AlertTriangle, LogOut } from 'lucide-react';
+import { Clock, AlertTriangle, LogOut, Check, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ExamHeaderProps {
   title: string;
@@ -9,6 +15,8 @@ interface ExamHeaderProps {
   isWarning: boolean;
   isCritical: boolean;
   onSubmit: () => void;
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  lastSavedAt?: Date | null;
 }
 
 export const ExamHeader = ({
@@ -18,7 +26,20 @@ export const ExamHeader = ({
   isWarning,
   isCritical,
   onSubmit,
+  saveStatus = 'idle',
+  lastSavedAt,
 }: ExamHeaderProps) => {
+  const formatLastSaved = (date: Date | null) => {
+    if (!date) return '';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    
+    if (diffSecs < 60) return 'vừa xong';
+    if (diffSecs < 3600) return `${Math.floor(diffSecs / 60)} phút trước`;
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -32,6 +53,41 @@ export const ExamHeader = ({
             <p className="text-sm text-muted-foreground">{subject}</p>
           </div>
         </div>
+
+        {/* Auto-save Status */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  saveStatus === 'saved' && "bg-emerald-500/10 text-emerald-600",
+                  saveStatus === 'saving' && "bg-amber-500/10 text-amber-600",
+                  saveStatus === 'error' && "bg-destructive/10 text-destructive",
+                  saveStatus === 'idle' && "bg-muted text-muted-foreground"
+                )}
+              >
+                {saveStatus === 'saved' && <Check className="w-3.5 h-3.5" />}
+                {saveStatus === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {saveStatus === 'error' && <AlertCircle className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">
+                  {saveStatus === 'saved' && 'Đã lưu'}
+                  {saveStatus === 'saving' && 'Đang lưu...'}
+                  {saveStatus === 'error' && 'Lỗi lưu'}
+                  {saveStatus === 'idle' && 'Chờ lưu'}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {saveStatus === 'saved' && `Tự động lưu: ${formatLastSaved(lastSavedAt || null)}`}
+                {saveStatus === 'saving' && 'Đang lưu bài làm...'}
+                {saveStatus === 'error' && 'Không thể lưu bài làm'}
+                {saveStatus === 'idle' && 'Bài làm sẽ được tự động lưu'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Timer */}
         <div
