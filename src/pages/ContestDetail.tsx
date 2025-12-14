@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2 } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3 } from 'lucide-react';
 import { AddExamsToContestDialog } from '@/components/contest/AddExamsToContestDialog';
 import { AddParticipantsDialog } from '@/components/contest/AddParticipantsDialog';
 import { GenerateExamsDialog } from '@/components/contest/GenerateExamsDialog';
@@ -170,6 +170,10 @@ export default function ContestDetail() {
               </div>
               <p className="text-muted-foreground">{contest.subject}</p>
             </div>
+            <Button variant="outline" onClick={() => navigate(`/contests/${id}/statistics`)}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Thống kê
+            </Button>
           </div>
         </div>
       </header>
