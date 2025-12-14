@@ -228,8 +228,11 @@ const TakeExam = () => {
           return;
         }
 
-        // Check if user is assigned to this exam
-        const { data: assignment, error: assignmentError } = await supabase
+        // Xác định quyền làm bài: gán trực tiếp hay qua cuộc thi
+        let assignment: { start_time: string | null; end_time: string | null } | null = null;
+
+        // 1) Gán trực tiếp qua exam_assignments
+        const { data: directAssignment, error: assignmentError } = await supabase
           .from('exam_assignments')
           .select('*')
           .eq('exam_id', examId)
@@ -237,6 +240,49 @@ const TakeExam = () => {
           .maybeSingle();
 
         if (assignmentError) throw assignmentError;
+
+        if (directAssignment) {
+          assignment = {
+            start_time: directAssignment.start_time,
+            end_time: directAssignment.end_time,
+          };
+        } else {
+          // 2) Gán qua cuộc thi (contest_participants + contests)
+          const { data: contestAssignment, error: contestAssignmentError } = await supabase
+            .from('contest_participants')
+            .select(`
+              id,
+              assigned_exam_id,
+              assigned_at,
+              contest:contests!inner (
+                id,
+                status,
+                start_time,
+                end_time
+              )
+            `)
+            .eq('assigned_exam_id', examId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (contestAssignmentError) throw contestAssignmentError;
+
+          if (contestAssignment) {
+            const contest = (contestAssignment as any).contest;
+
+            // Chỉ cho làm bài khi cuộc thi đang ở trạng thái active
+            if (!contest || contest.status !== 'active') {
+              setError('Cuộc thi không ở trạng thái đang diễn ra');
+              setIsLoadingExam(false);
+              return;
+            }
+
+            assignment = {
+              start_time: contest.start_time,
+              end_time: contest.end_time,
+            };
+          }
+        }
 
         if (!assignment) {
           setError('Bạn không được phép làm bài thi này');
