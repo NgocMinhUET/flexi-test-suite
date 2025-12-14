@@ -366,6 +366,8 @@ export type Database = {
           id: string
           is_published: boolean
           questions: Json
+          source_contest_id: string | null
+          source_type: string
           subject: string
           title: string
           total_questions: number
@@ -379,6 +381,8 @@ export type Database = {
           id?: string
           is_published?: boolean
           questions?: Json
+          source_contest_id?: string | null
+          source_type?: string
           subject: string
           title: string
           total_questions?: number
@@ -392,12 +396,22 @@ export type Database = {
           id?: string
           is_published?: boolean
           questions?: Json
+          source_contest_id?: string | null
+          source_type?: string
           subject?: string
           title?: string
           total_questions?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exams_source_contest_id_fkey"
+            columns: ["source_contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generated_exams: {
         Row: {

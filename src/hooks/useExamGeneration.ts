@@ -407,7 +407,7 @@ export function useGenerateExamsForContest() {
           return convertToExamQuestion(sq.question, idx + 1, sq.points, sq.optionOrder);
         });
 
-        // Create exam
+        // Create exam with contest source
         const { data: exam, error: examError } = await supabase
           .from('exams')
           .insert({
@@ -418,6 +418,8 @@ export function useGenerateExamsForContest() {
             questions: examQuestions as unknown as Json,
             is_published: false,
             created_by: user.user.id,
+            source_type: 'contest',
+            source_contest_id: contestId,
           })
           .select()
           .single();
