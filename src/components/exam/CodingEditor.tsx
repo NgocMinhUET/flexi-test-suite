@@ -129,6 +129,11 @@ export const CodingEditor = ({
   const [showTestCases, setShowTestCases] = useState(true);
   const { toast } = useToast();
 
+  // Reset test results when question changes
+  useEffect(() => {
+    setTestResults([]);
+  }, [codingQuestion]);
+
   const visibleTestCases = codingQuestion.testCases.filter((tc) => !tc.isHidden);
   const hiddenTestCount = codingQuestion.testCases.filter((tc) => tc.isHidden).length;
   const passedTests = testResults.filter((r) => r.passed).length;
