@@ -31,7 +31,7 @@ export function useQuestions(filters: QuestionFilters) {
         query = query.eq('cognitive_level', filters.cognitive_level);
       }
       if (filters.question_type) {
-        query = query.eq('question_type', filters.question_type);
+        query = query.eq('question_type', filters.question_type as any);
       }
       if (filters.status) {
         query = query.eq('status', filters.status);
@@ -112,7 +112,7 @@ export function useCreateQuestion() {
         taxonomy_node_id: formData.taxonomy_node_id || null,
         taxonomy_path: taxonomyPath as unknown as Json,
         cognitive_level: formData.cognitive_level || null,
-        question_type: formData.question_type,
+        question_type: formData.question_type as string,
         answer_data: formData.answer_data as unknown as Json,
         labels: (formData.labels || []) as unknown as Json,
         difficulty: formData.difficulty ?? 0.5,
@@ -129,7 +129,7 @@ export function useCreateQuestion() {
 
       const { data, error } = await supabase
         .from('questions')
-        .insert(insertData)
+        .insert(insertData as any)
         .select()
         .single();
 
