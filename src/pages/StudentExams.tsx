@@ -36,6 +36,7 @@ interface AssignedExam {
     description: string | null;
   };
   has_submitted: boolean;
+  contest_name?: string; // Name of contest if assigned via contest
 }
 
 const StudentExams = () => {
@@ -146,6 +147,7 @@ const StudentExams = () => {
           assigned_at: a.assigned_at || new Date().toISOString(),
           exam: a.exam as AssignedExam['exam'],
           has_submitted: submittedExamIds.has(a.assigned_exam_id!),
+          contest_name: (a.contest as any)?.name || undefined,
         }));
 
       // Combine and deduplicate by exam_id (prefer direct assignments)
@@ -254,6 +256,11 @@ const StudentExams = () => {
                         <CardDescription className="flex items-center gap-1 mt-1">
                           <BookOpen className="w-3.5 h-3.5" />
                           {assignment.exam.subject}
+                          {assignment.contest_name && (
+                            <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                              {assignment.contest_name}
+                            </span>
+                          )}
                         </CardDescription>
                       </div>
                       <Badge variant={status.variant}>{status.label}</Badge>
