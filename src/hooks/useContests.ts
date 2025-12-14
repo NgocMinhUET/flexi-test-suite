@@ -151,7 +151,7 @@ export const useAddExamsToContest = () => {
   });
 };
 
-// Add participants to contest
+// Add participants to contest (with auto-distribution for active contests)
 export const useAddParticipantsToContest = () => {
   const queryClient = useQueryClient();
 
@@ -163,6 +163,16 @@ export const useAddParticipantsToContest = () => {
       contestId: string; 
       userIds: string[] 
     }) => {
+      // First, get the contest status and exams
+      const { data: contest, error: contestError } = await supabase
+        .from('contests')
+        .select('status')
+        .eq('id', contestId)
+        .single();
+
+      if (contestError) throw contestError;
+
+      // Insert participants
       const { error } = await supabase
         .from('contest_participants')
         .insert(userIds.map(userId => ({
@@ -171,11 +181,87 @@ export const useAddParticipantsToContest = () => {
         })));
 
       if (error) throw error;
+
+      // If contest is active, auto-distribute exams to new participants
+      if (contest.status === 'active') {
+        // Get contest exams
+        const { data: exams, error: examsError } = await supabase
+          .from('contest_exams')
+          .select('*')
+          .eq('contest_id', contestId);
+
+        if (examsError) throw examsError;
+
+        if (exams && exams.length > 0) {
+          // Get the newly inserted participants
+          const { data: newParticipants, error: participantsError } = await supabase
+            .from('contest_participants')
+            .select('id, user_id')
+            .eq('contest_id', contestId)
+            .in('user_id', userIds)
+            .is('assigned_exam_id', null);
+
+          if (participantsError) throw participantsError;
+
+          if (newParticipants && newParticipants.length > 0) {
+            // Get current assignment counts for balanced distribution
+            const { data: allParticipants } = await supabase
+              .from('contest_participants')
+              .select('assigned_exam_id')
+              .eq('contest_id', contestId)
+              .not('assigned_exam_id', 'is', null);
+
+            // Count assignments per exam
+            const assignmentCounts = new Map<string, number>();
+            exams.forEach(e => assignmentCounts.set(e.exam_id, 0));
+            (allParticipants || []).forEach(p => {
+              if (p.assigned_exam_id) {
+                assignmentCounts.set(p.assigned_exam_id, (assignmentCounts.get(p.assigned_exam_id) || 0) + 1);
+              }
+            });
+
+            // Assign exams with balanced distribution
+            const now = new Date().toISOString();
+            for (const participant of newParticipants) {
+              // Find exam with minimum assignments
+              let minCount = Infinity;
+              let selectedExamId = exams[0].exam_id;
+              
+              for (const exam of exams) {
+                const count = assignmentCounts.get(exam.exam_id) || 0;
+                if (count < minCount) {
+                  minCount = count;
+                  selectedExamId = exam.exam_id;
+                }
+              }
+
+              // Update participant with assigned exam
+              const { error: updateError } = await supabase
+                .from('contest_participants')
+                .update({ 
+                  assigned_exam_id: selectedExamId,
+                  assigned_at: now,
+                })
+                .eq('id', participant.id);
+
+              if (updateError) throw updateError;
+
+              assignmentCounts.set(selectedExamId, (assignmentCounts.get(selectedExamId) || 0) + 1);
+            }
+          }
+        }
+      }
+
+      return { autoDistributed: contest.status === 'active' };
     },
-    onSuccess: (_, { contestId }) => {
+    onSuccess: (result, { contestId }) => {
       queryClient.invalidateQueries({ queryKey: ['contest', contestId] });
       queryClient.invalidateQueries({ queryKey: ['contests'] });
-      toast.success('Đã thêm thí sinh vào cuộc thi');
+      if (result.autoDistributed) {
+        toast.success('Đã thêm thí sinh và tự động phân phối đề');
+      } else {
+        toast.success('Đã thêm thí sinh vào cuộc thi');
+      }
     },
     onError: (error) => {
       toast.error('Lỗi: ' + error.message);

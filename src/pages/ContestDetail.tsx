@@ -385,7 +385,7 @@ export default function ContestDetail() {
                               )}
                             </TableCell>
                             <TableCell>
-                              {canEdit && !participant.assigned_exam_id && (
+                              {(canEdit || !participant.assigned_exam_id) && contest.status !== 'completed' && (
                                 <Button
                                   variant="ghost"
                                   size="icon"

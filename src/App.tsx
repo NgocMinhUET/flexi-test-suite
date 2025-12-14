@@ -18,7 +18,7 @@ import SubjectsManagement from "./pages/SubjectsManagement";
 import TaxonomyManagement from "./pages/TaxonomyManagement";
 import QuestionBank from "./pages/QuestionBank";
 import QuestionEditor from "./pages/QuestionEditor";
-import ExamGenerator from "./pages/ExamGenerator";
+
 import ContestManagement from "./pages/ContestManagement";
 import ContestDetail from "./pages/ContestDetail";
 import ContestStatistics from "./pages/ContestStatistics";
