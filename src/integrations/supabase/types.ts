@@ -702,7 +702,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_assigned_contest_exam: {
+        Args: { _contest_id: string; _exam_id: string }
+        Returns: boolean
+      }
+      owns_contest: { Args: { _contest_id: string }; Returns: boolean }
       owns_exam: { Args: { _exam_id: string }; Returns: boolean }
+      participates_in_contest: {
+        Args: { _contest_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
