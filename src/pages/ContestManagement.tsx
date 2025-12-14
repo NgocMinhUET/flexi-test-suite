@@ -171,15 +171,13 @@ export default function ContestManagement() {
                                   Kết thúc
                                 </DropdownMenuItem>
                               )}
-                              {contest.status === 'draft' && (
-                                <DropdownMenuItem 
-                                  onClick={() => handleDelete(contest)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Xóa
-                                </DropdownMenuItem>
-                              )}
+                              <DropdownMenuItem 
+                                onClick={() => handleDelete(contest)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Xóa
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
