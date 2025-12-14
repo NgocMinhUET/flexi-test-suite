@@ -363,3 +363,79 @@ export function useBulkDeleteQuestions() {
     },
   });
 }
+
+export function useBulkSubmitForReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('questions')
+        .update({ status: 'review' as QuestionStatus })
+        .in('id', ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      toast.success(`Đã gửi ${ids.length} câu hỏi để duyệt`);
+    },
+    onError: (error) => {
+      console.error('Error bulk submitting for review:', error);
+      toast.error('Lỗi khi gửi duyệt');
+    },
+  });
+}
+
+export function useBulkApproveQuestions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from('questions')
+        .update({
+          status: 'approved' as QuestionStatus,
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: null,
+        })
+        .in('id', ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      toast.success(`Đã duyệt ${ids.length} câu hỏi`);
+    },
+    onError: (error) => {
+      console.error('Error bulk approving questions:', error);
+      toast.error('Lỗi khi duyệt câu hỏi');
+    },
+  });
+}
+
+export function useBulkPublishQuestions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('questions')
+        .update({ status: 'published' as QuestionStatus })
+        .in('id', ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      toast.success(`Đã xuất bản ${ids.length} câu hỏi`);
+    },
+    onError: (error) => {
+      console.error('Error bulk publishing questions:', error);
+      toast.error('Lỗi khi xuất bản câu hỏi');
+    },
+  });
+}
