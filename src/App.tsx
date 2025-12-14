@@ -22,8 +22,7 @@ import ExamGenerator from "./pages/ExamGenerator";
 import ContestManagement from "./pages/ContestManagement";
 import ContestDetail from "./pages/ContestDetail";
 import ContestStatistics from "./pages/ContestStatistics";
-
-
+import ExamsManagement from "./pages/ExamsManagement";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -44,8 +43,8 @@ const App = () => (
           <Route path="/questions/new" element={<QuestionEditor />} />
           <Route path="/questions/:id/edit" element={<QuestionEditor />} />
           <Route path="/my-exams" element={<StudentExams />} />
+          <Route path="/exams" element={<ExamsManagement />} />
           <Route path="/exam/new" element={<ExamEditor />} />
-          <Route path="/exam/generate" element={<ExamGenerator />} />
           <Route path="/contests" element={<ContestManagement />} />
           <Route path="/contests/:id" element={<ContestDetail />} />
           <Route path="/contests/:id/statistics" element={<ContestStatistics />} />

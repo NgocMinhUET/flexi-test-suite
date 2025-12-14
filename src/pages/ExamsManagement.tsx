@@ -10,7 +10,6 @@ import {
   Plus,
   FileText,
   Users,
-  BarChart3,
   Clock,
   Eye,
   Edit,
@@ -22,6 +21,7 @@ import {
   XCircle,
   UserPlus,
   Upload,
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -55,25 +55,14 @@ interface ExamResultSummary {
   avg_percentage: number;
 }
 
-interface AssignmentCount {
-  exam_id: string;
-  count: number;
-}
-
-const Dashboard = () => {
+const ExamsManagement = () => {
   const navigate = useNavigate();
   const { user, profile, isAdmin, isTeacher, isLoading: authLoading, signOut } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [resultSummaries, setResultSummaries] = useState<ExamResultSummary[]>([]);
   const [assignmentCounts, setAssignmentCounts] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalExams: 0,
-    totalSubmissions: 0,
-    avgScore: 0,
-    publishedExams: 0,
-  });
-  
+
   // Dialog states
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -150,21 +139,6 @@ const Dashboard = () => {
         }
       });
       setResultSummaries(summaries);
-
-      // Calculate stats
-      const totalExams = examsData?.length || 0;
-      const publishedExams = examsData?.filter((e) => e.is_published).length || 0;
-      const totalSubmissions = resultsData?.length || 0;
-      const avgScore = resultsData?.length
-        ? resultsData.reduce((acc, r) => acc + Number(r.percentage), 0) / resultsData.length
-        : 0;
-
-      setStats({
-        totalExams,
-        totalSubmissions,
-        avgScore: Math.round(avgScore * 10) / 10,
-        publishedExams,
-      });
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Lỗi khi tải dữ liệu');
@@ -219,14 +193,21 @@ const Dashboard = () => {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-                <Code2 className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground">
-                Exam<span className="text-gradient">Pro</span>
-              </span>
-            </Link>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" asChild>
+                <Link to="/dashboard">
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+              </Button>
+              <Link to="/" className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+                  <Code2 className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <span className="text-xl font-bold text-foreground">
+                  Exam<span className="text-gradient">Pro</span>
+                </span>
+              </Link>
+            </div>
 
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
@@ -247,104 +228,15 @@ const Dashboard = () => {
         {/* Page Title */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Quản lý đề thi và xem thống kê</p>
+            <h1 className="text-3xl font-bold text-foreground">Quản lý đề thi</h1>
+            <p className="text-muted-foreground">Tạo và quản lý các đề thi độc lập</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {isAdmin && (
-              <>
-                <Button variant="outline" asChild>
-                  <Link to="/admin/users">
-                    <Users className="w-4 h-4 mr-2" />
-                    Người dùng
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link to="/admin/subjects">
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Môn học
-                  </Link>
-                </Button>
-              </>
-            )}
-            <Button variant="outline" asChild>
-              <Link to="/questions">
-                <FileText className="w-4 h-4 mr-2" />
-                Ngân hàng câu hỏi
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/exams">
-                <FileText className="w-4 h-4 mr-2" />
-                Đề thi
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/contests">
-                <Users className="w-4 h-4 mr-2" />
-                Cuộc thi
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalExams}</p>
-                  <p className="text-sm text-muted-foreground">Tổng đề thi</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-success" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.publishedExams}</p>
-                  <p className="text-sm text-muted-foreground">Đã công khai</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalSubmissions}</p>
-                  <p className="text-sm text-muted-foreground">Bài nộp</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.avgScore}%</p>
-                  <p className="text-sm text-muted-foreground">Điểm TB</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Button variant="hero" asChild>
+            <Link to="/exam/new">
+              <Plus className="w-4 h-4 mr-2" />
+              Tạo đề thi mới
+            </Link>
+          </Button>
         </div>
 
         {/* Exams List */}
@@ -354,7 +246,7 @@ const Dashboard = () => {
               <BookOpen className="w-5 h-5" />
               Danh sách đề thi
             </CardTitle>
-            <CardDescription>Quản lý và chỉnh sửa các đề thi của bạn</CardDescription>
+            <CardDescription>Các đề thi độc lập (không thuộc cuộc thi)</CardDescription>
           </CardHeader>
           <CardContent>
             {exams.length === 0 ? (
@@ -458,7 +350,7 @@ const Dashboard = () => {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" title="Xóa">
-                              <Trash2 className="w-4 h-4 text-destructive" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -484,47 +376,6 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Results Summary */}
-        {resultSummaries.length > 0 && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Thống kê kết quả
-              </CardTitle>
-              <CardDescription>Tổng quan kết quả thi của sinh viên</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {resultSummaries.map((summary) => (
-                  <Card key={summary.exam_id} variant="elevated">
-                    <CardContent className="pt-6">
-                      <h4 className="font-semibold text-foreground mb-2">{summary.exam_title}</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Số bài nộp:</span>
-                          <span className="font-medium text-foreground">{summary.total_submissions}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Điểm trung bình:</span>
-                          <span className="font-medium text-foreground">
-                            {Math.round(summary.avg_percentage)}%
-                          </span>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                        <Link to={`/exam/${summary.exam_id}/results`}>
-                          Xem chi tiết
-                        </Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </main>
 
       {/* Dialogs */}
@@ -550,4 +401,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default ExamsManagement;
