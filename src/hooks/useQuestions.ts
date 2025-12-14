@@ -369,6 +369,8 @@ export function useBulkSubmitForReview() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return;
+      
       const { error } = await supabase
         .from('questions')
         .update({ status: 'review' as QuestionStatus })
@@ -392,6 +394,8 @@ export function useBulkApproveQuestions() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return;
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       const { error } = await supabase
@@ -422,6 +426,8 @@ export function useBulkPublishQuestions() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return;
+      
       const { error } = await supabase
         .from('questions')
         .update({ status: 'published' as QuestionStatus })
