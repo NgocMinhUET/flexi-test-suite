@@ -488,9 +488,10 @@ const ExamResultPage = () => {
                             {qResult.earnedPoints}/{qResult.maxPoints} điểm
                           </span>
                         </div>
-                        <p className="text-sm text-foreground mt-1 line-clamp-1">
-                          {question.content.substring(0, 100)}...
-                        </p>
+                        <p 
+                          className="text-sm text-foreground mt-1 line-clamp-1"
+                          dangerouslySetInnerHTML={{ __html: question.content.substring(0, 100) + '...' }}
+                        />
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -515,7 +516,10 @@ const ExamResultPage = () => {
                       {/* Question Content */}
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-2">Nội dung câu hỏi</h4>
-                        <p className="text-foreground whitespace-pre-wrap">{question.content}</p>
+                        <div 
+                          className="text-foreground prose prose-sm max-w-none dark:prose-invert"
+                          dangerouslySetInnerHTML={{ __html: question.content }}
+                        />
                       </div>
 
                       {/* Options for multiple choice */}
