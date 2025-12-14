@@ -138,6 +138,7 @@ export default function ContestDetail() {
 
   const status = statusLabels[contest.status];
   const canEdit = contest.status === 'draft';
+  const canAddParticipants = contest.status !== 'completed'; // Allow adding participants during active contests
   const canDistribute = contest.exam_count > 0 && contest.participant_count > 0;
   const hasUnassigned = contest.assigned_count < contest.participant_count;
 
@@ -182,17 +183,15 @@ export default function ContestDetail() {
             </div>
             <div className="flex gap-2">
               {canEdit && (
-                <>
-                  <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Sửa
-                  </Button>
-                  <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Xóa
-                  </Button>
-                </>
+                <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Sửa
+                </Button>
               )}
+              <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Xóa
+              </Button>
               <Button variant="outline" onClick={() => navigate(`/contests/${id}/statistics`)}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Thống kê
@@ -347,7 +346,7 @@ export default function ContestDetail() {
                     <CardTitle>Danh sách thí sinh</CardTitle>
                     <CardDescription>Thí sinh tham gia cuộc thi</CardDescription>
                   </div>
-                  {canEdit && (
+                  {canAddParticipants && (
                     <Button onClick={() => setAddParticipantsOpen(true)}>
                       <Users className="h-4 w-4 mr-2" />
                       Thêm thí sinh
