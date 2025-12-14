@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Plus, MoreVertical, Eye, Trash2, Play, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, MoreVertical, Eye, Trash2, Play, CheckCircle, Loader2 } from 'lucide-react';
 import { CreateContestDialog } from '@/components/contest/CreateContestDialog';
 import type { ContestWithDetails } from '@/types/contest';
 
@@ -42,7 +42,7 @@ const statusLabels: Record<string, { label: string; variant: 'default' | 'second
 
 export default function ContestManagement() {
   const navigate = useNavigate();
-  const { user, isAdmin, isTeacher } = useAuth();
+  const { user, isAdmin, isTeacher, isLoading: authLoading } = useAuth();
   const { data: contests, isLoading } = useContests();
   const deleteContest = useDeleteContest();
   const updateStatus = useUpdateContestStatus();
@@ -52,10 +52,18 @@ export default function ContestManagement() {
   const [selectedContest, setSelectedContest] = useState<ContestWithDetails | null>(null);
 
   useEffect(() => {
-    if (!user || (!isAdmin && !isTeacher)) {
+    if (!authLoading && (!user || (!isAdmin && !isTeacher))) {
       navigate('/auth');
     }
-  }, [user, isAdmin, isTeacher, navigate]);
+  }, [authLoading, user, isAdmin, isTeacher, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!user || (!isAdmin && !isTeacher)) {
     return null;
