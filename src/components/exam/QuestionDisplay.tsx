@@ -155,7 +155,7 @@ export const QuestionDisplay = ({
         {/* Question Content */}
         <div className="mb-8">
           <div 
-            className="text-lg text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:rounded-md [&_pre]:text-sm [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm"
+            className="text-lg text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:rounded-md [&_pre]:text-sm [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm"
             dangerouslySetInnerHTML={{ __html: question.content }}
           />
         </div>
