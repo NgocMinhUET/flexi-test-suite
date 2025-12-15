@@ -517,7 +517,7 @@ const ExamResultPage = () => {
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-2">Nội dung câu hỏi</h4>
                         <div 
-                          className="text-foreground prose prose-sm max-w-none dark:prose-invert"
+                          className="text-foreground prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap"
                           dangerouslySetInnerHTML={{ __html: question.content }}
                         />
                       </div>
