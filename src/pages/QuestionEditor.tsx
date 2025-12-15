@@ -172,7 +172,13 @@ export default function QuestionEditor() {
       const answerData = existingQuestion.answer_data;
       if (existingQuestion.question_type === 'MCQ_SINGLE') {
         const data = answerData as MCQAnswerData;
-        setMcqOptions(data.options || defaultMCQOptions);
+        // Handle both 'text' (from Excel import) and 'content' (from UI) field names
+        const mappedOptions = (data.options || []).map((opt: any, idx: number) => ({
+          id: opt.id || generateId(),
+          content: opt.content || opt.text || '',
+          isCorrect: opt.isCorrect || false,
+        }));
+        setMcqOptions(mappedOptions.length >= 2 ? mappedOptions : defaultMCQOptions);
         setExplanation(data.explanation || '');
       } else if (existingQuestion.question_type === 'TRUE_FALSE_4') {
         const data = answerData as TrueFalseAnswerData;
