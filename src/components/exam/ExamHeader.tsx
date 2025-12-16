@@ -17,6 +17,9 @@ interface ExamHeaderProps {
   onSubmit: () => void;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   lastSavedAt?: Date | null;
+  // Section info (optional)
+  sectionName?: string;
+  sectionProgress?: { current: number; total: number };
 }
 
 export const ExamHeader = ({
@@ -28,6 +31,8 @@ export const ExamHeader = ({
   onSubmit,
   saveStatus = 'idle',
   lastSavedAt,
+  sectionName,
+  sectionProgress,
 }: ExamHeaderProps) => {
   const formatLastSaved = (date: Date | null) => {
     if (!date) return '';
@@ -49,8 +54,17 @@ export const ExamHeader = ({
             <span className="text-primary-foreground font-bold text-lg">E</span>
           </div>
           <div>
-            <h1 className="font-semibold text-foreground line-clamp-1">{title}</h1>
-            <p className="text-sm text-muted-foreground">{subject}</p>
+            <div className="flex items-center gap-2">
+              <h1 className="font-semibold text-foreground line-clamp-1">{title}</h1>
+              {sectionProgress && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                  Phần {sectionProgress.current}/{sectionProgress.total}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {sectionName || subject}
+            </p>
           </div>
         </div>
 

@@ -10,6 +10,10 @@ interface ExamDraft {
   currentQuestion: number;
   violationStats: ViolationStats;
   savedAt: string;
+  // Sectioned exam state
+  currentSection?: number;
+  completedSections?: number[];
+  sectionTimes?: Record<string, number>;
 }
 
 interface UseExamAutoSaveProps {
@@ -20,6 +24,10 @@ interface UseExamAutoSaveProps {
   currentQuestion: number;
   violationStats: ViolationStats;
   isEnabled: boolean;
+  // Sectioned exam state
+  currentSection?: number;
+  completedSections?: Set<number>;
+  sectionTimes?: Record<string, number>;
 }
 
 interface UseExamAutoSaveReturn {
@@ -44,6 +52,9 @@ export const useExamAutoSave = ({
   currentQuestion,
   violationStats,
   isEnabled,
+  currentSection,
+  completedSections,
+  sectionTimes,
 }: UseExamAutoSaveProps): UseExamAutoSaveReturn => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -71,8 +82,12 @@ export const useExamAutoSave = ({
       currentQuestion,
       violationStats,
       savedAt: new Date().toISOString(),
+      // Include section state if available
+      currentSection,
+      completedSections: completedSections ? Array.from(completedSections) : undefined,
+      sectionTimes,
     };
-  }, [answers, flaggedQuestions, currentQuestion, violationStats]);
+  }, [answers, flaggedQuestions, currentQuestion, violationStats, currentSection, completedSections, sectionTimes]);
 
   // Save to localStorage (fast, immediate backup)
   const saveToLocal = useCallback(() => {

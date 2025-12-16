@@ -365,7 +365,9 @@ export type Database = {
           duration: number
           id: string
           is_published: boolean
+          is_sectioned: boolean | null
           questions: Json
+          sections: Json | null
           source_contest_id: string | null
           source_type: string
           subject: string
@@ -380,7 +382,9 @@ export type Database = {
           duration?: number
           id?: string
           is_published?: boolean
+          is_sectioned?: boolean | null
           questions?: Json
+          sections?: Json | null
           source_contest_id?: string | null
           source_type?: string
           subject: string
@@ -395,7 +399,9 @@ export type Database = {
           duration?: number
           id?: string
           is_published?: boolean
+          is_sectioned?: boolean | null
           questions?: Json
+          sections?: Json | null
           source_contest_id?: string | null
           source_type?: string
           subject?: string

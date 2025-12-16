@@ -2,6 +2,15 @@ export type QuestionType = 'multiple-choice' | 'short-answer' | 'essay' | 'drag-
 
 export type ProgrammingLanguage = 'python' | 'javascript' | 'java' | 'cpp' | 'c' | 'go' | 'rust';
 
+// Section for sectioned exams
+export interface ExamSection {
+  id: string;
+  name: string;           // Name set by exam creator, e.g., "Phần 1: Trắc nghiệm"
+  description?: string;   // Optional description
+  duration: number;       // Duration in minutes for this section
+  questionIds: number[];  // IDs of questions in this section
+}
+
 export interface QuestionOption {
   id: string;
   text: string;
@@ -40,9 +49,11 @@ export interface ExamData {
   id: string;
   title: string;
   subject: string;
-  duration: number; // in minutes
+  duration: number; // in minutes (total or fallback)
   totalQuestions: number;
   questions: Question[];
+  isSectioned?: boolean;      // Whether exam is divided into sections
+  sections?: ExamSection[];   // Section definitions (only if isSectioned)
 }
 
 export interface Answer {
