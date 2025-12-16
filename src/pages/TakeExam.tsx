@@ -1,15 +1,18 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ExamHeader } from '@/components/exam/ExamHeader';
 import { QuestionNavigation } from '@/components/exam/QuestionNavigation';
+import { SectionedQuestionNavigation } from '@/components/exam/SectionedQuestionNavigation';
 import { QuestionDisplay } from '@/components/exam/QuestionDisplay';
 import { SubmitDialog } from '@/components/exam/SubmitDialog';
+import { SectionTransitionDialog } from '@/components/exam/SectionTransitionDialog';
 import { useExamTimer } from '@/hooks/useExamTimer';
+import { useSectionedTimer } from '@/hooks/useSectionedTimer';
 import { useExamAutoSave } from '@/hooks/useExamAutoSave';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats } from '@/types/exam';
+import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats, ExamSection } from '@/types/exam';
 import { Loader2, Maximize, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -48,6 +51,13 @@ const TakeExam = () => {
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
 
+  // Sectioned exam state
+  const [currentSection, setCurrentSection] = useState(0);
+  const [completedSections, setCompletedSections] = useState<Set<number>>(new Set());
+  const [showSectionTransitionDialog, setShowSectionTransitionDialog] = useState(false);
+  const [isSectionTimeUp, setIsSectionTimeUp] = useState(false);
+  const [sectionTimes, setSectionTimes] = useState<Record<string, number>>({});
+
   // Auto-save hook
   const {
     saveStatus,
@@ -65,6 +75,9 @@ const TakeExam = () => {
     currentQuestion,
     violationStats: violationStatsRef.current,
     isEnabled: examStarted && !isSubmitting && !!exam,
+    currentSection: exam?.isSectioned ? currentSection : undefined,
+    completedSections: exam?.isSectioned ? completedSections : undefined,
+    sectionTimes: exam?.isSectioned ? sectionTimes : undefined,
   });
 
   // Show restore dialog when draft is found
@@ -94,6 +107,17 @@ const TakeExam = () => {
     // Restore violation stats
     if (draftData.violationStats) {
       violationStatsRef.current = draftData.violationStats;
+    }
+
+    // Restore section state if available
+    if (draftData.currentSection !== undefined) {
+      setCurrentSection(draftData.currentSection);
+    }
+    if (draftData.completedSections) {
+      setCompletedSections(new Set(draftData.completedSections));
+    }
+    if (draftData.sectionTimes) {
+      setSectionTimes(draftData.sectionTimes);
     }
 
     restoreFromDraft();
@@ -335,6 +359,8 @@ const TakeExam = () => {
           duration: data.duration,
           totalQuestions: data.total_questions,
           questions: (data.questions as unknown as Question[]) || [],
+          isSectioned: data.is_sectioned || false,
+          sections: (data.sections as unknown as ExamSection[]) || [],
         };
 
         setExam(examData);
@@ -713,12 +739,83 @@ const TakeExam = () => {
     onTimeUp: handleTimeUp,
   });
 
+  // Sectioned timer - handle section time up
+  const handleSectionTimeUp = useCallback(() => {
+    if (!exam?.isSectioned) return;
+    setIsSectionTimeUp(true);
+    setShowSectionTransitionDialog(true);
+  }, [exam?.isSectioned]);
+
+  const sectionedTimer = useSectionedTimer({
+    sections: exam?.sections || [],
+    currentSectionIndex: currentSection,
+    onSectionTimeUp: handleSectionTimeUp,
+    savedSectionTimes: Object.keys(sectionTimes).length > 0 ? sectionTimes : undefined,
+    isEnabled: examStarted && !isSubmitting && !!exam?.isSectioned,
+  });
+
+  // Update sectionTimes for auto-save
+  useEffect(() => {
+    if (exam?.isSectioned && Object.keys(sectionedTimer.allSectionTimes).length > 0) {
+      setSectionTimes(sectionedTimer.allSectionTimes);
+    }
+  }, [exam?.isSectioned, sectionedTimer.allSectionTimes]);
+
+  // Handle section completion (manual or automatic)
+  const handleCompleteSection = useCallback(() => {
+    if (!exam?.isSectioned || !exam.sections) return;
+    setIsSectionTimeUp(false);
+    setShowSectionTransitionDialog(false);
+    
+    // Mark current section as completed
+    setCompletedSections(prev => new Set([...prev, currentSection]));
+    
+    if (currentSection < exam.sections.length - 1) {
+      // Move to next section
+      const nextSection = exam.sections[currentSection + 1];
+      setCurrentSection(currentSection + 1);
+      // Move to first question of next section
+      const firstQuestionId = nextSection.questionIds[0];
+      const questionIndex = exam.questions.findIndex(q => q.id === firstQuestionId);
+      if (questionIndex !== -1) {
+        setCurrentQuestion(questionIndex);
+      }
+      toast.success(`Bắt đầu ${nextSection.name}`);
+    } else {
+      // Last section - submit exam
+      handleConfirmSubmit();
+    }
+  }, [exam, currentSection]);
+
+  const handleShowSectionDialog = useCallback(() => {
+    setIsSectionTimeUp(false);
+    setShowSectionTransitionDialog(true);
+  }, []);
+
   // Calculate question statuses
   const questionStatuses: QuestionStatus[] = exam?.questions.map((q) => {
     if (flaggedQuestions.has(q.id)) return 'flagged';
     if (answers.has(q.id)) return 'answered';
     return 'unanswered';
   }) || [];
+
+  // For sectioned exams: map questionId -> status
+  const questionStatusMap = useMemo(() => {
+    const map = new Map<number, QuestionStatus>();
+    exam?.questions.forEach((q, idx) => {
+      map.set(q.id, questionStatuses[idx]);
+    });
+    return map;
+  }, [exam?.questions, questionStatuses]);
+
+  // Current question index within current section (for sectioned exams)
+  const currentQuestionInSection = useMemo(() => {
+    if (!exam?.isSectioned || !exam.sections) return 0;
+    const section = exam.sections[currentSection];
+    if (!section) return 0;
+    const currentQ = exam.questions[currentQuestion];
+    return section.questionIds.indexOf(currentQ?.id || 0);
+  }, [exam, currentSection, currentQuestion]);
 
   const handleAnswer = (answer: Answer) => {
     setAnswers((prev) => {
@@ -742,9 +839,43 @@ const TakeExam = () => {
     });
   };
 
+  const handleToggleFlagById = useCallback((questionId: number) => {
+    setFlaggedQuestions((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
+  }, []);
+
   const handleNavigate = (questionIndex: number) => {
     setCurrentQuestion(questionIndex);
   };
+
+  const handleNavigateById = useCallback((questionId: number) => {
+    if (!exam) return;
+    
+    // For sectioned exams, check if question is in completed section
+    if (exam.isSectioned && exam.sections) {
+      const sectionIndex = exam.sections.findIndex(s => s.questionIds.includes(questionId));
+      if (completedSections.has(sectionIndex)) {
+        toast.warning('Không thể quay lại phần đã hoàn thành');
+        return;
+      }
+      if (sectionIndex > currentSection) {
+        toast.warning('Chưa thể chuyển đến phần tiếp theo');
+        return;
+      }
+    }
+    
+    const questionIndex = exam.questions.findIndex(q => q.id === questionId);
+    if (questionIndex !== -1) {
+      setCurrentQuestion(questionIndex);
+    }
+  }, [exam, completedSections, currentSection]);
 
   const handleSubmit = () => {
     setShowSubmitDialog(true);
@@ -979,21 +1110,39 @@ const TakeExam = () => {
       <ExamHeader
         title={exam.title}
         subject={exam.subject}
-        formattedTime={formattedTime}
-        isWarning={isWarning}
-        isCritical={isCritical}
+        formattedTime={exam.isSectioned ? sectionedTimer.formattedSectionTime : formattedTime}
+        isWarning={exam.isSectioned ? sectionedTimer.isWarning : isWarning}
+        isCritical={exam.isSectioned ? sectionedTimer.isCritical : isCritical}
         onSubmit={handleSubmit}
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
+        sectionName={exam.isSectioned ? exam.sections?.[currentSection]?.name : undefined}
+        sectionProgress={exam.isSectioned ? sectionedTimer.sectionProgress : undefined}
       />
 
-      <QuestionNavigation
-        totalQuestions={exam.totalQuestions}
-        currentQuestion={currentQuestion}
-        questionStatuses={questionStatuses}
-        onNavigate={handleNavigate}
-        onToggleFlag={handleToggleFlag}
-      />
+      {exam.isSectioned && exam.sections ? (
+        <SectionedQuestionNavigation
+          sections={exam.sections}
+          currentSectionIndex={currentSection}
+          completedSections={completedSections}
+          currentQuestionInSection={currentQuestionInSection}
+          questionStatuses={questionStatusMap}
+          formattedTime={sectionedTimer.formattedSectionTime}
+          isWarning={sectionedTimer.isWarning}
+          isCritical={sectionedTimer.isCritical}
+          onNavigate={handleNavigateById}
+          onToggleFlag={handleToggleFlagById}
+          onCompleteSection={handleShowSectionDialog}
+        />
+      ) : (
+        <QuestionNavigation
+          totalQuestions={exam.totalQuestions}
+          currentQuestion={currentQuestion}
+          questionStatuses={questionStatuses}
+          onNavigate={handleNavigate}
+          onToggleFlag={handleToggleFlag}
+        />
+      )}
 
       <QuestionDisplay
         question={currentQ}
@@ -1012,8 +1161,22 @@ const TakeExam = () => {
         onOpenChange={setShowSubmitDialog}
         onConfirm={handleConfirmSubmit}
         questionStatuses={questionStatuses}
-        formattedTime={formattedTime}
+        formattedTime={exam.isSectioned ? sectionedTimer.formattedSectionTime : formattedTime}
       />
+
+      {/* Section Transition Dialog */}
+      {exam.isSectioned && exam.sections && (
+        <SectionTransitionDialog
+          open={showSectionTransitionDialog}
+          currentSection={exam.sections[currentSection]}
+          nextSection={exam.sections[currentSection + 1] || null}
+          answeredInSection={exam.sections[currentSection]?.questionIds.filter(id => answers.has(id)).length || 0}
+          totalInSection={exam.sections[currentSection]?.questionIds.length || 0}
+          isTimeUp={isSectionTimeUp}
+          onConfirm={handleCompleteSection}
+          onCancel={isSectionTimeUp ? undefined : () => setShowSectionTransitionDialog(false)}
+        />
+      )}
 
       {/* Restore Draft Dialog */}
       <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>

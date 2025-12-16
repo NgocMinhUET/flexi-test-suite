@@ -21,9 +21,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { Question, QuestionType, ProgrammingLanguage, TestCase } from '@/types/exam';
+import { Question, QuestionType, ProgrammingLanguage, TestCase, ExamSection } from '@/types/exam';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { CollapsibleQuestion } from '@/components/exam/CollapsibleQuestion';
+import { SectionManager } from '@/components/exam/SectionManager';
 
 const questionTypes: { value: QuestionType; label: string }[] = [
   { value: 'multiple-choice', label: 'Trắc nghiệm' },
@@ -64,8 +65,10 @@ const ExamEditor = () => {
     description: '',
     duration: 60,
     is_published: false,
+    is_sectioned: false,
   });
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [sections, setSections] = useState<ExamSection[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -104,8 +107,10 @@ const ExamEditor = () => {
         description: data.description || '',
         duration: data.duration,
         is_published: data.is_published,
+        is_sectioned: data.is_sectioned || false,
       });
       setQuestions((data.questions as unknown as Question[]) || []);
+      setSections((data.sections as unknown as ExamSection[]) || []);
     } catch (error) {
       console.error('Error fetching exam:', error);
       toast.error('Lỗi khi tải đề thi');
@@ -216,14 +221,40 @@ const ExamEditor = () => {
       return;
     }
 
+    // Validate sections if sectioned
+    if (examData.is_sectioned) {
+      if (sections.length === 0) {
+        toast.error('Vui lòng thêm ít nhất một phần thi');
+        return;
+      }
+      const assignedIds = new Set(sections.flatMap(s => s.questionIds));
+      const unassigned = questions.filter(q => !assignedIds.has(q.id));
+      if (unassigned.length > 0) {
+        toast.error(`Còn ${unassigned.length} câu hỏi chưa được gán vào phần nào`);
+        return;
+      }
+      const emptySection = sections.find(s => s.questionIds.length === 0);
+      if (emptySection) {
+        toast.error(`Phần "${emptySection.name}" không có câu hỏi nào`);
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
+      // Calculate total duration from sections if sectioned
+      const totalDuration = examData.is_sectioned 
+        ? sections.reduce((sum, s) => sum + s.duration, 0)
+        : examData.duration;
+
       const examPayload = {
         title: examData.title,
         subject: examData.subject,
         description: examData.description,
-        duration: examData.duration,
+        duration: totalDuration,
         is_published: examData.is_published,
+        is_sectioned: examData.is_sectioned,
+        sections: examData.is_sectioned ? JSON.parse(JSON.stringify(sections)) : [],
         total_questions: questions.length,
         questions: JSON.parse(JSON.stringify(questions)),
         created_by: user?.id,
@@ -338,7 +369,13 @@ const ExamEditor = () => {
                   min={1}
                   value={examData.duration}
                   onChange={(e) => setExamData({ ...examData, duration: parseInt(e.target.value) || 60 })}
+                  disabled={examData.is_sectioned}
                 />
+                {examData.is_sectioned && (
+                  <p className="text-xs text-muted-foreground">
+                    Tổng thời gian: {sections.reduce((sum, s) => sum + s.duration, 0)} phút (từ các phần)
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Công khai</Label>
@@ -355,6 +392,15 @@ const ExamEditor = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Section Manager */}
+        <SectionManager
+          sections={sections}
+          questions={questions}
+          isSectioned={examData.is_sectioned}
+          onSectionedChange={(value) => setExamData({ ...examData, is_sectioned: value })}
+          onSectionsChange={setSections}
+        />
 
         {/* Questions */}
         <div className="space-y-4">
