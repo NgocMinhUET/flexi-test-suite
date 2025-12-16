@@ -61,6 +61,8 @@ import {
   Upload,
 } from 'lucide-react';
 import { ImportQuestionsDialog } from '@/components/question-bank/ImportQuestionsDialog';
+import { DuplicateCleanupDialog } from '@/components/question-bank/DuplicateCleanupDialog';
+import { useDuplicateQuestions } from '@/hooks/useDuplicateQuestions';
 import { toast } from 'sonner';
 
 const statusLabels: Record<QuestionStatus, string> = {
@@ -104,6 +106,9 @@ export default function QuestionBank() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
+
+  const { data: duplicateGroups } = useDuplicateQuestions(filters.subject_id || undefined);
 
   const bulkDelete = useBulkDeleteQuestions();
   const bulkSubmitForReview = useBulkSubmitForReview();
@@ -261,12 +266,27 @@ export default function QuestionBank() {
             <h1 className="text-3xl font-bold text-foreground">Ngân hàng câu hỏi</h1>
             <p className="text-muted-foreground">Quản lý và tổ chức câu hỏi theo môn học</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {selectedSubject && (
-              <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
-                <Upload className="w-4 h-4 mr-2" />
-                Import Excel
-              </Button>
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setCleanupDialogOpen(true)}
+                  className={duplicateGroups && duplicateGroups.length > 0 ? 'border-destructive/50 text-destructive hover:bg-destructive/10' : ''}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Dọn trùng lặp
+                  {duplicateGroups && duplicateGroups.length > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {duplicateGroups.reduce((sum, g) => sum + g.questions.length - 1, 0)}
+                    </Badge>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import Excel
+                </Button>
+              </>
             )}
             <Button variant="hero" asChild>
               <Link to="/questions/new">
@@ -658,6 +678,13 @@ export default function QuestionBank() {
           taxonomyNodes={taxonomyNodes || []}
         />
       )}
+
+      {/* Duplicate Cleanup Dialog */}
+      <DuplicateCleanupDialog
+        open={cleanupDialogOpen}
+        onOpenChange={setCleanupDialogOpen}
+        subjectId={filters.subject_id}
+      />
     </div>
   );
 }
