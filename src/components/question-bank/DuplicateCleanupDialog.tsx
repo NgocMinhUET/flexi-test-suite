@@ -48,7 +48,7 @@ function truncate(str: string, len: number): string {
 }
 
 export function DuplicateCleanupDialog({ open, onOpenChange, subjectId }: DuplicateCleanupDialogProps) {
-  const { data: duplicateGroups, isLoading } = useDuplicateQuestions(subjectId);
+  const { data: duplicateGroups, isLoading } = useDuplicateQuestions(open ? subjectId : undefined);
   const cleanup = useCleanupDuplicates();
   
   // Local state for overriding keepId selections
@@ -87,7 +87,7 @@ export function DuplicateCleanupDialog({ open, onOpenChange, subjectId }: Duplic
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trash2 className="w-5 h-5" />

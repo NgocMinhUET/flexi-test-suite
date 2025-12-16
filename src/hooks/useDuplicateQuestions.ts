@@ -114,22 +114,15 @@ export function useCleanupDuplicates() {
         return { deleted: 0 };
       }
 
-      // Soft delete in batches
-      const batchSize = 100;
-      let totalDeleted = 0;
+      // Call edge function to bypass RLS
+      const { data, error } = await supabase.functions.invoke('cleanup-duplicates', {
+        body: { questionIds: idsToDelete },
+      });
 
-      for (let i = 0; i < idsToDelete.length; i += batchSize) {
-        const batch = idsToDelete.slice(i, i + batchSize);
-        const { error } = await supabase
-          .from('questions')
-          .update({ deleted_at: new Date().toISOString() })
-          .in('id', batch);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-        if (error) throw error;
-        totalDeleted += batch.length;
-      }
-
-      return { deleted: totalDeleted };
+      return { deleted: data.deleted || idsToDelete.length };
     },
     onSuccess: (data) => {
       toast.success(`Đã xóa ${data.deleted} câu hỏi trùng lặp`);
