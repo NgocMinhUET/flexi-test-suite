@@ -782,8 +782,8 @@ const TakeExam = () => {
       }
       toast.success(`Bắt đầu ${nextSection.name}`);
     } else {
-      // Last section - submit exam
-      handleConfirmSubmit();
+      // Last section - trigger submit dialog
+      setShowSubmitDialog(true);
     }
   }, [exam, currentSection]);
 
@@ -876,6 +876,55 @@ const TakeExam = () => {
       setCurrentQuestion(questionIndex);
     }
   }, [exam, completedSections, currentSection]);
+
+  // Navigation handlers that respect section boundaries
+  const handlePrevious = useCallback(() => {
+    if (!exam) return;
+    
+    if (exam.isSectioned && exam.sections) {
+      const currentSectionData = exam.sections[currentSection];
+      if (!currentSectionData) return;
+      
+      const currentQ = exam.questions[currentQuestion];
+      const currentIndexInSection = currentSectionData.questionIds.indexOf(currentQ?.id || 0);
+      
+      if (currentIndexInSection > 0) {
+        // Move to previous question in same section
+        const prevQuestionId = currentSectionData.questionIds[currentIndexInSection - 1];
+        const prevIndex = exam.questions.findIndex(q => q.id === prevQuestionId);
+        if (prevIndex !== -1) {
+          setCurrentQuestion(prevIndex);
+        }
+      }
+      // If at first question of section, don't go back (section boundary)
+    } else {
+      setCurrentQuestion(prev => Math.max(0, prev - 1));
+    }
+  }, [exam, currentSection, currentQuestion]);
+
+  const handleNext = useCallback(() => {
+    if (!exam) return;
+    
+    if (exam.isSectioned && exam.sections) {
+      const currentSectionData = exam.sections[currentSection];
+      if (!currentSectionData) return;
+      
+      const currentQ = exam.questions[currentQuestion];
+      const currentIndexInSection = currentSectionData.questionIds.indexOf(currentQ?.id || 0);
+      
+      if (currentIndexInSection < currentSectionData.questionIds.length - 1) {
+        // Move to next question in same section
+        const nextQuestionId = currentSectionData.questionIds[currentIndexInSection + 1];
+        const nextIndex = exam.questions.findIndex(q => q.id === nextQuestionId);
+        if (nextIndex !== -1) {
+          setCurrentQuestion(nextIndex);
+        }
+      }
+      // If at last question of section, don't go forward (section boundary)
+    } else {
+      setCurrentQuestion(prev => Math.min(exam.totalQuestions - 1, prev + 1));
+    }
+  }, [exam, currentSection, currentQuestion]);
 
   const handleSubmit = () => {
     setShowSubmitDialog(true);
@@ -1146,14 +1195,14 @@ const TakeExam = () => {
 
       <QuestionDisplay
         question={currentQ}
-        questionIndex={currentQuestion}
-        totalQuestions={exam.totalQuestions}
+        questionIndex={exam.isSectioned ? currentQuestionInSection : currentQuestion}
+        totalQuestions={exam.isSectioned ? (exam.sections?.[currentSection]?.questionIds.length || exam.totalQuestions) : exam.totalQuestions}
         status={questionStatuses[currentQuestion]}
         currentAnswer={answers.get(currentQ.id)}
         onAnswer={handleAnswer}
         onToggleFlag={() => handleToggleFlag(currentQuestion)}
-        onPrevious={() => setCurrentQuestion((prev) => Math.max(0, prev - 1))}
-        onNext={() => setCurrentQuestion((prev) => Math.min(exam.totalQuestions - 1, prev + 1))}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
       />
 
       <SubmitDialog

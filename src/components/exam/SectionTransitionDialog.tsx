@@ -94,7 +94,7 @@ export const SectionTransitionDialog = ({
                 <span>Chưa làm: <strong>{unanswered}</strong></span>
               </div>
             </div>
-            <Progress value={(answeredInSection / totalInSection) * 100} className="h-2" />
+            <Progress value={totalInSection > 0 ? (answeredInSection / totalInSection) * 100 : 0} className="h-2" />
           </div>
 
           {/* Warning */}
