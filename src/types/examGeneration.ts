@@ -17,11 +17,20 @@ export interface MatrixConfig {
   duration: number;
 }
 
+export interface SectionConfig {
+  id: string;
+  name: string;
+  duration: number; // minutes
+  questionTypes: string[]; // Question types belonging to this section
+}
+
 export interface GenerationConstraints {
   allowShuffle: boolean;
   shuffleOptions: boolean;
   minDifficulty: number;
   maxDifficulty: number;
+  isSectioned: boolean;
+  sectionConfig: SectionConfig[];
 }
 
 export interface ExamTemplate {

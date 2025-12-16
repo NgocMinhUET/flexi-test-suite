@@ -40,6 +40,8 @@ export default function ExamGenerator() {
     shuffleOptions: true,
     minDifficulty: 0,
     maxDifficulty: 1,
+    isSectioned: false,
+    sectionConfig: [],
   });
   const [variantCount, setVariantCount] = useState(4);
 
@@ -212,6 +214,7 @@ export default function ExamGenerator() {
               <ConstraintsStep
                 matrixConfig={matrixConfig}
                 constraints={constraints}
+                questionTypes={questionTypes}
                 onMatrixChange={setMatrixConfig}
                 onConstraintsChange={setConstraints}
               />

@@ -6,7 +6,8 @@ import type {
   MatrixConfig, 
   GenerationConstraints, 
   QuestionMapping,
-  SeededRandom 
+  SeededRandom,
+  SectionConfig
 } from '@/types/examGeneration';
 import { SeededRandom as SeededRandomClass } from '@/types/examGeneration';
 import type { Json } from '@/integrations/supabase/types';
@@ -393,17 +394,79 @@ export function useGenerateExamsForContest() {
           });
         }
 
+        // Group questions by section if sectioned
         let finalQuestions = [...selectedQuestions];
-        if (constraints.allowShuffle) {
-          finalQuestions = rng.shuffle(finalQuestions);
+        let examSections: any[] | null = null;
+        let totalDuration = matrixConfig.duration;
+
+        if (constraints.isSectioned && constraints.sectionConfig.length > 0) {
+          // Build sections with questions grouped by question type
+          examSections = [];
+          let questionPosition = 1;
+
+          for (const sectionConfig of constraints.sectionConfig) {
+            // Get questions matching this section's question types
+            const sectionQuestions = selectedQuestions.filter(sq => 
+              sectionConfig.questionTypes.includes(sq.question.question_type)
+            );
+
+            // Shuffle within section if enabled
+            const shuffledSectionQuestions = constraints.allowShuffle 
+              ? rng.shuffle(sectionQuestions) 
+              : sectionQuestions;
+
+            // Build question IDs for this section (1-based positions)
+            const questionIds: number[] = [];
+            shuffledSectionQuestions.forEach((sq) => {
+              questionMapping.push({
+                bankQuestionId: sq.question.id,
+                examPosition: questionPosition,
+                optionOrder: sq.optionOrder,
+              });
+              questionIds.push(questionPosition);
+              questionPosition++;
+            });
+
+            examSections.push({
+              id: sectionConfig.id,
+              name: sectionConfig.name,
+              description: '',
+              duration: sectionConfig.duration,
+              questionIds,
+            });
+          }
+
+          // Build exam questions in order
+          finalQuestions = [];
+          for (const sectionConfig of constraints.sectionConfig) {
+            const sectionQuestions = selectedQuestions.filter(sq => 
+              sectionConfig.questionTypes.includes(sq.question.question_type)
+            );
+            const shuffledSectionQuestions = constraints.allowShuffle 
+              ? rng.shuffle(sectionQuestions) 
+              : sectionQuestions;
+            finalQuestions.push(...shuffledSectionQuestions);
+          }
+
+          // Total duration is sum of section durations
+          totalDuration = constraints.sectionConfig.reduce((sum, s) => sum + s.duration, 0);
+        } else {
+          // Non-sectioned: shuffle all questions if enabled
+          if (constraints.allowShuffle) {
+            finalQuestions = rng.shuffle(finalQuestions);
+          }
+
+          // Build question mapping for non-sectioned exam
+          finalQuestions.forEach((sq, idx) => {
+            questionMapping.push({
+              bankQuestionId: sq.question.id,
+              examPosition: idx + 1,
+              optionOrder: sq.optionOrder,
+            });
+          });
         }
 
         const examQuestions = finalQuestions.map((sq, idx) => {
-          questionMapping.push({
-            bankQuestionId: sq.question.id,
-            examPosition: idx + 1,
-            optionOrder: sq.optionOrder,
-          });
           return convertToExamQuestion(sq.question, idx + 1, sq.points, sq.optionOrder);
         });
 
@@ -413,13 +476,15 @@ export function useGenerateExamsForContest() {
           .insert({
             title: `${templateName} - Mã ${variantCode}`,
             subject: subjectName,
-            duration: matrixConfig.duration,
+            duration: totalDuration,
             total_questions: examQuestions.length,
             questions: examQuestions as unknown as Json,
             is_published: true,
             created_by: user.user.id,
             source_type: 'contest',
             source_contest_id: contestId,
+            is_sectioned: constraints.isSectioned,
+            sections: examSections as unknown as Json,
           })
           .select()
           .single();
