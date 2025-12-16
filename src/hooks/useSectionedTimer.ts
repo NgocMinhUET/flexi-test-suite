@@ -25,8 +25,8 @@ export const useSectionedTimer = ({
   savedSectionTimes,
   isEnabled,
 }: UseSectionedTimerProps): UseSectionedTimerReturn => {
-  // Track remaining time for each section
-  const [sectionTimes, setSectionTimes] = useState<Record<string, number>>(() => {
+  // Initialize section times
+  const initializeSectionTimes = useCallback(() => {
     if (savedSectionTimes && Object.keys(savedSectionTimes).length > 0) {
       return savedSectionTimes;
     }
@@ -36,17 +36,46 @@ export const useSectionedTimer = ({
       times[section.id] = section.duration * 60; // Convert to seconds
     });
     return times;
-  });
+  }, [sections, savedSectionTimes]);
+
+  // Track remaining time for each section
+  const [sectionTimes, setSectionTimes] = useState<Record<string, number>>(initializeSectionTimes);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasCalledTimeUp = useRef(false);
 
   const currentSection = sections[currentSectionIndex];
   const currentSectionId = currentSection?.id || '';
-  const currentSectionTimeLeft = sectionTimes[currentSectionId] || 0;
+  const currentSectionTimeLeft = sectionTimes[currentSectionId] ?? 0;
+
+  // Re-initialize when savedSectionTimes changes (restore from draft)
+  useEffect(() => {
+    if (savedSectionTimes && Object.keys(savedSectionTimes).length > 0 && !isInitialized) {
+      setSectionTimes(savedSectionTimes);
+      setIsInitialized(true);
+    }
+  }, [savedSectionTimes, isInitialized]);
+
+  // Initialize times when sections change (but not if we have saved times)
+  useEffect(() => {
+    if (sections.length > 0 && !savedSectionTimes) {
+      const times: Record<string, number> = {};
+      sections.forEach(section => {
+        // Only set time if not already set
+        if (sectionTimes[section.id] === undefined) {
+          times[section.id] = section.duration * 60;
+        }
+      });
+      if (Object.keys(times).length > 0) {
+        setSectionTimes(prev => ({ ...prev, ...times }));
+      }
+    }
+  }, [sections, savedSectionTimes]);
 
   // Format time as MM:SS
   const formatTime = useCallback((seconds: number): string => {
+    if (seconds < 0) seconds = 0;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -60,7 +89,7 @@ export const useSectionedTimer = ({
 
     intervalRef.current = setInterval(() => {
       setSectionTimes(prev => {
-        const currentTime = prev[currentSectionId] || 0;
+        const currentTime = prev[currentSectionId] ?? 0;
         
         if (currentTime <= 1) {
           // Time's up for this section
@@ -82,7 +111,7 @@ export const useSectionedTimer = ({
     };
   }, [isEnabled, currentSectionId, onSectionTimeUp]);
 
-  // Reset timer when moving to new section
+  // Reset timer flag when moving to new section
   useEffect(() => {
     hasCalledTimeUp.current = false;
   }, [currentSectionIndex]);
@@ -95,7 +124,7 @@ export const useSectionedTimer = ({
 
   const sectionProgress = {
     current: currentSectionIndex + 1,
-    total: sections.length,
+    total: sections.length || 1,
   };
 
   return {

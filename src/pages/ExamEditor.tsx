@@ -153,7 +153,16 @@ const ExamEditor = () => {
   };
 
   const removeQuestion = (index: number) => {
+    const removedQuestion = questions[index];
     setQuestions(questions.filter((_, i) => i !== index));
+    
+    // Also remove from sections if sectioned
+    if (examData.is_sectioned && removedQuestion) {
+      setSections(prev => prev.map(section => ({
+        ...section,
+        questionIds: section.questionIds.filter(id => id !== removedQuestion.id),
+      })));
+    }
   };
 
   const updateOption = (questionIndex: number, optionIndex: number, text: string) => {

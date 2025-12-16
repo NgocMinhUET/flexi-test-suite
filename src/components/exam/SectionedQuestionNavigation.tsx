@@ -38,7 +38,10 @@ export const SectionedQuestionNavigation = ({
     id => questionStatuses.get(id) === 'answered'
   ).length || 0;
   
-  const totalInCurrentSection = currentSection?.questionIds.length || 0;
+  const totalInCurrentSection = currentSection?.questionIds.length || 1; // Avoid division by zero
+  const progressPercent = totalInCurrentSection > 0 
+    ? (answeredInCurrentSection / totalInCurrentSection) * 100 
+    : 0;
 
   return (
     <aside className="fixed left-4 top-24 w-72 bg-card rounded-2xl border border-border shadow-lg max-h-[calc(100vh-120px)] overflow-hidden flex flex-col">
@@ -77,7 +80,7 @@ export const SectionedQuestionNavigation = ({
               {answeredInCurrentSection}/{totalInCurrentSection}
             </span>
           </div>
-          <Progress value={(answeredInCurrentSection / totalInCurrentSection) * 100} className="h-2" />
+          <Progress value={progressPercent} className="h-2" />
         </div>
       </div>
 
