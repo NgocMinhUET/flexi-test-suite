@@ -53,6 +53,8 @@ export function GenerateExamsDialog({
     shuffleOptions: true,
     minDifficulty: 0,
     maxDifficulty: 1,
+    isSectioned: false,
+    sectionConfig: [],
   });
   const [variantCount, setVariantCount] = useState(4);
 
@@ -134,6 +136,8 @@ export function GenerateExamsDialog({
       shuffleOptions: true,
       minDifficulty: 0,
       maxDifficulty: 1,
+      isSectioned: false,
+      sectionConfig: [],
     });
     setVariantCount(4);
   };
@@ -225,6 +229,7 @@ export function GenerateExamsDialog({
             <ConstraintsStep
               matrixConfig={matrixConfig}
               constraints={constraints}
+              questionTypes={questionTypes}
               onMatrixChange={setMatrixConfig}
               onConstraintsChange={setConstraints}
             />
