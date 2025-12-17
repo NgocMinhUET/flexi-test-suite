@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard, FileText } from "lucide-react";
+import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard, FileText, Zap, Target, Award } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
@@ -11,12 +11,21 @@ const Header = () => {
 
   const isStudent = user && !isAdmin && !isTeacher;
 
-  const navItems = [
+  const publicNavItems = [
     { label: "Bài thi", href: "#exams", icon: BookOpen },
     { label: "Lập trình", href: "#coding", icon: Code2 },
-    { label: "Bảng xếp hạng", href: "#leaderboard", icon: Trophy },
+    { label: "Bảng xếp hạng", href: "/leaderboard", icon: Trophy, isLink: true },
     { label: "Cộng đồng", href: "#community", icon: Users },
   ];
+
+  const studentNavItems = [
+    { label: "Luyện tập", href: "/practice", icon: BookOpen, isLink: true },
+    { label: "Adaptive", href: "/adaptive-practice", icon: Zap, isLink: true },
+    { label: "Thành tích", href: "/achievements", icon: Award, isLink: true },
+    { label: "Xếp hạng", href: "/leaderboard", icon: Trophy, isLink: true },
+  ];
+
+  const navItems = user ? (isStudent ? studentNavItems : publicNavItems) : publicNavItems;
 
   const handleSignOut = async () => {
     await signOut();
@@ -41,14 +50,25 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </a>
+              item.isLink ? (
+                <Link
+                  key={item.label}
+                  to={item.href}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </a>
+              )
             ))}
           </nav>
 
@@ -105,15 +125,27 @@ const Header = () => {
           <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </a>
+                item.isLink ? (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </a>
+                )
               ))}
             </nav>
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
