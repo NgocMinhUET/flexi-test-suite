@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: string | null
+          code: string
+          condition_type: string
+          condition_value: number
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_hidden: boolean | null
+          name: string
+          rarity: string | null
+          xp_reward: number | null
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          condition_type: string
+          condition_value: number
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          name: string
+          rarity?: string | null
+          xp_reward?: number | null
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          condition_type?: string
+          condition_value?: number
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          name?: string
+          rarity?: string | null
+          xp_reward?: number | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -169,6 +214,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      daily_challenges: {
+        Row: {
+          bonus_multiplier: number | null
+          challenge_date: string
+          challenge_type: string
+          created_at: string | null
+          description: string
+          id: string
+          subject_id: string | null
+          target_value: number
+          xp_reward: number | null
+        }
+        Insert: {
+          bonus_multiplier?: number | null
+          challenge_date: string
+          challenge_type: string
+          created_at?: string | null
+          description: string
+          id?: string
+          subject_id?: string | null
+          target_value: number
+          xp_reward?: number | null
+        }
+        Update: {
+          bonus_multiplier?: number | null
+          challenge_date?: string
+          challenge_type?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          subject_id?: string | null
+          target_value?: number
+          xp_reward?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_challenges_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exam_assignments: {
         Row: {
@@ -366,6 +455,7 @@ export type Database = {
           id: string
           is_published: boolean
           is_sectioned: boolean | null
+          mode: string | null
           questions: Json
           sections: Json | null
           source_contest_id: string | null
@@ -383,6 +473,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           is_sectioned?: boolean | null
+          mode?: string | null
           questions?: Json
           sections?: Json | null
           source_contest_id?: string | null
@@ -400,6 +491,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           is_sectioned?: boolean | null
+          mode?: string | null
           questions?: Json
           sections?: Json | null
           source_contest_id?: string | null
@@ -464,6 +556,218 @@ export type Database = {
           },
         ]
       }
+      leaderboards: {
+        Row: {
+          id: string
+          leaderboard_type: string
+          period_end: string
+          period_start: string
+          rankings: Json | null
+          subject_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          leaderboard_type: string
+          period_end: string
+          period_start: string
+          rankings?: Json | null
+          subject_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          leaderboard_type?: string
+          period_end?: string
+          period_start?: string
+          rankings?: Json | null
+          subject_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboards_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      level_configs: {
+        Row: {
+          badge_icon: string | null
+          level: number
+          perks: Json | null
+          title: string
+          xp_required: number
+        }
+        Insert: {
+          badge_icon?: string | null
+          level: number
+          perks?: Json | null
+          title: string
+          xp_required: number
+        }
+        Update: {
+          badge_icon?: string | null
+          level?: number
+          perks?: Json | null
+          title?: string
+          xp_required?: number
+        }
+        Relationships: []
+      }
+      practice_attempts: {
+        Row: {
+          attempt_number: number | null
+          completed_at: string | null
+          earned_points: number | null
+          exam_id: string | null
+          id: string
+          question_results: Json | null
+          score: number | null
+          time_spent_seconds: number | null
+          total_points: number | null
+          user_id: string | null
+        }
+        Insert: {
+          attempt_number?: number | null
+          completed_at?: string | null
+          earned_points?: number | null
+          exam_id?: string | null
+          id?: string
+          question_results?: Json | null
+          score?: number | null
+          time_spent_seconds?: number | null
+          total_points?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          attempt_number?: number | null
+          completed_at?: string | null
+          earned_points?: number | null
+          exam_id?: string | null
+          id?: string
+          question_results?: Json | null
+          score?: number | null
+          time_spent_seconds?: number | null
+          total_points?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_configs: {
+        Row: {
+          allow_unlimited_attempts: boolean | null
+          allowed_users: string[] | null
+          created_at: string | null
+          created_by: string | null
+          exam_id: string | null
+          id: string
+          is_public: boolean | null
+          show_answers_after_submit: boolean | null
+          show_explanations: boolean | null
+          time_limit_enabled: boolean | null
+          time_limit_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_unlimited_attempts?: boolean | null
+          allowed_users?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          exam_id?: string | null
+          id?: string
+          is_public?: boolean | null
+          show_answers_after_submit?: boolean | null
+          show_explanations?: boolean | null
+          time_limit_enabled?: boolean | null
+          time_limit_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_unlimited_attempts?: boolean | null
+          allowed_users?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          exam_id?: string | null
+          id?: string
+          is_public?: boolean | null
+          show_answers_after_submit?: boolean | null
+          show_explanations?: boolean | null
+          time_limit_enabled?: boolean | null
+          time_limit_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_configs_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: true
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_sessions: {
+        Row: {
+          completed_at: string | null
+          correct_count: number | null
+          id: string
+          question_results: Json | null
+          questions_count: number | null
+          session_type: string
+          started_at: string | null
+          subject_id: string | null
+          time_spent_seconds: number | null
+          user_id: string | null
+          xp_earned: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          correct_count?: number | null
+          id?: string
+          question_results?: Json | null
+          questions_count?: number | null
+          session_type: string
+          started_at?: string | null
+          subject_id?: string | null
+          time_spent_seconds?: number | null
+          user_id?: string | null
+          xp_earned?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          correct_count?: number | null
+          id?: string
+          question_results?: Json | null
+          questions_count?: number | null
+          session_type?: string
+          started_at?: string | null
+          subject_id?: string | null
+          time_spent_seconds?: number | null
+          user_id?: string | null
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_sessions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -491,6 +795,50 @@ export type Database = {
         }
         Relationships: []
       }
+      question_history: {
+        Row: {
+          ease_factor: number | null
+          id: string
+          last_result: boolean | null
+          last_seen_at: string | null
+          next_review_date: string | null
+          question_id: string | null
+          times_correct: number | null
+          times_seen: number | null
+          user_id: string | null
+        }
+        Insert: {
+          ease_factor?: number | null
+          id?: string
+          last_result?: boolean | null
+          last_seen_at?: string | null
+          next_review_date?: string | null
+          question_id?: string | null
+          times_correct?: number | null
+          times_seen?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          ease_factor?: number | null
+          id?: string
+          last_result?: boolean | null
+          last_seen_at?: string | null
+          next_review_date?: string | null
+          question_id?: string | null
+          times_correct?: number | null
+          times_seen?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_history_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           allow_shuffle: boolean | null
@@ -504,14 +852,17 @@ export type Database = {
           deleted_at: string | null
           difficulty: number | null
           estimated_time: number | null
+          explanation: string | null
           group_id: string | null
           group_order: number | null
+          hints: Json | null
           id: string
           is_group_lead: boolean | null
           labels: Json | null
           media: Json | null
           question_type: Database["public"]["Enums"]["question_type"]
           rejection_reason: string | null
+          related_concepts: Json | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["question_status"]
@@ -532,14 +883,17 @@ export type Database = {
           deleted_at?: string | null
           difficulty?: number | null
           estimated_time?: number | null
+          explanation?: string | null
           group_id?: string | null
           group_order?: number | null
+          hints?: Json | null
           id?: string
           is_group_lead?: boolean | null
           labels?: Json | null
           media?: Json | null
           question_type?: Database["public"]["Enums"]["question_type"]
           rejection_reason?: string | null
+          related_concepts?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["question_status"]
@@ -560,14 +914,17 @@ export type Database = {
           deleted_at?: string | null
           difficulty?: number | null
           estimated_time?: number | null
+          explanation?: string | null
           group_id?: string | null
           group_order?: number | null
+          hints?: Json | null
           id?: string
           is_group_lead?: boolean | null
           labels?: Json | null
           media?: Json | null
           question_type?: Database["public"]["Enums"]["question_type"]
           rejection_reason?: string | null
+          related_concepts?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["question_status"]
@@ -592,6 +949,104 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      skill_masteries: {
+        Row: {
+          difficulty_stats: Json | null
+          ease_factor: number | null
+          id: string
+          interval_days: number | null
+          last_correct_streak: number | null
+          mastery_level: number | null
+          next_review_date: string | null
+          questions_attempted: number | null
+          questions_correct: number | null
+          taxonomy_node_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          difficulty_stats?: Json | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_correct_streak?: number | null
+          mastery_level?: number | null
+          next_review_date?: string | null
+          questions_attempted?: number | null
+          questions_correct?: number | null
+          taxonomy_node_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          difficulty_stats?: Json | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_correct_streak?: number | null
+          mastery_level?: number | null
+          next_review_date?: string | null
+          questions_attempted?: number | null
+          questions_correct?: number | null
+          taxonomy_node_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_masteries_taxonomy_node_id_fkey"
+            columns: ["taxonomy_node_id"]
+            isOneToOne: false
+            referencedRelation: "taxonomy_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_skill_profiles: {
+        Row: {
+          created_at: string | null
+          current_level: number | null
+          current_streak: number | null
+          id: string
+          last_practice_date: string | null
+          longest_streak: number | null
+          total_correct_answers: number | null
+          total_practice_time_minutes: number | null
+          total_questions_attempted: number | null
+          total_xp: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_level?: number | null
+          current_streak?: number | null
+          id?: string
+          last_practice_date?: string | null
+          longest_streak?: number | null
+          total_correct_answers?: number | null
+          total_practice_time_minutes?: number | null
+          total_questions_attempted?: number | null
+          total_xp?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_level?: number | null
+          current_streak?: number | null
+          id?: string
+          last_practice_date?: string | null
+          longest_streak?: number | null
+          total_correct_answers?: number | null
+          total_practice_time_minutes?: number | null
+          total_questions_attempted?: number | null
+          total_xp?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       subjects: {
         Row: {
@@ -689,6 +1144,70 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string | null
+          earned_at: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          achievement_id?: string | null
+          earned_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          achievement_id?: string | null
+          earned_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_daily_challenges: {
+        Row: {
+          challenge_id: string | null
+          completed_at: string | null
+          current_progress: number | null
+          id: string
+          is_completed: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          challenge_id?: string | null
+          completed_at?: string | null
+          current_progress?: number | null
+          id?: string
+          is_completed?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          challenge_id?: string | null
+          completed_at?: string | null
+          current_progress?: number | null
+          id?: string
+          is_completed?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_daily_challenges_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -715,6 +1234,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_level_from_xp: { Args: { xp: number }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
