@@ -17,6 +17,7 @@ import {
   calculateWeightedMastery
 } from '@/hooks/useAdaptiveQuestionSelection';
 import { useDailyChallengeProgress } from '@/hooks/useDailyChallengeProgress';
+import { useAchievementChecker } from '@/hooks/useAchievementChecker';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,9 +37,10 @@ import {
   X,
   TrendingUp,
   TrendingDown,
-  Trophy
+  Trophy,
+  Award
 } from 'lucide-react';
-import { SESSION_TYPES, SessionType, PracticeQuestionResult, DailyChallenge } from '@/types/practice';
+import { SESSION_TYPES, SessionType, PracticeQuestionResult, DailyChallenge, Achievement } from '@/types/practice';
 import { cn } from '@/lib/utils';
 
 interface PracticeQuestion {
@@ -67,6 +69,7 @@ export default function PracticeSession() {
   const updateProfile = useUpdateSkillProfile();
   const upsertMastery = useUpsertSkillMastery();
   const { processSessionForChallenges, updateStreakChallenge } = useDailyChallengeProgress();
+  const { checkAchievements } = useAchievementChecker();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
@@ -83,6 +86,8 @@ export default function PracticeSession() {
   const [totalXP, setTotalXP] = useState(0);
   const [completedChallenges, setCompletedChallenges] = useState<DailyChallenge[]>([]);
   const [challengeBonusXP, setChallengeBonusXP] = useState(0);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
+  const [achievementXP, setAchievementXP] = useState(0);
   
   // Adaptive difficulty tracking
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
@@ -351,6 +356,26 @@ export default function PracticeSession() {
         });
       }
 
+      // Check achievements after session
+      const achievementResult = await checkAchievements({
+        questionsAnswered: questions.length,
+        correctAnswers: correctCount,
+        isPerfectSession: isPerfect,
+        timeOfDay: new Date()
+      });
+
+      if (achievementResult.newAchievements.length > 0) {
+        setUnlockedAchievements(achievementResult.newAchievements);
+        setAchievementXP(achievementResult.totalXPEarned);
+        
+        // Show toast for each achievement
+        achievementResult.newAchievements.forEach(achievement => {
+          toast.success(`🏆 Mở khóa: ${achievement.name}`, {
+            description: `+${achievement.xp_reward} XP`
+          });
+        });
+      }
+
       setSessionComplete(true);
     } catch (error) {
       console.error('Error completing session:', error);
@@ -379,7 +404,7 @@ export default function PracticeSession() {
   if (sessionComplete) {
     const correctCount = Object.values(results).filter(r => r.isCorrect).length;
     const accuracy = Math.round((correctCount / questions.length) * 100);
-    const totalEarnedXP = Math.round(totalXP) + challengeBonusXP;
+    const totalEarnedXP = Math.round(totalXP) + challengeBonusXP + achievementXP;
 
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -403,6 +428,43 @@ export default function PracticeSession() {
                 <p className="text-sm text-muted-foreground">XP</p>
               </div>
             </div>
+
+            {/* Unlocked Achievements */}
+            {unlockedAchievements.length > 0 && (
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-lg p-4">
+                <div className="flex items-center gap-2 justify-center mb-3">
+                  <Award className="h-5 w-5 text-purple-500" />
+                  <span className="font-semibold">Thành tích mới!</span>
+                </div>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {unlockedAchievements.map(achievement => (
+                    <div 
+                      key={achievement.id} 
+                      className="flex flex-col items-center gap-1 p-3 bg-white/50 dark:bg-black/20 rounded-lg min-w-[100px]"
+                    >
+                      <span className="text-3xl">{achievement.icon}</span>
+                      <span className="font-medium text-sm">{achievement.name}</span>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs",
+                          achievement.rarity === 'legendary' && "border-yellow-400 text-yellow-600",
+                          achievement.rarity === 'epic' && "border-purple-400 text-purple-600",
+                          achievement.rarity === 'rare' && "border-blue-400 text-blue-600"
+                        )}
+                      >
+                        +{achievement.xp_reward} XP
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+                {achievementXP > 0 && (
+                  <p className="text-sm text-purple-600 dark:text-purple-400 mt-3">
+                    Bonus thành tích: +{achievementXP} XP
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Completed Challenges */}
             {completedChallenges.length > 0 && (
