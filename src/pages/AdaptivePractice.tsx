@@ -207,12 +207,12 @@ export default function AdaptivePractice() {
               <CardDescription>Chọn môn học và bắt đầu luyện tập ngay</CardDescription>
             </CardHeader>
             <CardContent>
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+              <Select value={selectedSubject || "all"} onValueChange={(v) => setSelectedSubject(v === "all" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Tất cả môn học" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tất cả môn học</SelectItem>
+                  <SelectItem value="all">Tất cả môn học</SelectItem>
                   {subjects?.map(subject => (
                     <SelectItem key={subject.id} value={subject.id}>
                       {subject.name}
