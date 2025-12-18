@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -25,7 +24,6 @@ import {
   Trophy, 
   Star, 
   BookOpen, 
-  Zap, 
   Clock,
   TrendingUp,
   Award,
@@ -34,6 +32,7 @@ import {
 } from 'lucide-react';
 import { SESSION_TYPES, getMasteryLevel, SessionType } from '@/types/practice';
 import { cn } from '@/lib/utils';
+import { DailyChallengesWidget } from '@/components/practice/DailyChallengesWidget';
 
 export default function AdaptivePractice() {
   const navigate = useNavigate();
@@ -328,8 +327,11 @@ export default function AdaptivePractice() {
           </Card>
         </div>
 
-        {/* Right Column - Recent Activity & Achievements */}
+        {/* Right Column - Daily Challenges & Recent Activity */}
         <div className="space-y-6">
+          {/* Daily Challenges Widget */}
+          <DailyChallengesWidget />
+
           {/* Recent Sessions */}
           <Card>
             <CardHeader>

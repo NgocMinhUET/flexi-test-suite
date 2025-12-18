@@ -16,6 +16,7 @@ import {
   getBaseDifficulty,
   calculateWeightedMastery
 } from '@/hooks/useAdaptiveQuestionSelection';
+import { useDailyChallengeProgress } from '@/hooks/useDailyChallengeProgress';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,9 +35,10 @@ import {
   Lightbulb,
   X,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Trophy
 } from 'lucide-react';
-import { SESSION_TYPES, SessionType, PracticeQuestionResult } from '@/types/practice';
+import { SESSION_TYPES, SessionType, PracticeQuestionResult, DailyChallenge } from '@/types/practice';
 import { cn } from '@/lib/utils';
 
 interface PracticeQuestion {
@@ -64,6 +66,7 @@ export default function PracticeSession() {
   const completeSession = useCompletePracticeSession();
   const updateProfile = useUpdateSkillProfile();
   const upsertMastery = useUpsertSkillMastery();
+  const { processSessionForChallenges, updateStreakChallenge } = useDailyChallengeProgress();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
@@ -78,6 +81,8 @@ export default function PracticeSession() {
   const [showHint, setShowHint] = useState(false);
   const [hintIndex, setHintIndex] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
+  const [completedChallenges, setCompletedChallenges] = useState<DailyChallenge[]>([]);
+  const [challengeBonusXP, setChallengeBonusXP] = useState(0);
   
   // Adaptive difficulty tracking
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
@@ -279,6 +284,8 @@ export default function PracticeSession() {
 
     const correctCount = Object.values(results).filter(r => r.isCorrect).length;
     const totalTime = Object.values(questionTimes).reduce((a, b) => a + b, 0);
+    const accuracy = questions.length > 0 ? (correctCount / questions.length) * 100 : 0;
+    const isPerfect = correctCount === questions.length && questions.length >= 5;
 
     try {
       // Complete session
@@ -306,6 +313,24 @@ export default function PracticeSession() {
         longest_streak: Math.max(profile.longest_streak, newStreak),
         last_practice_date: today
       });
+
+      // Process daily challenges
+      const challengeResult = await processSessionForChallenges({
+        questionsAnswered: questions.length,
+        correctAnswers: correctCount,
+        timeSpentMinutes: Math.round(totalTime / 60),
+        isPerfectSession: isPerfect
+      });
+
+      if (challengeResult.completedChallenges.length > 0) {
+        setCompletedChallenges(challengeResult.completedChallenges);
+        setChallengeBonusXP(challengeResult.bonusXP);
+      }
+
+      // Update streak challenge if new day
+      if (isNewDay) {
+        await updateStreakChallenge();
+      }
 
       // Update masteries
       for (const q of questions) {
@@ -354,6 +379,7 @@ export default function PracticeSession() {
   if (sessionComplete) {
     const correctCount = Object.values(results).filter(r => r.isCorrect).length;
     const accuracy = Math.round((correctCount / questions.length) * 100);
+    const totalEarnedXP = Math.round(totalXP) + challengeBonusXP;
 
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -373,10 +399,33 @@ export default function PracticeSession() {
                 <p className="text-sm text-muted-foreground">Câu đúng</p>
               </div>
               <div className="p-4 rounded-lg bg-primary/10">
-                <p className="text-3xl font-bold text-primary">+{Math.round(totalXP)}</p>
+                <p className="text-3xl font-bold text-primary">+{totalEarnedXP}</p>
                 <p className="text-sm text-muted-foreground">XP</p>
               </div>
             </div>
+
+            {/* Completed Challenges */}
+            {completedChallenges.length > 0 && (
+              <div className="bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-950/30 dark:to-green-950/30 rounded-lg p-4">
+                <div className="flex items-center gap-2 justify-center mb-3">
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  <span className="font-semibold">Thử thách hoàn thành!</span>
+                </div>
+                <div className="space-y-2">
+                  {completedChallenges.map(challenge => (
+                    <div key={challenge.id} className="flex items-center justify-between text-sm bg-white/50 dark:bg-black/20 rounded-md p-2">
+                      <span>{challenge.description}</span>
+                      <Badge variant="secondary">+{challenge.xp_reward} XP</Badge>
+                    </div>
+                  ))}
+                </div>
+                {challengeBonusXP > 0 && (
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                    Bonus thử thách: +{challengeBonusXP} XP
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-3 justify-center">
               <Button variant="outline" onClick={() => navigate('/practice')}>
