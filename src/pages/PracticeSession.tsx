@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -10,6 +10,12 @@ import {
   useUpsertSkillMastery,
   calculateXP
 } from '@/hooks/usePractice';
+import {
+  selectAdaptiveQuestions,
+  updateQuestionHistory,
+  getBaseDifficulty,
+  calculateWeightedMastery
+} from '@/hooks/useAdaptiveQuestionSelection';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,14 +27,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { 
-  Clock, 
-  ChevronLeft, 
   ChevronRight, 
   Star,
   CheckCircle,
   XCircle,
   Lightbulb,
-  X
+  X,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { SESSION_TYPES, SessionType, PracticeQuestionResult } from '@/types/practice';
 import { cn } from '@/lib/utils';
@@ -72,6 +78,13 @@ export default function PracticeSession() {
   const [showHint, setShowHint] = useState(false);
   const [hintIndex, setHintIndex] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
+  
+  // Adaptive difficulty tracking
+  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [consecutiveIncorrect, setConsecutiveIncorrect] = useState(0);
+  const [currentDifficulty, setCurrentDifficulty] = useState(3);
+  const [difficultyTrend, setDifficultyTrend] = useState<'up' | 'down' | null>(null);
+  const loadedRef = useRef(false);
 
   const sessionConfig = SESSION_TYPES[sessionType];
   const currentQuestion = questions[currentIndex];
@@ -82,7 +95,8 @@ export default function PracticeSession() {
   }, [sessionType, subjectId, masteries]);
 
   const loadQuestions = async () => {
-    if (!user?.id) return;
+    if (!user?.id || loadedRef.current) return;
+    loadedRef.current = true;
     setLoading(true);
 
     try {
@@ -97,7 +111,7 @@ export default function PracticeSession() {
         query = query.eq('subject_id', subjectId);
       }
 
-      const { data: allQuestions, error } = await query.limit(100);
+      const { data: allQuestions, error } = await query.limit(200);
       if (error) throw error;
 
       if (!allQuestions || allQuestions.length === 0) {
@@ -109,8 +123,25 @@ export default function PracticeSession() {
       // Cast to our type
       const typedQuestions = allQuestions as unknown as PracticeQuestion[];
 
-      // Select questions based on session type allocation
-      const selectedQuestions = selectQuestions(typedQuestions, 10);
+      // Get base difficulty from student level
+      const baseDifficulty = getBaseDifficulty(profile?.current_level || 1);
+      setCurrentDifficulty(baseDifficulty);
+
+      // Use adaptive selection algorithm
+      const selectedQuestions = await selectAdaptiveQuestions(
+        typedQuestions,
+        10,
+        {
+          userId: user.id,
+          sessionType,
+          subjectId,
+          masteries: masteries || [],
+          targetDifficulty: baseDifficulty,
+          consecutiveCorrect: 0,
+          consecutiveIncorrect: 0
+        }
+      );
+      
       setQuestions(selectedQuestions);
 
       // Create session
@@ -129,55 +160,13 @@ export default function PracticeSession() {
     }
   };
 
-  const selectQuestions = (allQuestions: PracticeQuestion[], count: number): PracticeQuestion[] => {
-    const allocation = sessionConfig.allocation;
-    const weakCount = Math.round(count * allocation.weak / 100);
-    const reinforceCount = Math.round(count * allocation.reinforce / 100);
-    const challengeCount = count - weakCount - reinforceCount;
-
-    // Group questions by mastery level of their taxonomy
-    const weakQuestions: PracticeQuestion[] = [];
-    const reinforceQuestions: PracticeQuestion[] = [];
-    const challengeQuestions: PracticeQuestion[] = [];
-
-    allQuestions.forEach(q => {
-      const mastery = masteries?.find(m => m.taxonomy_node_id === q.taxonomy_node_id);
-      const masteryLevel = mastery?.mastery_level || 0;
-
-      if (masteryLevel < 40) {
-        weakQuestions.push(q);
-      } else if (masteryLevel < 70) {
-        reinforceQuestions.push(q);
-      } else {
-        challengeQuestions.push(q);
-      }
-    });
-
-    // Shuffle and select
-    const shuffle = <T,>(arr: T[]): T[] => arr.sort(() => Math.random() - 0.5);
-    
-    const selected: PracticeQuestion[] = [
-      ...shuffle(weakQuestions).slice(0, weakCount),
-      ...shuffle(reinforceQuestions).slice(0, reinforceCount),
-      ...shuffle(challengeQuestions).slice(0, challengeCount)
-    ];
-
-    // If not enough questions, fill from all
-    if (selected.length < count) {
-      const remaining = shuffle(allQuestions.filter(q => !selected.includes(q)));
-      selected.push(...remaining.slice(0, count - selected.length));
-    }
-
-    return shuffle(selected).slice(0, count);
-  };
-
   const handleAnswer = (answer: string | string[]) => {
     if (!currentQuestion) return;
     setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
   };
 
-  const submitAnswer = useCallback(() => {
-    if (!currentQuestion) return;
+  const submitAnswer = useCallback(async () => {
+    if (!currentQuestion || !user?.id) return;
 
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
     setQuestionTimes(prev => ({ ...prev, [currentQuestion.id]: timeSpent }));
@@ -203,6 +192,50 @@ export default function PracticeSession() {
       );
     }
 
+    // Update consecutive tracking and difficulty
+    if (isCorrect) {
+      const newConsecutiveCorrect = consecutiveCorrect + 1;
+      setConsecutiveCorrect(newConsecutiveCorrect);
+      setConsecutiveIncorrect(0);
+      
+      // Increase difficulty after 3 consecutive correct
+      if (newConsecutiveCorrect >= 3 && newConsecutiveCorrect % 3 === 0) {
+        const newDifficulty = Math.min(5, currentDifficulty + 1);
+        if (newDifficulty > currentDifficulty) {
+          setCurrentDifficulty(newDifficulty);
+          setDifficultyTrend('up');
+          setTimeout(() => setDifficultyTrend(null), 2000);
+        }
+      }
+    } else {
+      const newConsecutiveIncorrect = consecutiveIncorrect + 1;
+      setConsecutiveIncorrect(newConsecutiveIncorrect);
+      setConsecutiveCorrect(0);
+      
+      // Decrease difficulty after 3 consecutive incorrect
+      if (newConsecutiveIncorrect >= 3 && newConsecutiveIncorrect % 3 === 0) {
+        const newDifficulty = Math.max(1, currentDifficulty - 1);
+        if (newDifficulty < currentDifficulty) {
+          setCurrentDifficulty(newDifficulty);
+          setDifficultyTrend('down');
+          setTimeout(() => setDifficultyTrend(null), 2000);
+        }
+      }
+    }
+
+    // Update question history with SM-2 algorithm
+    try {
+      await updateQuestionHistory(
+        user.id,
+        currentQuestion.id,
+        isCorrect,
+        timeSpent,
+        currentQuestion.estimated_time || 60
+      );
+    } catch (error) {
+      console.error('Error updating question history:', error);
+    }
+
     // Calculate XP
     const xpEarned = calculateXP(
       isCorrect, 
@@ -226,7 +259,7 @@ export default function PracticeSession() {
 
     setResults(prev => ({ ...prev, [currentQuestion.id]: result }));
     setShowResult(true);
-  }, [currentQuestion, answers, questionStartTime, sessionConfig.xpMultiplier]);
+  }, [currentQuestion, answers, questionStartTime, sessionConfig.xpMultiplier, user?.id, consecutiveCorrect, consecutiveIncorrect, currentDifficulty]);
 
   const nextQuestion = () => {
     setShowResult(false);
@@ -380,9 +413,32 @@ export default function PracticeSession() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/practice')}>
           <X className="h-4 w-4 mr-1" /> Thoát
         </Button>
-        <div className="flex items-center gap-2">
-          <Star className="h-4 w-4 text-yellow-500" />
-          <span className="font-semibold">+{Math.round(totalXP)} XP</span>
+        <div className="flex items-center gap-4">
+          {/* Difficulty indicator */}
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground">Độ khó:</span>
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map(level => (
+                <div
+                  key={level}
+                  className={cn(
+                    "w-2 h-4 rounded-sm transition-colors",
+                    level <= currentDifficulty ? "bg-primary" : "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+            {difficultyTrend === 'up' && (
+              <TrendingUp className="h-4 w-4 text-green-500 animate-bounce" />
+            )}
+            {difficultyTrend === 'down' && (
+              <TrendingDown className="h-4 w-4 text-orange-500 animate-bounce" />
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Star className="h-4 w-4 text-yellow-500" />
+            <span className="font-semibold">+{Math.round(totalXP)} XP</span>
+          </div>
         </div>
       </div>
 
@@ -390,7 +446,14 @@ export default function PracticeSession() {
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm mb-2">
           <span>Câu {currentIndex + 1}/{questions.length}</span>
-          <Badge variant="outline">{sessionConfig.name}</Badge>
+          <div className="flex items-center gap-2">
+            {consecutiveCorrect >= 2 && (
+              <Badge variant="outline" className="text-green-600 border-green-300">
+                🔥 {consecutiveCorrect} liên tiếp
+              </Badge>
+            )}
+            <Badge variant="outline">{sessionConfig.name}</Badge>
+          </div>
         </div>
         <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2" />
       </div>
