@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.admin-create-user]
 verify_jwt = true
+
+[functions.cleanup-duplicates]
+verify_jwt = true
+
+[functions.generate-daily-challenges]
+verify_jwt = false
