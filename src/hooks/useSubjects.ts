@@ -9,13 +9,15 @@ export function useSubjects() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subjects')
-        .select('*')
+        .select('id, name, code, description, cognitive_levels, question_types, taxonomy_config')
         .is('deleted_at', null)
         .order('name');
 
       if (error) throw error;
       return data as Subject[];
     },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes - subjects rarely change
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 }
 

@@ -97,9 +97,10 @@ export default function QuestionBank() {
   const { user, profile, isAdmin, isTeacher, isLoading: authLoading, signOut } = useAuth();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
 
-  const [filters, setFilters] = useState<QuestionFilters>({ subject_id: '' });
+  const [filters, setFilters] = useState<QuestionFilters & { page?: number }>({ subject_id: '' });
   const { data: taxonomyNodes } = useTaxonomyNodes(filters.subject_id || undefined);
-  const { data: questions, isLoading: questionsLoading } = useQuestions(filters);
+  const { data: questionsResult, isLoading: questionsLoading } = useQuestions(filters);
+  const questions = questionsResult?.data;
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -625,6 +626,33 @@ export default function QuestionBank() {
               </Table>
             )}
           </CardContent>
+          
+          {/* Pagination */}
+          {questionsResult && questionsResult.totalCount > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <p className="text-sm text-muted-foreground">
+                Hiển thị {(filters.page ?? 0) * 20 + 1} - {Math.min(((filters.page ?? 0) + 1) * 20, questionsResult.totalCount)} / {questionsResult.totalCount} câu hỏi
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters(f => ({ ...f, page: (f.page ?? 0) - 1 }))}
+                  disabled={(filters.page ?? 0) === 0}
+                >
+                  Trước
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters(f => ({ ...f, page: (f.page ?? 0) + 1 }))}
+                  disabled={!questionsResult.hasMore}
+                >
+                  Sau
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </main>
 

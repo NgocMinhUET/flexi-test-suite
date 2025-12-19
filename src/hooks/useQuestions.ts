@@ -13,16 +13,53 @@ function stripHtml(html: string): string {
   return div.textContent || div.innerText || '';
 }
 
-export function useQuestions(filters: QuestionFilters) {
+export interface PaginatedQuestionsResult {
+  data: Question[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export function useQuestions(filters: QuestionFilters & { page?: number; pageSize?: number }) {
+  const page = filters.page ?? 0;
+  const pageSize = filters.pageSize ?? PAGE_SIZE;
+
   return useQuery({
     queryKey: ['questions', filters],
-    queryFn: async () => {
+    queryFn: async (): Promise<PaginatedQuestionsResult> => {
+      // First get total count
+      let countQuery = supabase
+        .from('questions')
+        .select('id', { count: 'exact', head: true })
+        .eq('subject_id', filters.subject_id)
+        .is('deleted_at', null);
+
+      if (filters.taxonomy_node_id) {
+        countQuery = countQuery.eq('taxonomy_node_id', filters.taxonomy_node_id);
+      }
+      if (filters.cognitive_level) {
+        countQuery = countQuery.eq('cognitive_level', filters.cognitive_level);
+      }
+      if (filters.question_type) {
+        countQuery = countQuery.eq('question_type', filters.question_type as any);
+      }
+      if (filters.status) {
+        countQuery = countQuery.eq('status', filters.status);
+      }
+      if (filters.search) {
+        countQuery = countQuery.ilike('content_plain', `%${filters.search}%`);
+      }
+
+      const { count } = await countQuery;
+      const totalCount = count ?? 0;
+
+      // Then get paginated data with only necessary columns for list view
       let query = supabase
         .from('questions')
-        .select('*')
+        .select('id, content, content_plain, question_type, cognitive_level, status, difficulty, taxonomy_path, created_at, code')
         .eq('subject_id', filters.subject_id)
         .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (filters.taxonomy_node_id) {
         query = query.eq('taxonomy_node_id', filters.taxonomy_node_id);
@@ -42,9 +79,15 @@ export function useQuestions(filters: QuestionFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as unknown as Question[];
+
+      return {
+        data: data as unknown as Question[],
+        totalCount,
+        hasMore: (page + 1) * pageSize < totalCount,
+      };
     },
     enabled: !!filters.subject_id,
+    staleTime: 30000, // Cache for 30 seconds
   });
 }
 
@@ -371,14 +414,13 @@ export function useBulkSubmitForReview() {
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) return;
 
-      for (const id of ids) {
-        const { error } = await supabase
-          .from('questions')
-          .update({ status: 'review' as QuestionStatus })
-          .eq('id', id);
+      // Batch update instead of loop - much more efficient
+      const { error } = await supabase
+        .from('questions')
+        .update({ status: 'review' as QuestionStatus })
+        .in('id', ids);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
@@ -400,19 +442,18 @@ export function useBulkApproveQuestions() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      for (const id of ids) {
-        const { error } = await supabase
-          .from('questions')
-          .update({
-            status: 'approved' as QuestionStatus,
-            reviewed_by: user?.id,
-            reviewed_at: new Date().toISOString(),
-            rejection_reason: null,
-          })
-          .eq('id', id);
+      // Batch update instead of loop - much more efficient
+      const { error } = await supabase
+        .from('questions')
+        .update({
+          status: 'approved' as QuestionStatus,
+          reviewed_by: user?.id,
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: null,
+        })
+        .in('id', ids);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
@@ -432,14 +473,13 @@ export function useBulkPublishQuestions() {
     mutationFn: async (ids: string[]) => {
       if (ids.length === 0) return;
 
-      for (const id of ids) {
-        const { error } = await supabase
-          .from('questions')
-          .update({ status: 'published' as QuestionStatus })
-          .eq('id', id);
+      // Batch update instead of loop - much more efficient
+      const { error } = await supabase
+        .from('questions')
+        .update({ status: 'published' as QuestionStatus })
+        .in('id', ids);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });

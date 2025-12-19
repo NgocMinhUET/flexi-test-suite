@@ -1,12 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Flag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { Flag, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Question, QuestionStatus, Answer, ProgrammingLanguage } from '@/types/exam';
-import { CodingEditor } from './CodingEditor';
+
+// Lazy load CodingEditor - it's heavy with CodeMirror dependencies
+const CodingEditor = lazy(() => import('./CodingEditor').then(m => ({ default: m.CodingEditor })));
+
+const CodingEditorLoader = () => (
+  <div className="flex items-center justify-center h-[400px] bg-muted rounded-lg">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 interface QuestionDisplayProps {
   question: Question;
@@ -214,13 +222,15 @@ export const QuestionDisplay = ({
           )}
 
           {question.type === 'coding' && question.coding && (
-            <CodingEditor
-              codingQuestion={question.coding}
-              currentCode={codeAnswer}
-              currentLanguage={selectedLanguage}
-              onCodeChange={handleCodeChange}
-              onLanguageChange={handleLanguageChange}
-            />
+            <Suspense fallback={<CodingEditorLoader />}>
+              <CodingEditor
+                codingQuestion={question.coding}
+                currentCode={codeAnswer}
+                currentLanguage={selectedLanguage}
+                onCodeChange={handleCodeChange}
+                onLanguageChange={handleLanguageChange}
+              />
+            </Suspense>
           )}
         </div>
 
