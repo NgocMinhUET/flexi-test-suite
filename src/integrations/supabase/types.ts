@@ -1175,28 +1175,28 @@ export type Database = {
       }
       user_daily_challenges: {
         Row: {
-          challenge_id: string | null
+          challenge_id: string
           completed_at: string | null
           current_progress: number | null
           id: string
           is_completed: boolean | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
-          challenge_id?: string | null
+          challenge_id: string
           completed_at?: string | null
           current_progress?: number | null
           id?: string
           is_completed?: boolean | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
-          challenge_id?: string | null
+          challenge_id?: string
           completed_at?: string | null
           current_progress?: number | null
           id?: string
           is_completed?: boolean | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
