@@ -47,7 +47,7 @@ export function useTaxonomyNodes(subjectId: string | undefined) {
       
       const { data, error } = await supabase
         .from('taxonomy_nodes')
-        .select('*')
+        .select('id, subject_id, parent_id, level, code, name, order_index')
         .eq('subject_id', subjectId)
         .is('deleted_at', null)
         .order('order_index');
@@ -56,6 +56,8 @@ export function useTaxonomyNodes(subjectId: string | undefined) {
       return data as TaxonomyNode[];
     },
     enabled: !!subjectId,
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes - taxonomy rarely changes
+    gcTime: 5 * 60 * 1000,
   });
 }
 
