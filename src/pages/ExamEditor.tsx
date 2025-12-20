@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -52,13 +52,18 @@ const scoringMethods: { value: 'proportional' | 'all-or-nothing' | 'weighted'; l
 const ExamEditor = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const isEditing = !!id;
   const { user, isAdmin, isTeacher, isLoading: authLoading } = useAuth();
+
+  // Get mode from URL query param (defaults to 'exam')
+  const urlMode = searchParams.get('mode') || 'exam';
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [allCollapsed, setAllCollapsed] = useState(false);
   const [collapseKey, setCollapseKey] = useState(0);
+  const [examMode, setExamMode] = useState<'exam' | 'practice'>(urlMode as 'exam' | 'practice');
   const [examData, setExamData] = useState({
     title: '',
     subject: '',
@@ -68,7 +73,7 @@ const ExamEditor = () => {
     is_sectioned: false,
   });
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [sections, setSections] = useState<ExamSection[]>([]);
+  const [sections, setSections] = useState<ExamSection[]>();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -109,6 +114,7 @@ const ExamEditor = () => {
         is_published: data.is_published,
         is_sectioned: data.is_sectioned || false,
       });
+      setExamMode((data.mode as 'exam' | 'practice') || 'exam');
       setQuestions((data.questions as unknown as Question[]) || []);
       setSections((data.sections as unknown as ExamSection[]) || []);
     } catch (error) {
@@ -267,6 +273,7 @@ const ExamEditor = () => {
         total_questions: questions.length,
         questions: JSON.parse(JSON.stringify(questions)),
         created_by: user?.id,
+        mode: examMode,
       };
 
       if (isEditing) {

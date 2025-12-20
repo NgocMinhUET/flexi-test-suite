@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Code2,
   FileText,
@@ -14,18 +14,57 @@ import {
   BookOpen,
   CheckCircle,
   Trophy,
+  ClipboardCheck,
+  GraduationCap,
+  Repeat,
+  Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Memoized stat card component
+const StatCard = memo(({ 
+  icon: Icon, 
+  value, 
+  label, 
+  colorClass 
+}: { 
+  icon: React.ElementType; 
+  value: string | number; 
+  label: string; 
+  colorClass: string;
+}) => (
+  <Card>
+    <CardContent className="pt-6">
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl ${colorClass} flex items-center justify-center`}>
+          <Icon className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+));
+
+StatCard.displayName = 'StatCard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, isAdmin, isTeacher, isLoading: authLoading, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
+    // Exam stats
     totalExams: 0,
     totalSubmissions: 0,
     avgScore: 0,
     publishedExams: 0,
+    // Practice stats
+    totalPractice: 0,
+    practiceAttempts: 0,
+    practiceAvgScore: 0,
+    // Contest stats
     totalContests: 0,
     totalContestParticipants: 0,
     contestAvgScore: 0,
@@ -49,59 +88,69 @@ const Dashboard = () => {
   const fetchStats = async () => {
     setIsLoading(true);
     try {
-      // Fetch only standalone exams count
-      const { data: examsData, error: examsError } = await supabase
-        .from('exams')
-        .select('id, is_published')
-        .or('source_type.is.null,source_type.eq.standalone');
+      // Run all queries in parallel
+      const [
+        examsRes,
+        resultsRes,
+        contestsRes,
+        participantsRes,
+        contestExamsRes,
+        practiceConfigsRes,
+        practiceAttemptsRes,
+      ] = await Promise.all([
+        supabase
+          .from('exams')
+          .select('id, is_published, mode')
+          .or('source_type.is.null,source_type.eq.standalone'),
+        supabase.from('exam_results').select('exam_id, percentage'),
+        supabase.from('contests').select('id'),
+        supabase.from('contest_participants').select('id'),
+        supabase.from('exams').select('id').eq('source_type', 'contest'),
+        supabase.from('practice_configs').select('exam_id'),
+        supabase.from('practice_attempts').select('id, score'),
+      ]);
 
-      if (examsError) throw examsError;
+      if (examsRes.error) throw examsRes.error;
+      if (resultsRes.error) throw resultsRes.error;
+      if (contestsRes.error) throw contestsRes.error;
+      if (participantsRes.error) throw participantsRes.error;
+      if (contestExamsRes.error) throw contestExamsRes.error;
+      if (practiceConfigsRes.error) throw practiceConfigsRes.error;
+      if (practiceAttemptsRes.error) throw practiceAttemptsRes.error;
 
-      // Fetch exam results
-      const { data: resultsData, error: resultsError } = await supabase
-        .from('exam_results')
-        .select('percentage, exam_id');
+      const examsData = examsRes.data || [];
+      const resultsData = resultsRes.data || [];
+      const contestsData = contestsRes.data || [];
+      const participantsData = participantsRes.data || [];
+      const contestExamsData = contestExamsRes.data || [];
+      const practiceConfigsData = practiceConfigsRes.data || [];
+      const practiceAttemptsData = practiceAttemptsRes.data || [];
 
-      if (resultsError) throw resultsError;
+      const contestExamIds = new Set(contestExamsData.map(e => e.id));
 
-      // Fetch contests
-      const { data: contestsData, error: contestsError } = await supabase
-        .from('contests')
-        .select('id');
-
-      if (contestsError) throw contestsError;
-
-      // Fetch contest participants
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('contest_participants')
-        .select('id');
-
-      if (participantsError) throw participantsError;
-
-      // Fetch contest exam IDs
-      const { data: contestExamsData, error: contestExamsError } = await supabase
-        .from('exams')
-        .select('id')
-        .eq('source_type', 'contest');
-
-      if (contestExamsError) throw contestExamsError;
-
-      const contestExamIds = new Set(contestExamsData?.map(e => e.id) || []);
+      // Separate exam and practice mode
+      const officialExams = examsData.filter(e => (e.mode || 'exam') === 'exam');
+      const practiceExams = examsData.filter(e => e.mode === 'practice');
 
       // Calculate stats
-      const totalExams = examsData?.length || 0;
-      const publishedExams = examsData?.filter((e) => e.is_published).length || 0;
-      const totalSubmissions = resultsData?.length || 0;
-      const avgScore = resultsData?.length
+      const totalExams = officialExams.length;
+      const publishedExams = officialExams.filter((e) => e.is_published).length;
+      const totalSubmissions = resultsData.length;
+      const avgScore = resultsData.length
         ? resultsData.reduce((acc, r) => acc + Number(r.percentage), 0) / resultsData.length
         : 0;
 
+      // Practice stats
+      const totalPractice = practiceExams.length + practiceConfigsData.length;
+      const practiceAttempts = practiceAttemptsData.length;
+      const practiceAvgScore = practiceAttemptsData.length
+        ? practiceAttemptsData.reduce((acc, r) => acc + Number(r.score || 0), 0) / practiceAttemptsData.length
+        : 0;
+
       // Contest stats
-      const totalContests = contestsData?.length || 0;
-      const totalContestParticipants = participantsData?.length || 0;
-      
-      // Contest average score (from contest exams only)
-      const contestResults = resultsData?.filter(r => contestExamIds.has(r.exam_id)) || [];
+      const totalContests = contestsData.length;
+      const totalContestParticipants = participantsData.length;
+      const contestResults = resultsData.filter(r => contestExamIds.has(r.exam_id));
       const contestAvgScore = contestResults.length
         ? contestResults.reduce((acc, r) => acc + Number(r.percentage), 0) / contestResults.length
         : 0;
@@ -111,6 +160,9 @@ const Dashboard = () => {
         totalSubmissions,
         avgScore: Math.round(avgScore * 10) / 10,
         publishedExams,
+        totalPractice,
+        practiceAttempts,
+        practiceAvgScore: Math.round(practiceAvgScore * 10) / 10,
         totalContests,
         totalContestParticipants,
         contestAvgScore: Math.round(contestAvgScore * 10) / 10,
@@ -123,10 +175,10 @@ const Dashboard = () => {
     }
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/');
-  };
+  }, [signOut, navigate]);
 
   if (authLoading || isLoading) {
     return (
@@ -196,125 +248,136 @@ const Dashboard = () => {
                 Ngân hàng câu hỏi
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/exams">
-                <FileText className="w-4 h-4 mr-2" />
-                Đề thi
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/contests">
-                <Trophy className="w-4 h-4 mr-2" />
-                Cuộc thi
-              </Link>
-            </Button>
           </div>
         </div>
 
-        {/* Exam Stats */}
-        <h2 className="text-lg font-semibold text-foreground mb-4">Đề thi độc lập</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-primary" />
+        {/* Quick Links */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/exams?mode=exam')}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <ClipboardCheck className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalExams}</p>
-                  <p className="text-sm text-muted-foreground">Tổng đề thi</p>
+                  <CardTitle className="text-base">Đề thi chính thức</CardTitle>
+                  <CardDescription>Tạo và quản lý bài thi</CardDescription>
                 </div>
               </div>
-            </CardContent>
+            </CardHeader>
           </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-success" />
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/exams?mode=practice')}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.publishedExams}</p>
-                  <p className="text-sm text-muted-foreground">Đã công khai</p>
+                  <CardTitle className="text-base">Bài luyện tập</CardTitle>
+                  <CardDescription>Tạo bài tập cho học sinh</CardDescription>
                 </div>
               </div>
-            </CardContent>
+            </CardHeader>
           </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-accent" />
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/contests')}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalSubmissions}</p>
-                  <p className="text-sm text-muted-foreground">Bài nộp</p>
+                  <CardTitle className="text-base">Cuộc thi</CardTitle>
+                  <CardDescription>Tổ chức cuộc thi lớn</CardDescription>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.avgScore}%</p>
-                  <p className="text-sm text-muted-foreground">Điểm TB</p>
-                </div>
-              </div>
-            </CardContent>
+            </CardHeader>
           </Card>
         </div>
 
+        {/* Exam Stats */}
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <ClipboardCheck className="w-5 h-5 text-primary" />
+          Đề thi chính thức
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard 
+            icon={FileText} 
+            value={stats.totalExams} 
+            label="Tổng đề thi" 
+            colorClass="bg-primary/10 text-primary" 
+          />
+          <StatCard 
+            icon={CheckCircle} 
+            value={stats.publishedExams} 
+            label="Đã công khai" 
+            colorClass="bg-success/10 text-success" 
+          />
+          <StatCard 
+            icon={Users} 
+            value={stats.totalSubmissions} 
+            label="Bài nộp" 
+            colorClass="bg-accent/10 text-accent" 
+          />
+          <StatCard 
+            icon={BarChart3} 
+            value={`${stats.avgScore}%`} 
+            label="Điểm TB" 
+            colorClass="bg-warning/10 text-warning" 
+          />
+        </div>
+
+        {/* Practice Stats */}
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <GraduationCap className="w-5 h-5 text-accent" />
+          Bài luyện tập
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <StatCard 
+            icon={Target} 
+            value={stats.totalPractice} 
+            label="Bài luyện tập" 
+            colorClass="bg-accent/10 text-accent" 
+          />
+          <StatCard 
+            icon={Repeat} 
+            value={stats.practiceAttempts} 
+            label="Lượt làm bài" 
+            colorClass="bg-primary/10 text-primary" 
+          />
+          <StatCard 
+            icon={BarChart3} 
+            value={`${stats.practiceAvgScore}%`} 
+            label="Điểm TB" 
+            colorClass="bg-success/10 text-success" 
+          />
+        </div>
+
         {/* Contest Stats */}
-        <h2 className="text-lg font-semibold text-foreground mb-4">Cuộc thi</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-warning" />
+          Cuộc thi
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Trophy className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalContests}</p>
-                  <p className="text-sm text-muted-foreground">Số cuộc thi</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalContestParticipants}</p>
-                  <p className="text-sm text-muted-foreground">Thí sinh tham gia</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.contestAvgScore}%</p>
-                  <p className="text-sm text-muted-foreground">Điểm TB cuộc thi</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard 
+            icon={Trophy} 
+            value={stats.totalContests} 
+            label="Số cuộc thi" 
+            colorClass="bg-primary/10 text-primary" 
+          />
+          <StatCard 
+            icon={Users} 
+            value={stats.totalContestParticipants} 
+            label="Thí sinh tham gia" 
+            colorClass="bg-accent/10 text-accent" 
+          />
+          <StatCard 
+            icon={BarChart3} 
+            value={`${stats.contestAvgScore}%`} 
+            label="Điểm TB cuộc thi" 
+            colorClass="bg-warning/10 text-warning" 
+          />
         </div>
       </main>
     </div>
