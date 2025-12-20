@@ -1,10 +1,37 @@
-import { useState } from "react";
+import { useState, memo, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard, FileText, Zap, Target, Award } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-const Header = () => {
+// Memoized nav item component
+const NavItem = memo(({ item, onClick }: { 
+  item: { label: string; href: string; icon: React.ElementType; isLink?: boolean }; 
+  onClick?: () => void;
+}) => {
+  const Icon = item.icon;
+  const className = "flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors";
+  
+  if (item.isLink) {
+    return (
+      <Link to={item.href} className={className} onClick={onClick}>
+        <Icon className="w-4 h-4" />
+        {item.label}
+      </Link>
+    );
+  }
+  
+  return (
+    <a href={item.href} className={className} onClick={onClick}>
+      <Icon className="w-4 h-4" />
+      {item.label}
+    </a>
+  );
+});
+
+NavItem.displayName = 'NavItem';
+
+const Header = memo(() => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user, isAdmin, isTeacher, isLoading, signOut } = useAuth();
@@ -25,13 +52,19 @@ const Header = () => {
     { label: "Xếp hạng", href: "/leaderboard", icon: Trophy, isLink: true },
   ];
 
-  const navItems = user ? (isStudent ? studentNavItems : publicNavItems) : publicNavItems;
+  const navItems = useMemo(() => 
+    user ? (isStudent ? studentNavItems : publicNavItems) : publicNavItems,
+    [user, isStudent]
+  );
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await signOut();
     setIsMenuOpen(false);
     navigate('/');
-  };
+  }, [signOut, navigate]);
+
+  const toggleMenu = useCallback(() => setIsMenuOpen(prev => !prev), []);
+  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
@@ -50,25 +83,7 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              item.isLink ? (
-                <Link
-                  key={item.label}
-                  to={item.href}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              ) : (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </a>
-              )
+              <NavItem key={item.label} item={item} />
             ))}
           </nav>
 
@@ -114,7 +129,7 @@ const Header = () => {
           {/* Mobile Menu Button */}
           <button
             className="md:hidden p-2 text-foreground"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onClick={toggleMenu}
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -125,27 +140,7 @@ const Header = () => {
           <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => (
-                item.isLink ? (
-                  <Link
-                    key={item.label}
-                    to={item.href}
-                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
-                  </Link>
-                ) : (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
-                  </a>
-                )
+                <NavItem key={item.label} item={item} onClick={closeMenu} />
               ))}
             </nav>
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
@@ -155,7 +150,7 @@ const Header = () => {
                 <>
                   {isStudent && (
                     <Button variant="ghost" className="w-full justify-center" asChild>
-                      <Link to="/my-exams" onClick={() => setIsMenuOpen(false)}>
+                      <Link to="/my-exams" onClick={closeMenu}>
                         <FileText className="w-4 h-4 mr-2" />
                         Bài thi của tôi
                       </Link>
@@ -163,7 +158,7 @@ const Header = () => {
                   )}
                   {(isAdmin || isTeacher) && (
                     <Button variant="ghost" className="w-full justify-center" asChild>
-                      <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <Link to="/dashboard" onClick={closeMenu}>
                         <LayoutDashboard className="w-4 h-4 mr-2" />
                         Dashboard
                       </Link>
@@ -177,10 +172,10 @@ const Header = () => {
               ) : (
                 <>
                   <Button variant="ghost" className="w-full justify-center" asChild>
-                    <Link to="/auth" onClick={() => setIsMenuOpen(false)}>Đăng nhập</Link>
+                    <Link to="/auth" onClick={closeMenu}>Đăng nhập</Link>
                   </Button>
                   <Button variant="hero" className="w-full justify-center" asChild>
-                    <Link to="/auth" onClick={() => setIsMenuOpen(false)}>Bắt đầu miễn phí</Link>
+                    <Link to="/auth" onClick={closeMenu}>Bắt đầu miễn phí</Link>
                   </Button>
                 </>
               )}
@@ -190,6 +185,8 @@ const Header = () => {
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;
