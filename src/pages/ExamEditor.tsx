@@ -73,7 +73,7 @@ const ExamEditor = () => {
     is_sectioned: false,
   });
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [sections, setSections] = useState<ExamSection[]>();
+  const [sections, setSections] = useState<ExamSection[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
