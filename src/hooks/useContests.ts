@@ -10,12 +10,12 @@ export const useContests = () => {
     queryFn: async () => {
       const { data: contests, error } = await supabase
         .from('contests')
-        .select('*')
+        .select('id, name, description, subject, status, distribution_status, start_time, end_time, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Get counts for each contest
+      // Get counts for each contest in parallel
       const contestsWithCounts = await Promise.all(
         (contests as Contest[]).map(async (contest) => {
           const [examsResult, participantsResult] = await Promise.all([
@@ -45,6 +45,8 @@ export const useContests = () => {
 
       return contestsWithCounts;
     },
+    staleTime: 30000, // Cache for 30 seconds
+    gcTime: 5 * 60 * 1000,
   });
 };
 
@@ -57,10 +59,10 @@ export const useContest = (contestId: string | undefined) => {
 
       const [contestResult, examsResult, participantsResult] = await Promise.all([
         supabase.from('contests').select('*').eq('id', contestId).single(),
-        supabase.from('contest_exams').select('*').eq('contest_id', contestId),
+        supabase.from('contest_exams').select('id, exam_id, variant_code').eq('contest_id', contestId),
         supabase
           .from('contest_participants')
-          .select('*')
+          .select('id, user_id, assigned_exam_id, assigned_at')
           .eq('contest_id', contestId),
       ]);
 
@@ -79,6 +81,8 @@ export const useContest = (contestId: string | undefined) => {
       } as ContestWithDetails;
     },
     enabled: !!contestId,
+    staleTime: 30000, // Cache for 30 seconds
+    gcTime: 5 * 60 * 1000,
   });
 };
 

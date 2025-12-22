@@ -61,6 +61,8 @@ export function useQuestionStats(subjectId: string | undefined) {
       return stats;
     },
     enabled: !!subjectId,
+    staleTime: 60000, // Cache for 1 minute
+    gcTime: 5 * 60 * 1000, // Keep in garbage collection for 5 minutes
   });
 }
 
@@ -72,7 +74,7 @@ export function usePublishedQuestions(subjectId: string | undefined) {
 
       const { data, error } = await supabase
         .from('questions')
-        .select('*')
+        .select('id, content, question_type, cognitive_level, taxonomy_node_id, taxonomy_path, answer_data, difficulty, allow_shuffle')
         .eq('subject_id', subjectId)
         .eq('status', 'published')
         .is('deleted_at', null);
@@ -81,5 +83,7 @@ export function usePublishedQuestions(subjectId: string | undefined) {
       return data || [];
     },
     enabled: !!subjectId,
+    staleTime: 60000, // Cache for 1 minute
+    gcTime: 5 * 60 * 1000,
   });
 }
