@@ -68,7 +68,7 @@ function convertToExamQuestion(question: any, position: number, points: number, 
       return {
         ...baseQuestion,
         type: 'multiple-choice' as const,
-        options: options.map((opt: any) => ({ id: opt.id, text: opt.content })),
+        options: options.map((opt: any) => ({ id: opt.id, text: opt.text || opt.content || '' })),
         correctAnswer: question.question_type === 'MCQ_SINGLE' ? correctAnswers[0] : correctAnswers,
       };
     }
