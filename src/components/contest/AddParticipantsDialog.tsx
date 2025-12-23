@@ -16,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AddParticipantsDialogProps {
@@ -34,6 +36,7 @@ export function AddParticipantsDialog({
   const addParticipants = useAddParticipantsToContest();
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [csvEmails, setCsvEmails] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch students
   const { data: students, isLoading } = useQuery({
@@ -64,6 +67,15 @@ export function AddParticipantsDialog({
   });
 
   const availableStudents = students?.filter(s => !existingUserIds.includes(s.id)) || [];
+  
+  const filteredStudents = availableStudents.filter(s => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      s.full_name?.toLowerCase().includes(query) ||
+      s.email?.toLowerCase().includes(query)
+    );
+  });
 
   const toggleUser = (userId: string) => {
     const newSet = new Set(selectedUsers);
@@ -76,7 +88,7 @@ export function AddParticipantsDialog({
   };
 
   const selectAll = () => {
-    setSelectedUsers(new Set(availableStudents.map(s => s.id)));
+    setSelectedUsers(new Set(filteredStudents.map(s => s.id)));
   };
 
   const handleManualSubmit = async () => {
@@ -152,17 +164,26 @@ export function AddParticipantsDialog({
               </div>
             ) : (
               <>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Tìm theo tên hoặc email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-muted-foreground">
-                    {availableStudents.length} thí sinh khả dụng
+                    {filteredStudents.length}/{availableStudents.length} thí sinh
                   </span>
                   <Button variant="ghost" size="sm" onClick={selectAll}>
-                    Chọn tất cả
+                    Chọn tất cả ({filteredStudents.length})
                   </Button>
                 </div>
                 <ScrollArea className="h-[300px] pr-4 border rounded-lg">
                   <div className="space-y-1 p-2">
-                    {availableStudents.map((student) => (
+                    {filteredStudents.map((student) => (
                       <div
                         key={student.id}
                         className="flex items-center gap-3 p-2 rounded hover:bg-accent/50 cursor-pointer"
