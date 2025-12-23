@@ -10,12 +10,14 @@ import { SectionTransitionDialog } from '@/components/exam/SectionTransitionDial
 import { useExamTimer } from '@/hooks/useExamTimer';
 import { useSectionedTimer } from '@/hooks/useSectionedTimer';
 import { useExamAutoSave } from '@/hooks/useExamAutoSave';
+import { useBackgroundGrading } from '@/hooks/useBackgroundGrading';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats, ExamSection } from '@/types/exam';
 import { Loader2, Maximize, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +44,7 @@ const TakeExam = () => {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gradingProgress, setGradingProgress] = useState<{ current: number; total: number } | null>(null);
+  const [showBackgroundGradingUI, setShowBackgroundGradingUI] = useState(false);
   const startTimeRef = useRef(Date.now());
   
   // Fullscreen and violation tracking
@@ -57,6 +60,31 @@ const TakeExam = () => {
   const [showSectionTransitionDialog, setShowSectionTransitionDialog] = useState(false);
   const [isSectionTimeUp, setIsSectionTimeUp] = useState(false);
   const [sectionTimes, setSectionTimes] = useState<Record<string, number>>({});
+
+  // Background grading hook
+  const { job: gradingJob, isGrading: isBackgroundGrading, startBackgroundGrading } = useBackgroundGrading({
+    onComplete: async (resultData) => {
+      console.log('Background grading completed:', resultData);
+      
+      // Clear draft after successful submission
+      await clearDraft();
+      
+      toast.success('Chấm bài hoàn thành!', {
+        description: `Điểm số: ${resultData.percentage.toFixed(1)}%`,
+      });
+      
+      // Navigate to result page
+      navigate(`/exam/${examId}/result`);
+    },
+    onError: (error) => {
+      console.error('Background grading failed:', error);
+      toast.error('Lỗi khi chấm bài', {
+        description: 'Vui lòng thử lại hoặc liên hệ hỗ trợ.',
+      });
+      setShowBackgroundGradingUI(false);
+      setIsSubmitting(false);
+    },
+  });
 
   // Auto-save hook
   const {
@@ -1000,7 +1028,7 @@ const TakeExam = () => {
   };
 
   const handleConfirmSubmit = async () => {
-    if (!exam) return;
+    if (!exam || !user) return;
     
     setIsSubmitting(true);
     setShowSubmitDialog(false);
@@ -1009,28 +1037,68 @@ const TakeExam = () => {
     exitFullscreen();
     
     try {
-      const result = await calculateResults();
+      // Count coding questions
+      const codingQuestions = exam.questions.filter(q => q.type === 'coding');
+      const BACKGROUND_GRADING_THRESHOLD = 2; // Use background grading if >= 2 coding questions
       
-      if (result) {
-        await saveResultToDatabase(result);
+      if (codingQuestions.length >= BACKGROUND_GRADING_THRESHOLD) {
+        // Use background grading for exams with many coding questions
+        setShowBackgroundGradingUI(true);
         
-        // Clear draft after successful submission
-        await clearDraft();
-        
-        toast.success('Nộp bài thành công!', {
-          description: `Bạn đã trả lời ${answers.size}/${exam.totalQuestions} câu hỏi.`,
+        // Convert answers to plain object
+        const answersObject: Record<string, string | string[]> = {};
+        answers.forEach((answer, questionId) => {
+          answersObject[questionId.toString()] = answer.answer;
         });
         
-        navigate(`/exam/${exam.id}/result`, {
-          state: { result, questions: exam.questions },
+        // Transform questions for edge function
+        const questionsForGrading = exam.questions.map(q => ({
+          id: q.id,
+          type: q.type,
+          points: q.points,
+          correctAnswer: q.correctAnswer,
+          testCases: q.coding?.testCases || [],
+          language: q.coding?.languages?.[0] || 'python',
+        }));
+        
+        await startBackgroundGrading(
+          user.id,
+          exam.id,
+          answersObject,
+          questionsForGrading,
+          startTimeRef.current
+        );
+        
+        toast.info('Đang chấm bài...', {
+          description: 'Bạn sẽ được thông báo khi hoàn thành.',
         });
+      } else {
+        // Use regular grading for exams without many coding questions
+        const result = await calculateResults();
+        
+        if (result) {
+          await saveResultToDatabase(result);
+          
+          // Clear draft after successful submission
+          await clearDraft();
+          
+          toast.success('Nộp bài thành công!', {
+            description: `Bạn đã trả lời ${answers.size}/${exam.totalQuestions} câu hỏi.`,
+          });
+          
+          navigate(`/exam/${exam.id}/result`, {
+            state: { result, questions: exam.questions },
+          });
+        }
+        setIsSubmitting(false);
+        setGradingProgress(null);
       }
     } catch (err) {
       console.error('Error submitting exam:', err);
       toast.error('Lỗi khi nộp bài. Vui lòng thử lại.');
-    } finally {
       setIsSubmitting(false);
       setGradingProgress(null);
+      setShowBackgroundGradingUI(false);
     }
   };
 
@@ -1040,6 +1108,46 @@ const TakeExam = () => {
     setExamStarted(true);
     startTimeRef.current = Date.now();
   };
+
+  // Background grading UI
+  if (showBackgroundGradingUI && gradingJob) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Đang chấm bài...
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            Hệ thống đang chấm các câu coding. Bạn có thể đợi ở đây hoặc rời đi - kết quả sẽ được lưu tự động.
+          </p>
+          
+          <div className="bg-card border rounded-lg p-6 mb-6">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-muted-foreground">Tiến trình</span>
+              <span className="font-medium">{gradingJob.gradedQuestions}/{gradingJob.totalQuestions} câu</span>
+            </div>
+            <Progress value={gradingJob.progress} className="h-3 mb-2" />
+            <p className="text-sm text-muted-foreground">
+              {gradingJob.status === 'pending' && 'Đang khởi tạo...'}
+              {gradingJob.status === 'processing' && `Đã chấm ${gradingJob.progress}%`}
+              {gradingJob.status === 'completed' && 'Hoàn thành!'}
+              {gradingJob.status === 'failed' && 'Lỗi khi chấm bài'}
+            </p>
+          </div>
+
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/my-exams')}
+          >
+            Về danh sách bài thi
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Loading state
   if (authLoading || isLoadingExam) {

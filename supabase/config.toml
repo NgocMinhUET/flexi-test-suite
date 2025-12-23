@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.generate-daily-challenges]
 verify_jwt = false
+
+[functions.grade-exam-background]
+verify_jwt = true
