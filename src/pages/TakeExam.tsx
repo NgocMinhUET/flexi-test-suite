@@ -455,10 +455,10 @@ const TakeExam = () => {
     let totalEarned = 0;
     const totalPoints = exam.questions.reduce((sum, q) => sum + q.points, 0);
     
-    // Count coding questions for progress tracking
-    const codingQuestions = exam.questions.filter(q => q.type === 'coding');
+    // Separate coding and non-coding questions for parallel processing
+    const codingQuestions = exam.questions.filter(q => q.type === 'coding' && q.coding);
+    const nonCodingQuestions = exam.questions.filter(q => q.type !== 'coding');
     const totalCodingQuestions = codingQuestions.length;
-    let processedCodingQuestions = 0;
     
     if (totalCodingQuestions > 0) {
       setGradingProgress({ current: 0, total: totalCodingQuestions });
@@ -477,13 +477,16 @@ const TakeExam = () => {
     let unansweredCount = 0;
     let partialCreditCount = 0;
 
-    for (const question of exam.questions) {
+    // Results map to preserve order
+    const resultsMap = new Map<number, QuestionResult>();
+
+    // Process non-coding questions first (instant grading)
+    for (const question of nonCodingQuestions) {
       const answer = answers.get(question.id);
       const userAnswer = answer?.answer || '';
       let isCorrect = false;
       let isPartial = false;
       let earnedPoints = 0;
-      let codingResults: QuestionResult['codingResults'] = undefined;
 
       byType[question.type].total += 1;
 
@@ -499,7 +502,6 @@ const TakeExam = () => {
           isCorrect = normalizedUser === normalizedCorrect;
           earnedPoints = isCorrect ? question.points : 0;
         } else if (question.type === 'essay') {
-          // Essay gets partial credit based on content
           const wordCount = String(userAnswer).trim().split(/\s+/).length;
           if (wordCount >= 50) {
             earnedPoints = Math.ceil(question.points * 0.7);
@@ -514,118 +516,8 @@ const TakeExam = () => {
             earnedPoints = 0;
           }
           isCorrect = earnedPoints > 0;
-        } else if (question.type === 'coding' && question.coding) {
-          // Execute code with ALL test cases (including hidden) for grading
-          try {
-            processedCodingQuestions++;
-            setGradingProgress({ current: processedCodingQuestions, total: totalCodingQuestions });
-            
-            const { data, error } = await supabase.functions.invoke('execute-code', {
-              body: {
-                code: userAnswer,
-                language: answer.language || question.coding.defaultLanguage,
-                testCases: question.coding.testCases.map((tc) => ({
-                  input: tc.input,
-                  expectedOutput: tc.expectedOutput,
-                  isHidden: tc.isHidden,
-                  weight: tc.weight || 1,
-                })),
-                timeLimit: question.coding.timeLimit || 5,
-                memoryLimit: question.coding.memoryLimit || 256,
-                includeHidden: true, // Include hidden tests for final grading
-              },
-            });
-
-            if (!error && data?.success) {
-              const testResults = data.results;
-              const scoringMethod = question.coding.scoringMethod || 'proportional';
-              
-              // Calculate score
-              const scoreResult = calculateCodingScore(
-                testResults.map((r: { passed: boolean }, idx: number) => ({
-                  passed: r.passed,
-                  isHidden: question.coding!.testCases[idx]?.isHidden || false
-                })),
-                question.coding.testCases,
-                question.points,
-                scoringMethod
-              );
-              
-              earnedPoints = scoreResult.earnedPoints;
-              isCorrect = scoreResult.isCorrect;
-              isPartial = scoreResult.isPartial;
-              
-              // Count visible and hidden test results
-              const visibleResults = testResults.filter((_: unknown, idx: number) => 
-                !question.coding!.testCases[idx]?.isHidden
-              );
-              const hiddenResults = testResults.filter((_: unknown, idx: number) => 
-                question.coding!.testCases[idx]?.isHidden
-              );
-              
-              codingResults = {
-                passedTests: testResults.filter((r: { passed: boolean }) => r.passed).length,
-                totalTests: testResults.length,
-                visibleTests: {
-                  passed: visibleResults.filter((r: { passed: boolean }) => r.passed).length,
-                  total: visibleResults.length,
-                },
-                hiddenTests: {
-                  passed: hiddenResults.filter((r: { passed: boolean }) => r.passed).length,
-                  total: hiddenResults.length,
-                },
-                earnedPoints,
-                maxPoints: question.points,
-                scoringMethod,
-                testResults: testResults.map((r: { 
-                  passed: boolean; 
-                  input: string;
-                  expectedOutput: string;
-                  actualOutput?: string; 
-                  error?: string; 
-                  executionTime?: number;
-                  isHidden: boolean;
-                }, index: number) => ({
-                  testCaseId: question.coding!.testCases[index]?.id || `test-${index}`,
-                  passed: r.passed,
-                  input: r.input,
-                  expectedOutput: r.expectedOutput,
-                  actualOutput: r.actualOutput,
-                  error: r.error,
-                  executionTime: r.executionTime,
-                  isHidden: r.isHidden,
-                  weight: question.coding!.testCases[index]?.weight || 1,
-                })),
-              };
-            } else {
-              // If execution fails, give 0 points
-              earnedPoints = 0;
-              isCorrect = false;
-              codingResults = {
-                passedTests: 0,
-                totalTests: question.coding.testCases.length,
-                visibleTests: {
-                  passed: 0,
-                  total: question.coding.testCases.filter(tc => !tc.isHidden).length,
-                },
-                hiddenTests: {
-                  passed: 0,
-                  total: question.coding.testCases.filter(tc => tc.isHidden).length,
-                },
-                earnedPoints: 0,
-                maxPoints: question.points,
-                scoringMethod: question.coding.scoringMethod || 'proportional',
-                testResults: [],
-              };
-            }
-          } catch (err) {
-            console.error('Error executing code for grading:', err);
-            earnedPoints = 0;
-            isCorrect = false;
-          }
         }
 
-        // Update counters
         if (isCorrect) {
           correctCount++;
           byType[question.type].correct += 1;
@@ -640,15 +532,192 @@ const TakeExam = () => {
         totalEarned += earnedPoints;
       }
 
-      questionResults.push({
+      resultsMap.set(question.id, {
         questionId: question.id,
         isCorrect,
         earnedPoints,
         maxPoints: question.points,
         userAnswer,
         correctAnswer: question.correctAnswer,
-        codingResults,
       });
+    }
+
+    // Process coding questions in PARALLEL for faster grading
+    if (codingQuestions.length > 0) {
+      byType['coding'].total = codingQuestions.length;
+      
+      let processedCount = 0;
+      
+      // Grade function for a single coding question
+      const gradeCodingQuestion = async (question: Question): Promise<{
+        question: Question;
+        isCorrect: boolean;
+        isPartial: boolean;
+        earnedPoints: number;
+        codingResults: QuestionResult['codingResults'];
+        userAnswer: string;
+      }> => {
+        const answer = answers.get(question.id);
+        const rawAnswer = answer?.answer || '';
+        const userAnswer = Array.isArray(rawAnswer) ? rawAnswer.join('') : String(rawAnswer);
+        let isCorrect = false;
+        let isPartial = false;
+        let earnedPoints = 0;
+        let codingResults: QuestionResult['codingResults'] = undefined;
+
+        if (!answer || !userAnswer.trim()) {
+          return { question, isCorrect, isPartial, earnedPoints, codingResults, userAnswer };
+        }
+
+        try {
+          const { data, error } = await supabase.functions.invoke('execute-code', {
+            body: {
+              code: userAnswer,
+              language: answer.language || question.coding!.defaultLanguage,
+              testCases: question.coding!.testCases.map((tc) => ({
+                input: tc.input,
+                expectedOutput: tc.expectedOutput,
+                isHidden: tc.isHidden,
+                weight: tc.weight || 1,
+              })),
+              timeLimit: question.coding!.timeLimit || 5,
+              memoryLimit: question.coding!.memoryLimit || 256,
+              includeHidden: true,
+            },
+          });
+
+          // Update progress as each coding question completes
+          processedCount++;
+          setGradingProgress({ current: processedCount, total: totalCodingQuestions });
+
+          if (!error && data?.success) {
+            const testResults = data.results;
+            const scoringMethod = question.coding!.scoringMethod || 'proportional';
+            
+            const scoreResult = calculateCodingScore(
+              testResults.map((r: { passed: boolean }, idx: number) => ({
+                passed: r.passed,
+                isHidden: question.coding!.testCases[idx]?.isHidden || false
+              })),
+              question.coding!.testCases,
+              question.points,
+              scoringMethod
+            );
+            
+            earnedPoints = scoreResult.earnedPoints;
+            isCorrect = scoreResult.isCorrect;
+            isPartial = scoreResult.isPartial;
+            
+            const visibleResults = testResults.filter((_: unknown, idx: number) => 
+              !question.coding!.testCases[idx]?.isHidden
+            );
+            const hiddenResults = testResults.filter((_: unknown, idx: number) => 
+              question.coding!.testCases[idx]?.isHidden
+            );
+            
+            codingResults = {
+              passedTests: testResults.filter((r: { passed: boolean }) => r.passed).length,
+              totalTests: testResults.length,
+              visibleTests: {
+                passed: visibleResults.filter((r: { passed: boolean }) => r.passed).length,
+                total: visibleResults.length,
+              },
+              hiddenTests: {
+                passed: hiddenResults.filter((r: { passed: boolean }) => r.passed).length,
+                total: hiddenResults.length,
+              },
+              earnedPoints,
+              maxPoints: question.points,
+              scoringMethod,
+              testResults: testResults.map((r: { 
+                passed: boolean; 
+                input: string;
+                expectedOutput: string;
+                actualOutput?: string; 
+                error?: string; 
+                executionTime?: number;
+                isHidden: boolean;
+              }, index: number) => ({
+                testCaseId: question.coding!.testCases[index]?.id || `test-${index}`,
+                passed: r.passed,
+                input: r.input,
+                expectedOutput: r.expectedOutput,
+                actualOutput: r.actualOutput,
+                error: r.error,
+                executionTime: r.executionTime,
+                isHidden: r.isHidden,
+                weight: question.coding!.testCases[index]?.weight || 1,
+              })),
+            };
+          } else {
+            codingResults = {
+              passedTests: 0,
+              totalTests: question.coding!.testCases.length,
+              visibleTests: {
+                passed: 0,
+                total: question.coding!.testCases.filter(tc => !tc.isHidden).length,
+              },
+              hiddenTests: {
+                passed: 0,
+                total: question.coding!.testCases.filter(tc => tc.isHidden).length,
+              },
+              earnedPoints: 0,
+              maxPoints: question.points,
+              scoringMethod: question.coding!.scoringMethod || 'proportional',
+              testResults: [],
+            };
+          }
+        } catch (err) {
+          console.error('Error executing code for grading:', err);
+          processedCount++;
+          setGradingProgress({ current: processedCount, total: totalCodingQuestions });
+        }
+
+        return { question, isCorrect, isPartial, earnedPoints, codingResults, userAnswer };
+      };
+
+      // Execute ALL coding questions in parallel
+      const codingResults = await Promise.all(
+        codingQuestions.map(q => gradeCodingQuestion(q))
+      );
+
+      // Process results
+      for (const result of codingResults) {
+        const { question, isCorrect, isPartial, earnedPoints, codingResults: cResults, userAnswer } = result;
+
+        if (!answers.get(question.id) || !userAnswer.trim()) {
+          unansweredCount++;
+        } else if (isCorrect) {
+          correctCount++;
+          byType['coding'].correct += 1;
+        } else if (isPartial) {
+          partialCreditCount++;
+          byType['coding'].partial = (byType['coding'].partial || 0) + 1;
+        } else {
+          incorrectCount++;
+        }
+
+        byType['coding'].points += earnedPoints;
+        totalEarned += earnedPoints;
+
+        resultsMap.set(question.id, {
+          questionId: question.id,
+          isCorrect,
+          earnedPoints,
+          maxPoints: question.points,
+          userAnswer,
+          correctAnswer: question.correctAnswer,
+          codingResults: cResults,
+        });
+      }
+    }
+
+    // Build final questionResults in original question order
+    for (const question of exam.questions) {
+      const result = resultsMap.get(question.id);
+      if (result) {
+        questionResults.push(result);
+      }
     }
 
     const percentage = totalPoints > 0 ? (totalEarned / totalPoints) * 100 : 0;

@@ -41,9 +41,9 @@ const languageMap: Record<string, { language: string; version: string }> = {
   rust: { language: "rust", version: "1.68.2" },
 };
 
-// Retry configuration
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1 second
+// Retry configuration - reduced delays for faster grading
+const MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY = 500; // 500ms
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -217,8 +217,8 @@ function checkRateLimit(userId: string): { allowed: boolean; waitTime?: number }
   return { allowed: true };
 }
 
-// Limit concurrent executions
-const MAX_CONCURRENT = 3;
+// Limit concurrent executions - increased for faster grading
+const MAX_CONCURRENT = 5;
 
 async function executeTestsWithConcurrencyLimit(
   code: string,
