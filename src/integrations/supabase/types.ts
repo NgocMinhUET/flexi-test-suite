@@ -556,6 +556,56 @@ export type Database = {
           },
         ]
       }
+      grading_jobs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          exam_id: string
+          graded_questions: number | null
+          id: string
+          progress: number | null
+          result_data: Json | null
+          status: string
+          total_questions: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          exam_id: string
+          graded_questions?: number | null
+          id?: string
+          progress?: number | null
+          result_data?: Json | null
+          status?: string
+          total_questions?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          exam_id?: string
+          graded_questions?: number | null
+          id?: string
+          progress?: number | null
+          result_data?: Json | null
+          status?: string
+          total_questions?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grading_jobs_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboards: {
         Row: {
           id: string
