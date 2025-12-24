@@ -7,9 +7,12 @@ const corsHeaders = {
 };
 
 const PISTON_API = 'https://emkc.org/api/v2/piston/execute';
-const MAX_CONCURRENT = 5;
-const MAX_RETRIES = 2;
-const INITIAL_RETRY_DELAY = 500;
+
+// Improved rate limiting handling
+const MAX_CONCURRENT = 2; // Reduced from 5 to avoid rate limiting
+const MAX_RETRIES = 5; // Increased from 2
+const INITIAL_RETRY_DELAY = 1000; // Increased from 500ms
+const BATCH_DELAY = 500; // Delay between batches
 
 const languageMap: Record<string, { language: string; version: string }> = {
   python: { language: 'python', version: '3.10.0' },
@@ -64,13 +67,25 @@ async function executeCode(
       }),
     });
 
-    if (response.status === 429 && retryCount < MAX_RETRIES) {
-      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
-      await sleep(delay);
-      return executeCode(code, language, input, retryCount + 1);
+    // Handle rate limiting with exponential backoff
+    if (response.status === 429) {
+      if (retryCount < MAX_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(`Rate limited (429), retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`);
+        await sleep(delay);
+        return executeCode(code, language, input, retryCount + 1);
+      }
+      console.error(`Max retries reached for rate limiting`);
+      return { success: false, output: '', error: `Rate limit exceeded after ${MAX_RETRIES} retries` };
     }
 
     if (!response.ok) {
+      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(`Server error ${response.status}, retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`);
+        await sleep(delay);
+        return executeCode(code, language, input, retryCount + 1);
+      }
       return { success: false, output: '', error: `API error: ${response.status}` };
     }
 
@@ -83,7 +98,9 @@ async function executeCode(
     return { success: true, output: (result.run?.output || '').trim() };
   } catch (error) {
     if (retryCount < MAX_RETRIES) {
-      await sleep(INITIAL_RETRY_DELAY * Math.pow(2, retryCount));
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+      console.log(`Network error, retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`);
+      await sleep(delay);
       return executeCode(code, language, input, retryCount + 1);
     }
     return { success: false, output: '', error: String(error) };
@@ -98,9 +115,16 @@ async function runTestCases(
   const results: any[] = [];
   let passed = 0;
 
-  // Process in batches
+  // Process in smaller batches with delays between them
   for (let i = 0; i < testCases.length; i += MAX_CONCURRENT) {
+    // Add delay between batches (not before first batch)
+    if (i > 0) {
+      await sleep(BATCH_DELAY);
+    }
+
     const batch = testCases.slice(i, i + MAX_CONCURRENT);
+    console.log(`Processing batch ${Math.floor(i / MAX_CONCURRENT) + 1} (${batch.length} tests)`);
+    
     const batchResults = await Promise.all(
       batch.map(async (testCase, idx) => {
         const result = await executeCode(code, language, testCase.input);
@@ -203,48 +227,39 @@ async function gradeExamInBackground(
         .eq('id', jobId);
     }
 
-    // Grade coding questions in parallel
+    // Grade coding questions SEQUENTIALLY to avoid rate limiting
     if (codingQuestions.length > 0) {
-      console.log(`Grading ${codingQuestions.length} coding questions in parallel`);
+      console.log(`Grading ${codingQuestions.length} coding questions sequentially to avoid rate limiting`);
       
-      const codingPromises = codingQuestions.map(async (question: any) => {
+      for (const question of codingQuestions) {
         const userCode = String(answers[question.id] || '');
         const testCases = question.testCases || [];
         const questionPoints = question.points || 1;
         totalPossiblePoints += questionPoints;
 
+        let codingResult: { passed: number; total: number; results: any[] };
+        let earnedPoints = 0;
+
         if (!userCode.trim() || testCases.length === 0) {
-          return {
-            questionId: question.id,
-            userAnswer: userCode,
-            earnedPoints: 0,
-            maxPoints: questionPoints,
-            isCorrect: false,
-            codingResult: { passed: 0, total: testCases.length, results: [] },
-          };
+          codingResult = { passed: 0, total: testCases.length, results: [] };
+        } else {
+          const language = question.language || 'python';
+          console.log(`Grading coding question ${question.id} with ${testCases.length} test cases`);
+          codingResult = await runTestCases(userCode, language, testCases);
+          earnedPoints = Math.round((codingResult.passed / codingResult.total) * questionPoints * 100) / 100;
         }
 
-        const language = question.language || 'python';
-        const result = await runTestCases(userCode, language, testCases);
-        const earnedPoints = Math.round((result.passed / result.total) * questionPoints * 100) / 100;
-
-        return {
+        totalEarnedPoints += earnedPoints;
+        questionResults.push({
           questionId: question.id,
           userAnswer: userCode,
           earnedPoints,
           maxPoints: questionPoints,
-          isCorrect: result.passed === result.total,
-          codingResult: result,
-        };
-      });
+          isCorrect: codingResult.passed === codingResult.total,
+          codingResult,
+        });
 
-      const codingResults = await Promise.all(codingPromises);
-      
-      for (const result of codingResults) {
-        totalEarnedPoints += result.earnedPoints;
-        questionResults.push(result);
         gradedCount++;
-        
         const progress = Math.round((gradedCount / totalQuestions) * 100);
         await supabase
           .from('grading_jobs')
@@ -254,6 +269,11 @@ async function gradeExamInBackground(
             updated_at: new Date().toISOString()
           })
           .eq('id', jobId);
+
+        // Add delay between coding questions to further reduce rate limiting
+        if (codingQuestions.indexOf(question) < codingQuestions.length - 1) {
+          await sleep(1000);
+        }
       }
     }
 
@@ -344,10 +364,19 @@ serve(async (req) => {
     const request: GradeRequest = await req.json();
     console.log(`Received grading request for job ${request.jobId}`);
 
-    // Start background grading using Promise (non-blocking)
-    gradeExamInBackground(supabase, request).catch(err => {
-      console.error('Background grading error:', err);
-    });
+    // Use EdgeRuntime.waitUntil for proper background execution
+    const backgroundPromise = gradeExamInBackground(supabase, request);
+    
+    // @ts-ignore - EdgeRuntime is available in Supabase edge functions
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(backgroundPromise);
+    } else {
+      // Fallback for older runtime
+      backgroundPromise.catch(err => {
+        console.error('Background grading error:', err);
+      });
+    }
 
     return new Response(
       JSON.stringify({ success: true, message: 'Grading started' }),
