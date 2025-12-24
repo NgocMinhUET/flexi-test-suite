@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubjects } from '@/hooks/useSubjects';
@@ -98,9 +98,20 @@ export default function QuestionBank() {
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
 
   const [filters, setFilters] = useState<QuestionFilters & { page?: number }>({ subject_id: '' });
+  const [searchInput, setSearchInput] = useState('');
   const { data: taxonomyNodes } = useTaxonomyNodes(filters.subject_id || undefined);
   const { data: questionsResult, isLoading: questionsLoading } = useQuestions(filters);
   const questions = questionsResult?.data;
+
+  // Debounce search input - wait 500ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== (filters.search || '')) {
+        setFilters(f => ({ ...f, search: searchInput, page: 0 }));
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput, filters.search]);
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -109,7 +120,11 @@ export default function QuestionBank() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
 
-  const { data: duplicateGroups } = useDuplicateQuestions(filters.subject_id || undefined);
+  // Lazy load duplicate check - only when dialog is open
+  const { data: duplicateGroups, isLoading: duplicatesLoading } = useDuplicateQuestions(
+    filters.subject_id || undefined, 
+    cleanupDialogOpen // Only fetch when dialog is open
+  );
 
   const bulkDelete = useBulkDeleteQuestions();
   const bulkSubmitForReview = useBulkSubmitForReview();
@@ -273,15 +288,9 @@ export default function QuestionBank() {
                 <Button 
                   variant="outline" 
                   onClick={() => setCleanupDialogOpen(true)}
-                  className={duplicateGroups && duplicateGroups.length > 0 ? 'border-destructive/50 text-destructive hover:bg-destructive/10' : ''}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Dọn trùng lặp
-                  {duplicateGroups && duplicateGroups.length > 0 && (
-                    <Badge variant="destructive" className="ml-2">
-                      {duplicateGroups.reduce((sum, g) => sum + g.questions.length - 1, 0)}
-                    </Badge>
-                  )}
                 </Button>
                 <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="w-4 h-4 mr-2" />
@@ -415,16 +424,21 @@ export default function QuestionBank() {
               </Select>
             </div>
 
-            {/* Search */}
+            {/* Search with debounce */}
             <div className="relative mt-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Tìm kiếm nội dung câu hỏi..."
-                value={filters.search || ''}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-10"
                 disabled={!filters.subject_id}
               />
+              {searchInput !== (filters.search || '') && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  Đang tìm...
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>

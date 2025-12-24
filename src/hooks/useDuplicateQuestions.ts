@@ -34,7 +34,7 @@ function selectBestQuestion(questions: DuplicateGroup['questions']): string {
   return sorted[0].id;
 }
 
-export function useDuplicateQuestions(subjectId: string | undefined) {
+export function useDuplicateQuestions(subjectId: string | undefined, enabled = false) {
   return useQuery({
     queryKey: ['duplicate-questions', subjectId],
     queryFn: async () => {
@@ -90,7 +90,9 @@ export function useDuplicateQuestions(subjectId: string | undefined) {
 
       return duplicateGroups;
     },
-    enabled: !!subjectId,
+    enabled: !!subjectId && enabled, // Only run when explicitly enabled
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000,
   });
 }
 
