@@ -41,9 +41,10 @@ const languageMap: Record<string, { language: string; version: string }> = {
   rust: { language: "rust", version: "1.68.2" },
 };
 
-// Retry configuration - reduced delays for faster grading
-const MAX_RETRIES = 2;
-const INITIAL_RETRY_DELAY = 500; // 500ms
+// Improved retry configuration for better rate limit handling
+const MAX_RETRIES = 5; // Increased from 2
+const INITIAL_RETRY_DELAY = 1000; // Increased from 500ms
+const BATCH_DELAY = 300; // Delay between batches
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -87,11 +88,11 @@ async function executeCodeWithRetry(
       }),
     });
 
-    // Handle rate limiting with retry
+    // Handle rate limiting with exponential backoff
     if (response.status === 429) {
       if (retryCount < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
-        console.log(`Rate limited, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        console.log(`Rate limited (429), retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`);
         await sleep(delay);
         return executeCodeWithRetry(code, language, input, timeLimit, retryCount + 1);
       }
@@ -109,7 +110,7 @@ async function executeCodeWithRetry(
       // Retry on server errors
       if (response.status >= 500 && retryCount < MAX_RETRIES) {
         const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
-        console.log(`Server error, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        console.log(`Server error ${response.status}, retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`);
         await sleep(delay);
         return executeCodeWithRetry(code, language, input, timeLimit, retryCount + 1);
       }
@@ -163,7 +164,7 @@ async function executeCodeWithRetry(
     // Retry on network errors
     if (retryCount < MAX_RETRIES) {
       const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
-      console.log(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      console.log(`Network error, retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms`);
       await sleep(delay);
       return executeCodeWithRetry(code, language, input, timeLimit, retryCount + 1);
     }
@@ -196,7 +197,7 @@ function normalizeOutput(output: string): string {
 
 // Simple in-memory rate limiting (per function instance)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 30; // Increased from 20 to 30 requests per minute
+const RATE_LIMIT = 20; // Reduced to be safer
 const RATE_WINDOW = 60000; // 1 minute in milliseconds
 
 function checkRateLimit(userId: string): { allowed: boolean; waitTime?: number } {
@@ -217,8 +218,8 @@ function checkRateLimit(userId: string): { allowed: boolean; waitTime?: number }
   return { allowed: true };
 }
 
-// Limit concurrent executions - increased for faster grading
-const MAX_CONCURRENT = 5;
+// Reduced concurrent executions to avoid rate limiting
+const MAX_CONCURRENT = 2;
 
 async function executeTestsWithConcurrencyLimit(
   code: string,
@@ -228,8 +229,13 @@ async function executeTestsWithConcurrencyLimit(
 ): Promise<TestResult[]> {
   const results: TestResult[] = [];
   
-  // Process in batches of MAX_CONCURRENT
+  // Process in batches of MAX_CONCURRENT with delays
   for (let i = 0; i < testCases.length; i += MAX_CONCURRENT) {
+    // Add delay between batches (not before first batch)
+    if (i > 0) {
+      await sleep(BATCH_DELAY);
+    }
+
     const batch = testCases.slice(i, i + MAX_CONCURRENT);
     
     const batchPromises = batch.map(async (testCase) => {
