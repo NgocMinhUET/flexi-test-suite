@@ -42,14 +42,15 @@ const PageLoader = () => (
   </div>
 );
 
-// Optimized QueryClient with better caching defaults
+// Optimized QueryClient with better caching defaults for improved performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30000, // 30 seconds default
-      gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
+      staleTime: 5 * 60 * 1000, // 5 minutes - reduce refetch frequency
+      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
       retry: 1,
       refetchOnWindowFocus: false,
+      refetchOnMount: false, // Don't refetch on every mount if data is fresh
     },
   },
 });

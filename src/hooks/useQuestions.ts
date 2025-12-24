@@ -87,7 +87,8 @@ export function useQuestions(filters: QuestionFilters & { page?: number; pageSiz
       };
     },
     enabled: !!filters.subject_id,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 }
 
