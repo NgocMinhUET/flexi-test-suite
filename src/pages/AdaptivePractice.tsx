@@ -33,6 +33,7 @@ import {
 import { SESSION_TYPES, getMasteryLevel, SessionType } from '@/types/practice';
 import { cn } from '@/lib/utils';
 import { DailyChallengesWidget } from '@/components/practice/DailyChallengesWidget';
+import { WeakPointsCard } from '@/components/practice/WeakPointsCard';
 
 export default function AdaptivePractice() {
   const navigate = useNavigate();
@@ -327,8 +328,11 @@ export default function AdaptivePractice() {
           </Card>
         </div>
 
-        {/* Right Column - Daily Challenges & Recent Activity */}
+        {/* Right Column - Weak Points, Daily Challenges & Recent Activity */}
         <div className="space-y-6">
+          {/* Weak Points Card */}
+          <WeakPointsCard subjectId={selectedSubject || undefined} />
+
           {/* Daily Challenges Widget */}
           <DailyChallengesWidget />
 

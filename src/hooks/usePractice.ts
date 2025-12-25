@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { 
@@ -598,4 +599,74 @@ export function calculateMastery(stats: {
   ) * 100;
   
   return Math.min(100, Math.max(0, mastery));
+}
+
+// ==================== WEAK POINTS API ====================
+
+export interface WeakPoint {
+  taxonomyNodeId: string;
+  taxonomyName: string;
+  masteryLevel: number;
+  questionsAttempted: number;
+  questionsCorrect: number;
+  accuracy: number;
+  priority: number; // Lower mastery + more attempts = higher priority
+}
+
+export function useWeakPoints(subjectId?: string, limit: number = 10) {
+  const { user } = useAuth();
+  const { data: masteries } = useSkillMasteries(subjectId);
+
+  return useMemo(() => {
+    if (!masteries || !user?.id) return [];
+
+    const weakPoints: WeakPoint[] = masteries
+      .filter(m => m.mastery_level < 50 && m.questions_attempted >= 3)
+      .map(m => {
+        const accuracy = m.questions_attempted > 0 
+          ? (m.questions_correct / m.questions_attempted) * 100 
+          : 0;
+        
+        // Priority: lower mastery and more attempts = higher priority
+        const priority = (100 - m.mastery_level) + (m.questions_attempted * 2);
+        
+        return {
+          taxonomyNodeId: m.taxonomy_node_id,
+          taxonomyName: m.taxonomy_node?.name || 'Unknown',
+          masteryLevel: m.mastery_level,
+          questionsAttempted: m.questions_attempted,
+          questionsCorrect: m.questions_correct,
+          accuracy: Math.round(accuracy),
+          priority
+        };
+      })
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, limit);
+
+    return weakPoints;
+  }, [masteries, user?.id, limit]);
+}
+
+export function useGetTaxonomyNames(taxonomyNodeIds: string[]) {
+  return useQuery({
+    queryKey: ['taxonomy-names', taxonomyNodeIds],
+    queryFn: async () => {
+      if (taxonomyNodeIds.length === 0) return new Map<string, string>();
+      
+      const { data, error } = await supabase
+        .from('taxonomy_nodes')
+        .select('id, name')
+        .in('id', taxonomyNodeIds);
+      
+      if (error) throw error;
+      
+      const map = new Map<string, string>();
+      data?.forEach(node => {
+        map.set(node.id, node.name);
+      });
+      
+      return map;
+    },
+    enabled: taxonomyNodeIds.length > 0
+  });
 }
