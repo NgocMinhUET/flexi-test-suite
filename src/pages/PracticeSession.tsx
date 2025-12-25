@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -18,6 +18,7 @@ import {
 } from '@/hooks/useAdaptiveQuestionSelection';
 import { useDailyChallengeProgress } from '@/hooks/useDailyChallengeProgress';
 import { useAchievementChecker } from '@/hooks/useAchievementChecker';
+import { useGetTaxonomyNames } from '@/hooks/usePractice';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ import {
 } from 'lucide-react';
 import { SESSION_TYPES, SessionType, PracticeQuestionResult, DailyChallenge, Achievement } from '@/types/practice';
 import { cn } from '@/lib/utils';
+import { SessionResultsAnalysis } from '@/components/practice/SessionResultsAnalysis';
 
 interface PracticeQuestion {
   id: string;
@@ -401,13 +403,20 @@ export default function PracticeSession() {
     );
   }
 
+  // Get taxonomy names for analysis
+  const taxonomyNodeIds = useMemo(() => 
+    questions.map(q => q.taxonomy_node_id).filter(Boolean),
+    [questions]
+  );
+  const { data: taxonomyNames } = useGetTaxonomyNames(taxonomyNodeIds);
+
   if (sessionComplete) {
     const correctCount = Object.values(results).filter(r => r.isCorrect).length;
     const accuracy = Math.round((correctCount / questions.length) * 100);
     const totalEarnedXP = Math.round(totalXP) + challengeBonusXP + achievementXP;
 
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         <Card className="text-center">
           <CardHeader>
             <div className="text-6xl mb-4">🎉</div>
@@ -428,6 +437,18 @@ export default function PracticeSession() {
                 <p className="text-sm text-muted-foreground">XP</p>
               </div>
             </div>
+
+            {/* Session Results Analysis */}
+            <SessionResultsAnalysis 
+              results={results}
+              questions={questions.map(q => ({
+                id: q.id,
+                taxonomy_node_id: q.taxonomy_node_id,
+                difficulty: q.difficulty || 3
+              }))}
+              taxonomyMap={taxonomyNames}
+              subjectId={subjectId}
+            />
 
             {/* Unlocked Achievements */}
             {unlockedAchievements.length > 0 && (
@@ -490,7 +511,7 @@ export default function PracticeSession() {
             )}
 
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate('/practice')}>
+              <Button variant="outline" onClick={() => navigate('/adaptive-practice')}>
                 Quay lại
               </Button>
               <Button onClick={() => window.location.reload()}>
