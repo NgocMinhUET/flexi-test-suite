@@ -540,7 +540,7 @@ export default function ContestStatistics() {
                               <Badge variant="outline" className="font-mono">{variant || 'N/A'}</Badge>
                             </TableCell>
                             <TableCell className="text-center">
-                              {result.earned_points}/{result.total_points}
+                              {Math.round(result.earned_points * 10) / 10}/{result.total_points}
                             </TableCell>
                             <TableCell className="text-center">
                               <Badge 
