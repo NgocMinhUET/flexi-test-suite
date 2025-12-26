@@ -101,6 +101,13 @@ export default function PracticeSession() {
   const sessionConfig = SESSION_TYPES[sessionType];
   const currentQuestion = questions[currentIndex];
 
+  // Get taxonomy names for analysis - MUST be before any early returns (Rules of Hooks)
+  const taxonomyNodeIds = useMemo(() => 
+    questions.map(q => q.taxonomy_node_id).filter(Boolean),
+    [questions]
+  );
+  const { data: taxonomyNames } = useGetTaxonomyNames(taxonomyNodeIds);
+
   // Load questions based on session type
   useEffect(() => {
     loadQuestions();
@@ -403,12 +410,6 @@ export default function PracticeSession() {
     );
   }
 
-  // Get taxonomy names for analysis
-  const taxonomyNodeIds = useMemo(() => 
-    questions.map(q => q.taxonomy_node_id).filter(Boolean),
-    [questions]
-  );
-  const { data: taxonomyNames } = useGetTaxonomyNames(taxonomyNodeIds);
 
   if (sessionComplete) {
     const correctCount = Object.values(results).filter(r => r.isCorrect).length;
