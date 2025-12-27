@@ -668,6 +668,144 @@ export type Database = {
         }
         Relationships: []
       }
+      practice_assignment_attempts: {
+        Row: {
+          analysis: Json | null
+          answers: Json
+          assignment_id: string
+          attempt_number: number
+          completed_at: string | null
+          earned_points: number
+          id: string
+          percentage: number
+          question_results: Json
+          started_at: string
+          student_id: string
+          time_spent_seconds: number
+          total_points: number
+        }
+        Insert: {
+          analysis?: Json | null
+          answers?: Json
+          assignment_id: string
+          attempt_number?: number
+          completed_at?: string | null
+          earned_points?: number
+          id?: string
+          percentage?: number
+          question_results?: Json
+          started_at?: string
+          student_id: string
+          time_spent_seconds?: number
+          total_points?: number
+        }
+        Update: {
+          analysis?: Json | null
+          answers?: Json
+          assignment_id?: string
+          attempt_number?: number
+          completed_at?: string | null
+          earned_points?: number
+          id?: string
+          percentage?: number
+          question_results?: Json
+          started_at?: string
+          student_id?: string
+          time_spent_seconds?: number
+          total_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_assignment_attempts_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "practice_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_assignment_students: {
+        Row: {
+          assigned_at: string
+          assignment_id: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assignment_id: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assignment_id?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_assignment_students_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "practice_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practice_assignments: {
+        Row: {
+          allow_multiple_attempts: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration: number | null
+          id: string
+          is_active: boolean
+          questions: Json
+          show_answers_after_submit: boolean
+          subject_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allow_multiple_attempts?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_active?: boolean
+          questions?: Json
+          show_answers_after_submit?: boolean
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allow_multiple_attempts?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_active?: boolean
+          questions?: Json
+          show_answers_after_submit?: boolean
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_assignments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practice_attempts: {
         Row: {
           attempt_number: number | null
