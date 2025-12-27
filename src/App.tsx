@@ -35,6 +35,7 @@ const AdaptivePractice = lazy(() => import("./pages/AdaptivePractice"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const SkillsAnalysis = lazy(() => import("./pages/SkillsAnalysis"));
+const PracticeAssignmentManagement = lazy(() => import("./pages/PracticeAssignmentManagement"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -93,6 +94,7 @@ const App = () => (
               <Route path="/practice/skills" element={<SkillsAnalysis />} />
               <Route path="/achievements" element={<Achievements />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/practice-assignments" element={<PracticeAssignmentManagement />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
