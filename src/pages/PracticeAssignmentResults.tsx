@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { usePracticeAssignmentDetail, useStudentPracticeAssignments } from '@/hooks/usePracticeAssignments';
+import { usePracticeAssignmentWithQuestions, useStudentAssignedPractices } from '@/hooks/usePracticeAssignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,8 +31,8 @@ const PracticeAssignmentResults = () => {
   const { id: assignmentId } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
   
-  const { data: assignmentData, isLoading: assignmentLoading } = usePracticeAssignmentDetail(assignmentId);
-  const { data: studentAssignments, isLoading: attemptsLoading } = useStudentPracticeAssignments();
+  const { data: assignmentData, isLoading: assignmentLoading } = usePracticeAssignmentWithQuestions(assignmentId || '');
+  const { data: studentAssignments, isLoading: attemptsLoading } = useStudentAssignedPractices();
   
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
 

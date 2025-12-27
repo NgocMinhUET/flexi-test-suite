@@ -78,6 +78,54 @@ export function usePracticeAssignment(id: string) {
   });
 }
 
+// Fetch assignment with full question data for taking the practice
+export function usePracticeAssignmentWithQuestions(id: string) {
+  return useQuery({
+    queryKey: ['practice-assignment-with-questions', id],
+    queryFn: async () => {
+      const { data: assignment, error } = await supabase
+        .from('practice_assignments')
+        .select(`
+          *,
+          subjects (id, name, code)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      // Fetch full question data
+      const questionIds = (assignment.questions || []) as string[];
+      
+      if (questionIds.length === 0) {
+        return {
+          ...assignment,
+          questionData: [],
+        };
+      }
+
+      const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('*')
+        .in('id', questionIds);
+
+      if (questionsError) throw questionsError;
+
+      // Sort questions in the same order as questionIds
+      const orderedQuestions = questionIds
+        .map(qId => questions?.find(q => q.id === qId))
+        .filter(Boolean);
+
+      return {
+        ...assignment,
+        questionData: orderedQuestions,
+      };
+    },
+    enabled: !!id,
+  });
+}
+
+
 // Fetch assigned students for an assignment
 export function useAssignmentStudents(assignmentId: string) {
   return useQuery({

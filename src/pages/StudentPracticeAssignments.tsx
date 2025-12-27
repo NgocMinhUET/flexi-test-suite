@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useStudentPracticeAssignments } from '@/hooks/usePracticeAssignments';
+import { useStudentAssignedPractices } from '@/hooks/usePracticeAssignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   BookOpen, 
   Clock, 
   CheckCircle2, 
@@ -23,7 +23,7 @@ import { vi } from 'date-fns/locale';
 const StudentPracticeAssignments = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { data: assignments, isLoading, refetch } = useStudentPracticeAssignments();
+  const { data: assignments, isLoading, refetch } = useStudentAssignedPractices();
 
   if (authLoading) {
     return (

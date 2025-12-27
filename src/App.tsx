@@ -36,6 +36,9 @@ const Achievements = lazy(() => import("./pages/Achievements"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const SkillsAnalysis = lazy(() => import("./pages/SkillsAnalysis"));
 const PracticeAssignmentManagement = lazy(() => import("./pages/PracticeAssignmentManagement"));
+const StudentPracticeAssignments = lazy(() => import("./pages/StudentPracticeAssignments"));
+const TakePracticeAssignment = lazy(() => import("./pages/TakePracticeAssignment"));
+const PracticeAssignmentResults = lazy(() => import("./pages/PracticeAssignmentResults"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -95,6 +98,9 @@ const App = () => (
               <Route path="/achievements" element={<Achievements />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/practice-assignments" element={<PracticeAssignmentManagement />} />
+              <Route path="/my-practice-assignments" element={<StudentPracticeAssignments />} />
+              <Route path="/practice-assignment/:id" element={<TakePracticeAssignment />} />
+              <Route path="/practice-assignment/:id/results" element={<PracticeAssignmentResults />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
