@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { usePracticeAssignmentDetail, useStartAttempt, useSubmitAttempt } from '@/hooks/usePracticeAssignments';
+import { usePracticeAssignmentWithQuestions, useStartAttempt, useSubmitAttempt } from '@/hooks/usePracticeAssignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,7 @@ const TakePracticeAssignment = () => {
   const { id: assignmentId } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
   
-  const { data: assignmentData, isLoading } = usePracticeAssignmentDetail(assignmentId);
+  const { data: assignmentData, isLoading } = usePracticeAssignmentWithQuestions(assignmentId || '');
   const startAttemptMutation = useStartAttempt();
   const submitAttemptMutation = useSubmitAttempt();
 
@@ -222,10 +222,7 @@ const TakePracticeAssignment = () => {
         attemptId,
         answers: Object.fromEntries(answers),
         questionResults: results,
-        earnedPoints,
-        totalPoints,
         timeSpentSeconds: timeSpent,
-        analysis,
       });
 
       // Navigate to results
