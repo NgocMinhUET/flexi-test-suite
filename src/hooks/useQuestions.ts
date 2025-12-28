@@ -258,11 +258,10 @@ export function useDeleteQuestion() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Soft delete
-      const { error } = await supabase
-        .from('questions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+      // Use security definer function to bypass RLS safely
+      const { error } = await supabase.rpc('soft_delete_questions', {
+        question_ids: [id]
+      });
 
       if (error) throw error;
     },
@@ -390,10 +389,10 @@ export function useBulkDeleteQuestions() {
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('questions')
-        .update({ deleted_at: new Date().toISOString() })
-        .in('id', ids);
+      // Use security definer function to bypass RLS safely
+      const { error } = await supabase.rpc('soft_delete_questions', {
+        question_ids: ids
+      });
 
       if (error) throw error;
     },

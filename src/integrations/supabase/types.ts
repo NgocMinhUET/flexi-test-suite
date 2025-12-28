@@ -1440,6 +1440,10 @@ export type Database = {
         Args: { _contest_id: string }
         Returns: boolean
       }
+      soft_delete_questions: {
+        Args: { question_ids: string[] }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
