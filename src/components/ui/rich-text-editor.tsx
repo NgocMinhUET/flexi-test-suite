@@ -1,7 +1,7 @@
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import ImageResize from 'tiptap-extension-resize-image';
+import Image from '@tiptap/extension-image';
 import { Bold, Italic, List, ListOrdered, Code, Undo, Redo, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
@@ -155,9 +155,12 @@ export const RichTextEditor = ({
       StarterKit.configure({
         heading: false,
       }),
-      ImageResize.configure({
+      Image.configure({
         inline: true,
         allowBase64: false,
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded-md my-2 cursor-pointer',
+        },
       }),
       Placeholder.configure({
         placeholder,
