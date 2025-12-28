@@ -44,6 +44,7 @@ import {
 import { SESSION_TYPES, SessionType, PracticeQuestionResult, DailyChallenge, Achievement } from '@/types/practice';
 import { cn } from '@/lib/utils';
 import { SessionResultsAnalysis } from '@/components/practice/SessionResultsAnalysis';
+import { QuestionContentRenderer, OptionContentRenderer } from '@/components/exam/QuestionContentRenderer';
 
 interface PracticeQuestion {
   id: string;
@@ -55,6 +56,7 @@ interface PracticeQuestion {
   explanation?: string;
   hints?: string[];
   estimated_time?: number;
+  media?: any[];
 }
 
 export default function PracticeSession() {
@@ -609,10 +611,10 @@ export default function PracticeSession() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Question Content */}
-          <div 
-            className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: currentQuestion.content }}
+          {/* Question Content with Images */}
+          <QuestionContentRenderer
+            content={currentQuestion.content}
+            media={currentQuestion.media}
           />
 
           {/* Hint */}
@@ -633,10 +635,13 @@ export default function PracticeSession() {
                   onValueChange={(value) => handleAnswer(value)}
                 >
                   {answerData.options.map((option: any) => (
-                    <div key={option.id} className="flex items-center space-x-2 p-3 rounded-lg hover:bg-muted/50">
-                      <RadioGroupItem value={option.id} id={option.id} />
+                    <div key={option.id} className="flex items-start space-x-2 p-3 rounded-lg hover:bg-muted/50">
+                      <RadioGroupItem value={option.id} id={option.id} className="mt-1" />
                       <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                        <div dangerouslySetInnerHTML={{ __html: option.text }} />
+                        <OptionContentRenderer 
+                          text={option.text || option.content} 
+                          imageUrl={option.imageUrl}
+                        />
                       </Label>
                     </div>
                   ))}

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Question, QuestionStatus, Answer, ProgrammingLanguage } from '@/types/exam';
+import { QuestionContentRenderer, OptionContentRenderer, MediaItem } from './QuestionContentRenderer';
 
 // Lazy load CodingEditor - it's heavy with CodeMirror dependencies
 const CodingEditor = lazy(() => import('./CodingEditor').then(m => ({ default: m.CodingEditor })));
@@ -25,7 +26,7 @@ const OptionButton = memo(({
   isSelected,
   onSelect,
 }: {
-  option: { id: string; text: string };
+  option: { id: string; text: string; imageUrl?: string };
   index: number;
   isSelected: boolean;
   onSelect: (id: string) => void;
@@ -43,10 +44,10 @@ const OptionButton = memo(({
           : "border-border bg-card"
       )}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         <span
           className={cn(
-            "flex items-center justify-center w-8 h-8 rounded-lg font-semibold text-sm",
+            "flex items-center justify-center w-8 h-8 rounded-lg font-semibold text-sm flex-shrink-0",
             isSelected
               ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground"
@@ -54,10 +55,12 @@ const OptionButton = memo(({
         >
           {String.fromCharCode(65 + index)}
         </span>
-        <span 
-          className="flex-1 prose prose-sm dark:prose-invert max-w-none [&_p]:my-0"
-          dangerouslySetInnerHTML={{ __html: option.text }}
-        />
+        <div className="flex-1">
+          <OptionContentRenderer 
+            text={option.text} 
+            imageUrl={option.imageUrl}
+          />
+        </div>
       </div>
     </button>
   );
@@ -74,7 +77,7 @@ const questionTypeLabels: Record<string, string> = {
 };
 
 interface QuestionDisplayProps {
-  question: Question;
+  question: Question & { media?: MediaItem[] };
   questionIndex: number;
   totalQuestions: number;
   status: QuestionStatus;
@@ -212,11 +215,12 @@ export const QuestionDisplay = memo(({
           </Button>
         </div>
 
-        {/* Question Content */}
+        {/* Question Content with Images */}
         <div className="mb-8">
-          <div 
-            className="text-lg text-foreground leading-relaxed prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_pre]:bg-muted [&_pre]:p-2 [&_pre]:rounded-md [&_pre]:text-sm [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm"
-            dangerouslySetInnerHTML={{ __html: question.content }}
+          <QuestionContentRenderer
+            content={question.content}
+            media={question.media}
+            className="text-lg text-foreground leading-relaxed"
           />
         </div>
 
