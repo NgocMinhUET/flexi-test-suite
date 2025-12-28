@@ -18,6 +18,7 @@ import {
   GraduationCap,
   Repeat,
   Target,
+  ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -259,7 +260,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/exams?mode=exam')}>
             <CardHeader className="pb-2">
               <div className="flex items-center gap-3">
@@ -283,6 +284,20 @@ const Dashboard = () => {
                 <div>
                   <CardTitle className="text-base">Bài luyện tập</CardTitle>
                   <CardDescription>Tạo bài tập cho học sinh</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/practice-assignments')}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Bài luyện tập được giao</CardTitle>
+                  <CardDescription>Giao bài và theo dõi kết quả</CardDescription>
                 </div>
               </div>
             </CardHeader>
