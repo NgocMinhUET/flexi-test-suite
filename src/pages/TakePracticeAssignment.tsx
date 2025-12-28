@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { QuestionResult, AttemptAnalysis, SkillAnalysis } from '@/types/practiceAssignment';
+import { QuestionContentRenderer, OptionContentRenderer } from '@/components/exam/QuestionContentRenderer';
 
 interface Answer {
   questionId: string;
@@ -436,11 +437,14 @@ const TakePracticeAssignment = () => {
                   </Button>
                 </div>
 
-                {/* Question Content */}
-                <div 
-                  className="text-lg mb-6 prose dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: currentQ.content }}
-                />
+                {/* Question Content with Images */}
+                <div className="mb-6">
+                  <QuestionContentRenderer
+                    content={currentQ.content}
+                    media={(currentQ as any).media}
+                    className="text-lg"
+                  />
+                </div>
 
                 {/* Answer Options */}
                 <div className="space-y-3">
@@ -458,16 +462,21 @@ const TakePracticeAssignment = () => {
                               : "border-border"
                           )}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-start gap-3">
                             <span className={cn(
-                              "w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-sm",
+                              "w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-sm flex-shrink-0",
                               answers.get(currentQ.id) === option.id
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-muted"
                             )}>
                               {String.fromCharCode(65 + idx)}
                             </span>
-                            <span dangerouslySetInnerHTML={{ __html: option.text }} />
+                            <div className="flex-1">
+                              <OptionContentRenderer 
+                                text={option.text || option.content} 
+                                imageUrl={option.imageUrl}
+                              />
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -481,9 +490,11 @@ const TakePracticeAssignment = () => {
                         const selectedValue = currentAnswers[idx];
 
                         return (
-                          <div key={idx} className="flex items-center gap-4 p-4 rounded-lg border">
-                            <span className="flex-1" dangerouslySetInnerHTML={{ __html: statement.text }} />
-                            <div className="flex gap-2">
+                          <div key={idx} className="flex items-start gap-4 p-4 rounded-lg border">
+                            <div className="flex-1">
+                              <OptionContentRenderer text={statement.text || statement.content} />
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
                               <Button
                                 size="sm"
                                 variant={selectedValue === true ? 'default' : 'outline'}

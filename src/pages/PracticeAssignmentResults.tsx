@@ -25,7 +25,7 @@ import {
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { PracticeAssignmentAttempt } from '@/types/practiceAssignment';
-
+import { QuestionContentRenderer } from '@/components/exam/QuestionContentRenderer';
 const PracticeAssignmentResults = () => {
   const navigate = useNavigate();
   const { id: assignmentId } = useParams<{ id: string }>();
@@ -333,10 +333,12 @@ const PracticeAssignmentResults = () => {
                                     <XCircle className="h-5 w-5 text-red-500" />
                                   )}
                                 </div>
-                                <div 
-                                  className="prose dark:prose-invert prose-sm max-w-none mb-3"
-                                  dangerouslySetInnerHTML={{ __html: question.content }}
-                                />
+                                <div className="mb-3">
+                                  <QuestionContentRenderer
+                                    content={question.content}
+                                    media={(question as any).media}
+                                  />
+                                </div>
                                 
                                 {assignmentData.show_answers_after_submit && (
                                   <div className="space-y-2 text-sm">

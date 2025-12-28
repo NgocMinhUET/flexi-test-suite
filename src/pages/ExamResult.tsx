@@ -30,7 +30,7 @@ import { ExamResult, QuestionResult, QuestionType, Question, CodingGradingResult
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import CodingResultsDisplay from '@/components/exam/CodingResultsDisplay';
-
+import { QuestionContentRenderer, OptionContentRenderer } from '@/components/exam/QuestionContentRenderer';
 const gradeColors: Record<string, string> = {
   'A+': 'text-success',
   'A': 'text-success',
@@ -516,9 +516,9 @@ const ExamResultPage = () => {
                       {/* Question Content */}
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground mb-2">Nội dung câu hỏi</h4>
-                        <div 
-                          className="text-foreground prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap"
-                          dangerouslySetInnerHTML={{ __html: question.content }}
+                        <QuestionContentRenderer
+                          content={question.content}
+                          media={(question as any).media}
                         />
                       </div>
 
@@ -539,14 +539,19 @@ const ExamResultPage = () => {
                                   !isUserAnswer && !isCorrectAnswer && "border-border bg-muted/30"
                                 )}
                               >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{opt.id.toUpperCase()}.</span>
-                                  <span>{opt.text}</span>
+                                <div className="flex items-start gap-2">
+                                  <span className="font-medium flex-shrink-0">{opt.id.toUpperCase()}.</span>
+                                  <div className="flex-1">
+                                    <OptionContentRenderer 
+                                      text={opt.text} 
+                                      imageUrl={(opt as any).imageUrl}
+                                    />
+                                  </div>
                                   {isCorrectAnswer && (
-                                    <CheckCircle2 className="w-4 h-4 text-success ml-auto" />
+                                    <CheckCircle2 className="w-4 h-4 text-success ml-auto flex-shrink-0" />
                                   )}
                                   {isUserAnswer && !isCorrectAnswer && (
-                                    <XCircle className="w-4 h-4 text-destructive ml-auto" />
+                                    <XCircle className="w-4 h-4 text-destructive ml-auto flex-shrink-0" />
                                   )}
                                 </div>
                               </div>
