@@ -1,7 +1,7 @@
 import { useState, memo, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard, FileText, Zap, Target, Award } from "lucide-react";
+import { Menu, X, Code2, BookOpen, Trophy, Users, LogOut, LayoutDashboard, FileText, Zap, Target, Award, ClipboardList } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 // Memoized nav item component
@@ -46,6 +46,7 @@ const Header = memo(() => {
   ];
 
   const studentNavItems = [
+    { label: "Bài được giao", href: "/my-practice-assignments", icon: ClipboardList, isLink: true },
     { label: "Luyện tập", href: "/practice", icon: BookOpen, isLink: true },
     { label: "Adaptive", href: "/adaptive-practice", icon: Zap, isLink: true },
     { label: "Thành tích", href: "/achievements", icon: Award, isLink: true },
