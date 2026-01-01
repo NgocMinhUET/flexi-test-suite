@@ -13,6 +13,29 @@ interface QuestionCandidate {
   estimated_time?: number;
 }
 
+// Selection reason types for explainability
+export type SelectionReasonType = 
+  | 'weak_point'           // Điểm yếu cần cải thiện
+  | 'spaced_repetition'    // Đến lúc ôn tập theo SM-2
+  | 'difficulty_match'     // Phù hợp với trình độ
+  | 'retry_failed'         // Ôn lại câu đã sai
+  | 'struggling_topic'     // Chủ đề đang gặp khó khăn
+  | 'challenge'            // Thử thách nâng cao
+  | 'new_topic'            // Khám phá chủ đề mới
+  | 'reinforce';           // Củng cố kiến thức
+
+export interface SelectionReason {
+  type: SelectionReasonType;
+  label: string;
+  description: string;
+  priority: number;
+}
+
+export interface SelectedQuestion extends QuestionCandidate {
+  selectionReasons: SelectionReason[];
+  primaryReason: SelectionReason;
+}
+
 interface QuestionHistoryRecord {
   question_id: string;
   times_seen: number;
@@ -214,6 +237,102 @@ export async function fetchQuestionHistory(
 }
 
 /**
+ * Generate selection reasons for a question
+ */
+function generateSelectionReasons(
+  question: QuestionCandidate,
+  history: QuestionHistoryRecord | undefined,
+  context: SelectionContext
+): SelectionReason[] {
+  const reasons: SelectionReason[] = [];
+  const mastery = context.masteries.find(m => m.taxonomy_node_id === question.taxonomy_node_id);
+  const masteryLevel = mastery?.mastery_level || 0;
+
+  // Check mastery-based reasons
+  if (masteryLevel < 40) {
+    reasons.push({
+      type: 'weak_point',
+      label: 'Điểm yếu',
+      description: `Cần cải thiện chủ đề này (${Math.round(masteryLevel)}% thành thạo)`,
+      priority: 90
+    });
+  } else if (masteryLevel < 70) {
+    reasons.push({
+      type: 'reinforce',
+      label: 'Củng cố',
+      description: `Củng cố kiến thức (${Math.round(masteryLevel)}% thành thạo)`,
+      priority: 60
+    });
+  } else {
+    reasons.push({
+      type: 'challenge',
+      label: 'Thử thách',
+      description: `Nâng cao trình độ (${Math.round(masteryLevel)}% thành thạo)`,
+      priority: 40
+    });
+  }
+
+  // Check spaced repetition
+  if (history?.next_review_date) {
+    const dueDate = new Date(history.next_review_date);
+    const now = new Date();
+    const daysDiff = Math.round((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff >= 0) {
+      reasons.push({
+        type: 'spaced_repetition',
+        label: 'Đến lúc ôn tập',
+        description: daysDiff === 0 
+          ? 'Hôm nay là ngày ôn tập theo lịch' 
+          : `Quá hạn ôn tập ${daysDiff} ngày`,
+        priority: 95
+      });
+    }
+  } else if (!history) {
+    reasons.push({
+      type: 'new_topic',
+      label: 'Chủ đề mới',
+      description: 'Khám phá kiến thức mới',
+      priority: 50
+    });
+  }
+
+  // Check if previously failed
+  if (history?.last_result === false) {
+    reasons.push({
+      type: 'retry_failed',
+      label: 'Thử lại',
+      description: 'Ôn lại câu hỏi bạn đã trả lời sai trước đó',
+      priority: 85
+    });
+  }
+
+  // Check struggling (low ease factor)
+  if (history && history.ease_factor < 2.0) {
+    reasons.push({
+      type: 'struggling_topic',
+      label: 'Cần luyện tập',
+      description: 'Bạn đang gặp khó khăn với câu hỏi này',
+      priority: 80
+    });
+  }
+
+  // Check difficulty match
+  const difficultyDiff = Math.abs((question.difficulty || 3) - context.targetDifficulty);
+  if (difficultyDiff <= 0.5) {
+    reasons.push({
+      type: 'difficulty_match',
+      label: 'Phù hợp trình độ',
+      description: `Độ khó phù hợp với trình độ hiện tại của bạn`,
+      priority: 55
+    });
+  }
+
+  // Sort by priority descending
+  return reasons.sort((a, b) => b.priority - a.priority);
+}
+
+/**
  * Score a question for selection priority
  * Higher score = higher priority for selection
  */
@@ -279,12 +398,13 @@ function scoreQuestion(
 
 /**
  * Main adaptive question selection algorithm
+ * Returns questions with selection reasons for explainability
  */
 export async function selectAdaptiveQuestions(
   allQuestions: QuestionCandidate[],
   count: number,
   context: SelectionContext
-): Promise<QuestionCandidate[]> {
+): Promise<SelectedQuestion[]> {
   if (allQuestions.length === 0) return [];
   
   // Fetch history for all questions
@@ -300,11 +420,16 @@ export async function selectAdaptiveQuestions(
   
   const adjustedContext = { ...context, targetDifficulty: adjustedDifficulty };
   
-  // Score all questions
-  const scoredQuestions = allQuestions.map(q => ({
-    question: q,
-    score: scoreQuestion(q, historyMap.get(q.id), adjustedContext)
-  }));
+  // Score all questions and generate reasons
+  const scoredQuestions = allQuestions.map(q => {
+    const history = historyMap.get(q.id);
+    const reasons = generateSelectionReasons(q, history, adjustedContext);
+    return {
+      question: q,
+      score: scoreQuestion(q, history, adjustedContext),
+      reasons
+    };
+  });
   
   // Sort by score descending
   scoredQuestions.sort((a, b) => b.score - a.score);
@@ -318,8 +443,12 @@ export async function selectAdaptiveQuestions(
     [topTier[i], topTier[j]] = [topTier[j], topTier[i]];
   }
   
-  // Take required count
-  return topTier.slice(0, count).map(sq => sq.question);
+  // Take required count and attach reasons
+  return topTier.slice(0, count).map(sq => ({
+    ...sq.question,
+    selectionReasons: sq.reasons,
+    primaryReason: sq.reasons[0]
+  }));
 }
 
 /**

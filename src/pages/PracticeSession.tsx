@@ -14,7 +14,9 @@ import {
   selectAdaptiveQuestions,
   updateQuestionHistory,
   getBaseDifficulty,
-  calculateWeightedMastery
+  calculateWeightedMastery,
+  SelectionReason,
+  SelectedQuestion
 } from '@/hooks/useAdaptiveQuestionSelection';
 import { useDailyChallengeProgress } from '@/hooks/useDailyChallengeProgress';
 import { useAchievementChecker } from '@/hooks/useAchievementChecker';
@@ -45,17 +47,9 @@ import { SESSION_TYPES, SessionType, PracticeQuestionResult, DailyChallenge, Ach
 import { cn } from '@/lib/utils';
 import { SessionResultsAnalysis } from '@/components/practice/SessionResultsAnalysis';
 import { QuestionContentRenderer, OptionContentRenderer } from '@/components/exam/QuestionContentRenderer';
+import { SelectionReasonsDisplay } from '@/components/practice/SelectionReasonBadge';
 
-interface PracticeQuestion {
-  id: string;
-  content: string;
-  question_type: string;
-  answer_data: any;
-  difficulty: number;
-  taxonomy_node_id: string;
-  explanation?: string;
-  hints?: string[];
-  estimated_time?: number;
+interface PracticeQuestion extends SelectedQuestion {
   media?: any[];
 }
 
@@ -596,14 +590,23 @@ export default function PracticeSession() {
       {/* Question Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <Badge variant="secondary">
-              {currentQuestion.question_type === 'MCQ_SINGLE' && 'Trắc nghiệm'}
-              {currentQuestion.question_type === 'TRUE_FALSE_4' && 'Đúng/Sai'}
-              {currentQuestion.question_type === 'SHORT_ANSWER' && 'Tự luận ngắn'}
-            </Badge>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Badge variant="secondary">
+                {currentQuestion.question_type === 'MCQ_SINGLE' && 'Trắc nghiệm'}
+                {currentQuestion.question_type === 'TRUE_FALSE_4' && 'Đúng/Sai'}
+                {currentQuestion.question_type === 'SHORT_ANSWER' && 'Tự luận ngắn'}
+              </Badge>
+              {currentQuestion.selectionReasons && currentQuestion.selectionReasons.length > 0 && (
+                <SelectionReasonsDisplay 
+                  reasons={currentQuestion.selectionReasons} 
+                  maxDisplay={2}
+                  size="sm"
+                />
+              )}
+            </div>
             {!showResult && currentQuestion.hints && currentQuestion.hints.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={revealHint}>
+              <Button variant="ghost" size="sm" onClick={revealHint} className="mt-2 self-end">
                 <Lightbulb className="h-4 w-4 mr-1" />
                 Gợi ý (-5 XP)
               </Button>
