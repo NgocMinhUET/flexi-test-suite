@@ -19,6 +19,7 @@ import {
   Repeat,
   Target,
   ClipboardList,
+  School,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -251,6 +252,12 @@ const Dashboard = () => {
               </>
             )}
             <Button variant="outline" asChild>
+              <Link to="/classes">
+                <School className="w-4 h-4 mr-2" />
+                Quản lý lớp
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link to="/questions">
                 <FileText className="w-4 h-4 mr-2" />
                 Ngân hàng câu hỏi
@@ -312,6 +319,20 @@ const Dashboard = () => {
                 <div>
                   <CardTitle className="text-base">Cuộc thi</CardTitle>
                   <CardDescription>Tổ chức cuộc thi lớn</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/classes')}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <School className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Quản lý lớp học</CardTitle>
+                  <CardDescription>Tạo lớp và quản lý học sinh</CardDescription>
                 </div>
               </div>
             </CardHeader>
