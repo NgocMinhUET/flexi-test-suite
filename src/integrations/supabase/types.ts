@@ -1599,6 +1599,7 @@ export type Database = {
         Args: { _contest_id: string; _exam_id: string }
         Returns: boolean
       }
+      owns_class: { Args: { _class_id: string }; Returns: boolean }
       owns_contest: { Args: { _contest_id: string }; Returns: boolean }
       owns_exam: { Args: { _exam_id: string }; Returns: boolean }
       participates_in_contest: {
