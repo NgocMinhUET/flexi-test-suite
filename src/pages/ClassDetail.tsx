@@ -51,6 +51,7 @@ import {
   ClipboardList,
   FileText,
   TrendingUp,
+  FileUp,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -62,6 +63,7 @@ import {
   useUpdateEnrollment,
 } from '@/hooks/useClasses';
 import { AddStudentsDialog } from '@/components/class/AddStudentsDialog';
+import { ImportStudentsDialog } from '@/components/class/ImportStudentsDialog';
 import { CreateClassDialog } from '@/components/class/CreateClassDialog';
 import type { EnrollmentStatus, ClassMemberRole } from '@/types/class';
 
@@ -77,6 +79,7 @@ export default function ClassDetail() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [addStudentsOpen, setAddStudentsOpen] = useState(false);
+  const [importStudentsOpen, setImportStudentsOpen] = useState(false);
   const [editClassOpen, setEditClassOpen] = useState(false);
   const [studentToRemove, setStudentToRemove] = useState<{ id: string; name: string } | null>(null);
 
@@ -271,10 +274,16 @@ export default function ClassDetail() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={() => setAddStudentsOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Thêm học sinh
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportStudentsOpen(true)}>
+                <FileUp className="h-4 w-4 mr-2" />
+                Import Excel
+              </Button>
+              <Button onClick={() => setAddStudentsOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Thêm học sinh
+              </Button>
+            </div>
           </div>
 
           {/* Students table */}
@@ -426,6 +435,13 @@ export default function ClassDetail() {
       <AddStudentsDialog
         open={addStudentsOpen}
         onOpenChange={setAddStudentsOpen}
+        classId={id || ''}
+        className={classData.name}
+      />
+
+      <ImportStudentsDialog
+        open={importStudentsOpen}
+        onOpenChange={setImportStudentsOpen}
         classId={id || ''}
         className={classData.name}
       />
