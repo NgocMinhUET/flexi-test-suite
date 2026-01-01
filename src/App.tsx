@@ -40,6 +40,9 @@ const PracticeAssignmentManagement = lazyWithRetry(() => import("./pages/Practic
 const StudentPracticeAssignments = lazyWithRetry(() => import("./pages/StudentPracticeAssignments"));
 const TakePracticeAssignment = lazyWithRetry(() => import("./pages/TakePracticeAssignment"));
 const PracticeAssignmentResults = lazyWithRetry(() => import("./pages/PracticeAssignmentResults"));
+const ClassManagement = lazyWithRetry(() => import("./pages/ClassManagement"));
+const ClassDetail = lazyWithRetry(() => import("./pages/ClassDetail"));
+const MyClasses = lazyWithRetry(() => import("./pages/MyClasses"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -108,6 +111,9 @@ const App = () => {
                 <Route path="/my-practice-assignments" element={<StudentPracticeAssignments />} />
                 <Route path="/practice-assignment/:id" element={<TakePracticeAssignment />} />
                 <Route path="/practice-assignment/:id/results" element={<PracticeAssignmentResults />} />
+                <Route path="/classes" element={<ClassManagement />} />
+                <Route path="/classes/:id" element={<ClassDetail />} />
+                <Route path="/my-classes" element={<MyClasses />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

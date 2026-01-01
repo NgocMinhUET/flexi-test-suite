@@ -182,6 +182,8 @@ export function useCreatePracticeAssignment() {
       duration?: number;
       show_answers_after_submit?: boolean;
       allow_multiple_attempts?: boolean;
+      class_id?: string;
+      assignment_scope?: 'class' | 'individual';
     }) => {
       const { data: result, error } = await supabase
         .from('practice_assignments')
@@ -194,11 +196,34 @@ export function useCreatePracticeAssignment() {
           show_answers_after_submit: data.show_answers_after_submit ?? true,
           allow_multiple_attempts: data.allow_multiple_attempts ?? true,
           created_by: user?.id,
+          class_id: data.class_id || null,
+          assignment_scope: data.assignment_scope || 'individual',
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // If assignment scope is 'class', auto-enroll all students from the class
+      if (data.assignment_scope === 'class' && data.class_id && result) {
+        const { data: classStudents } = await supabase
+          .from('class_students')
+          .select('student_id')
+          .eq('class_id', data.class_id)
+          .eq('status', 'active');
+
+        if (classStudents && classStudents.length > 0) {
+          const enrollments = classStudents.map(cs => ({
+            assignment_id: result.id,
+            student_id: cs.student_id,
+          }));
+
+          await supabase
+            .from('practice_assignment_students')
+            .insert(enrollments);
+        }
+      }
+
       return result;
     },
     onSuccess: () => {

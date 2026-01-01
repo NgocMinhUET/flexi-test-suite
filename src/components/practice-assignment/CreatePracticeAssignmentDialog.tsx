@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCreatePracticeAssignment } from '@/hooks/usePracticeAssignments';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useTaxonomyNodes } from '@/hooks/useTaxonomy';
+import { useClassesForAssignment } from '@/hooks/useClasses';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -24,8 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Search, BookOpen, Clock, CheckCircle2 } from 'lucide-react';
+import { Loader2, Search, BookOpen, CheckCircle2, Users, School } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { AssignmentScope } from '@/types/class';
 
 interface Subject {
   id: string;
@@ -52,6 +55,10 @@ export function CreatePracticeAssignmentDialog({
   const [duration, setDuration] = useState<number | undefined>();
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [assignmentScope, setAssignmentScope] = useState<AssignmentScope>('individual');
+  const [selectedClassId, setSelectedClassId] = useState<string | undefined>();
+
+  const { data: availableClasses } = useClassesForAssignment();
 
   const createAssignment = useCreatePracticeAssignment();
   const { data: taxonomyNodes } = useTaxonomyNodes(subjectId || undefined);
@@ -75,6 +82,8 @@ export function CreatePracticeAssignmentDialog({
       setDuration(undefined);
       setSelectedQuestions([]);
       setSearchQuery('');
+      setAssignmentScope('individual');
+      setSelectedClassId(undefined);
     }
   }, [open]);
 
@@ -102,6 +111,7 @@ export function CreatePracticeAssignmentDialog({
 
   const handleCreate = async () => {
     if (!title.trim() || !subjectId || selectedQuestions.length === 0) return;
+    if (assignmentScope === 'class' && !selectedClassId) return;
 
     await createAssignment.mutateAsync({
       title: title.trim(),
@@ -111,6 +121,8 @@ export function CreatePracticeAssignmentDialog({
       duration: duration || undefined,
       show_answers_after_submit: true,
       allow_multiple_attempts: true,
+      class_id: assignmentScope === 'class' ? selectedClassId : undefined,
+      assignment_scope: assignmentScope,
     });
 
     onOpenChange(false);
@@ -187,6 +199,61 @@ export function CreatePracticeAssignmentDialog({
                 />
               </div>
             </div>
+
+            {/* Assignment Scope */}
+            <div className="space-y-3">
+              <Label>Phạm vi giao bài</Label>
+              <RadioGroup
+                value={assignmentScope}
+                onValueChange={(v) => setAssignmentScope(v as AssignmentScope)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="individual" id="individual" />
+                  <Label htmlFor="individual" className="flex items-center gap-2 cursor-pointer">
+                    <Users className="w-4 h-4" />
+                    Chọn từng học sinh
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="class" id="class" />
+                  <Label htmlFor="class" className="flex items-center gap-2 cursor-pointer">
+                    <School className="w-4 h-4" />
+                    Giao theo lớp
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Class Selection (only show when scope is 'class') */}
+            {assignmentScope === 'class' && (
+              <div className="space-y-2">
+                <Label>Chọn lớp *</Label>
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn lớp để giao bài" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableClasses?.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="font-mono text-xs mr-2">{c.code}</span>
+                        {c.name}
+                        {c.subjects && (
+                          <span className="text-muted-foreground ml-2">
+                            ({c.subjects.name})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {availableClasses?.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Chưa có lớp nào. Hãy tạo lớp học trước.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0 py-4">
@@ -319,7 +386,7 @@ export function CreatePracticeAssignmentDialog({
               </Button>
               <Button
                 onClick={() => setStep(2)}
-                disabled={!title.trim() || !subjectId}
+                disabled={!title.trim() || !subjectId || (assignmentScope === 'class' && !selectedClassId)}
               >
                 Tiếp tục
               </Button>
