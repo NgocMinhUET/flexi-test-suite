@@ -50,6 +50,7 @@ import {
   Search,
   ClipboardList,
   FileText,
+  TrendingUp,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -170,10 +171,16 @@ export default function ClassDetail() {
           </div>
         </div>
         
-        <Button variant="outline" onClick={() => setEditClassOpen(true)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Chỉnh sửa
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate(`/classes/${id}/progress`)}>
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Báo cáo tiến độ
+          </Button>
+          <Button variant="outline" onClick={() => setEditClassOpen(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Chỉnh sửa
+          </Button>
+        </div>
       </div>
 
       {/* Info cards */}
