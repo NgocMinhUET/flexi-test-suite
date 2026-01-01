@@ -92,6 +92,157 @@ export type Database = {
         }
         Relationships: []
       }
+      class_students: {
+        Row: {
+          class_id: string
+          enrolled_at: string
+          enrolled_by: string | null
+          id: string
+          notes: string | null
+          role: Database["public"]["Enums"]["class_member_role"]
+          status: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
+        }
+        Insert: {
+          class_id: string
+          enrolled_at?: string
+          enrolled_by?: string | null
+          id?: string
+          notes?: string | null
+          role?: Database["public"]["Enums"]["class_member_role"]
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
+        }
+        Update: {
+          class_id?: string
+          enrolled_at?: string
+          enrolled_by?: string | null
+          id?: string
+          notes?: string | null
+          role?: Database["public"]["Enums"]["class_member_role"]
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_teachers: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          class_id: string
+          id: string
+          role: Database["public"]["Enums"]["class_teacher_role"]
+          subject_id: string | null
+          teacher_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["class_teacher_role"]
+          subject_id?: string | null
+          teacher_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          class_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["class_teacher_role"]
+          subject_id?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_teachers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_teachers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          academic_year: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          end_date: string | null
+          grade_level: string | null
+          id: string
+          is_active: boolean
+          max_students: number | null
+          name: string
+          semester: string | null
+          start_date: string | null
+          subject_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          grade_level?: string | null
+          id?: string
+          is_active?: boolean
+          max_students?: number | null
+          name: string
+          semester?: string | null
+          start_date?: string | null
+          subject_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          grade_level?: string | null
+          id?: string
+          is_active?: boolean
+          max_students?: number | null
+          name?: string
+          semester?: string | null
+          start_date?: string | null
+          subject_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contest_exams: {
         Row: {
           contest_id: string
@@ -756,6 +907,8 @@ export type Database = {
       practice_assignments: {
         Row: {
           allow_multiple_attempts: boolean
+          assignment_scope: Database["public"]["Enums"]["assignment_scope"]
+          class_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -770,6 +923,8 @@ export type Database = {
         }
         Insert: {
           allow_multiple_attempts?: boolean
+          assignment_scope?: Database["public"]["Enums"]["assignment_scope"]
+          class_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -784,6 +939,8 @@ export type Database = {
         }
         Update: {
           allow_multiple_attempts?: boolean
+          assignment_scope?: Database["public"]["Enums"]["assignment_scope"]
+          class_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -797,6 +954,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "practice_assignments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "practice_assignments_subject_id_fkey"
             columns: ["subject_id"]
@@ -1423,6 +1587,7 @@ export type Database = {
     }
     Functions: {
       calculate_level_from_xp: { Args: { xp: number }; Returns: number }
+      enrolled_in_class: { Args: { _class_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1444,9 +1609,14 @@ export type Database = {
         Args: { question_ids: string[] }
         Returns: undefined
       }
+      teaches_class: { Args: { _class_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
+      assignment_scope: "class" | "individual"
+      class_member_role: "student" | "monitor" | "deputy"
+      class_teacher_role: "primary" | "assistant" | "substitute"
+      enrollment_status: "active" | "inactive" | "dropped" | "graduated"
       question_status: "draft" | "review" | "approved" | "published"
       question_type: "MCQ_SINGLE" | "TRUE_FALSE_4" | "SHORT_ANSWER" | "CODING"
     }
@@ -1577,6 +1747,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "teacher", "student"],
+      assignment_scope: ["class", "individual"],
+      class_member_role: ["student", "monitor", "deputy"],
+      class_teacher_role: ["primary", "assistant", "substitute"],
+      enrollment_status: ["active", "inactive", "dropped", "graduated"],
       question_status: ["draft", "review", "approved", "published"],
       question_type: ["MCQ_SINGLE", "TRUE_FALSE_4", "SHORT_ANSWER", "CODING"],
     },
