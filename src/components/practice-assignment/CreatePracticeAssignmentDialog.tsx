@@ -322,11 +322,11 @@ export function CreatePracticeAssignmentDialog({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Môn học *</Label>
-            <Select value={subjectId} onValueChange={setSubjectId}>
-              <SelectTrigger>
+            <Select value={subjectId || ""} onValueChange={setSubjectId}>
+              <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Chọn môn học" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background z-50">
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
@@ -378,10 +378,10 @@ export function CreatePracticeAssignmentDialog({
           <div className="space-y-2">
             <Label>Chọn lớp *</Label>
             <Select value={selectedClassId || ""} onValueChange={setSelectedClassId}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Chọn lớp để giao bài" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background z-50">
                 {availableClasses?.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     <span className="font-mono text-xs mr-2">{c.code}</span>
@@ -614,10 +614,10 @@ export function CreatePracticeAssignmentDialog({
           value={taxonomyNodeId || 'all'}
           onValueChange={(v) => setTaxonomyNodeId(v === 'all' ? undefined : v)}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[200px] bg-background">
             <SelectValue placeholder="Chương/Bài" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-background z-50">
             <SelectItem value="all">Tất cả</SelectItem>
             {taxonomyNodes?.map((n) => (
               <SelectItem key={n.id} value={n.id}>
