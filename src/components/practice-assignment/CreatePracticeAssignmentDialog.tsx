@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useCreatePracticeAssignment, useCreateAdaptiveAssignment } from '@/hooks/usePracticeAssignments';
+import { useCreatePracticeAssignment, useCreateAdaptiveAssignment, useAssignStudents } from '@/hooks/usePracticeAssignments';
 import { useQuestions } from '@/hooks/useQuestions';
 import { useTaxonomyNodes, useTaxonomyTree } from '@/hooks/useTaxonomy';
 import { useClassesForAssignment } from '@/hooks/useClasses';
 import { useQuestionStats } from '@/hooks/useQuestionStats';
+import { useAllStudents } from '@/hooks/useAllStudents';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Slider } from '@/components/ui/slider';
 import {
   Select,
@@ -28,10 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Search, BookOpen, CheckCircle2, Users, School, Sparkles, List, Zap, Target, Settings2 } from 'lucide-react';
+import { Loader2, Search, BookOpen, CheckCircle2, Users, School, Sparkles, List, Zap, Target, Settings2, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AssignmentScope } from '@/types/class';
-import type { MatrixCell } from '@/types/examGeneration';
 
 interface Subject {
   id: string;
@@ -66,6 +66,10 @@ export function CreatePracticeAssignmentDialog({
   const [duration, setDuration] = useState<number | undefined>();
   const [assignmentScope, setAssignmentScope] = useState<AssignmentScope>('class');
   const [selectedClassId, setSelectedClassId] = useState<string | undefined>();
+  
+  // Student selection for individual scope
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
   // Manual mode
   const [taxonomyNodeId, setTaxonomyNodeId] = useState<string | undefined>();
@@ -84,6 +88,7 @@ export function CreatePracticeAssignmentDialog({
   const { data: availableClasses } = useClassesForAssignment();
   const createAssignment = useCreatePracticeAssignment();
   const createAdaptiveAssignment = useCreateAdaptiveAssignment();
+  const assignStudents = useAssignStudents();
   const { data: taxonomyNodes } = useTaxonomyNodes(subjectId || undefined);
   const { data: taxonomyTree } = useTaxonomyTree(subjectId || undefined);
   const { data: questionStats, isLoading: statsLoading } = useQuestionStats(subjectId || undefined);
@@ -93,6 +98,7 @@ export function CreatePracticeAssignmentDialog({
     status: 'published',
     search: searchQuery || undefined,
   });
+  const { data: allStudents, isLoading: studentsLoading } = useAllStudents(open && assignmentScope === 'individual');
 
   const questions = questionsData?.data || [];
   const currentSubject = subjects.find(s => s.id === subjectId);
@@ -101,6 +107,16 @@ export function CreatePracticeAssignmentDialog({
 
   // Root level taxonomy nodes for selection
   const rootNodes = taxonomyTree?.filter(n => n.level === 0) || [];
+  
+  // Filtered students for individual selection
+  const filteredStudents = allStudents?.filter((s) => {
+    if (!studentSearchQuery) return true;
+    const query = studentSearchQuery.toLowerCase();
+    return (
+      s.full_name?.toLowerCase().includes(query) ||
+      s.email?.toLowerCase().includes(query)
+    );
+  }) || [];
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -116,6 +132,8 @@ export function CreatePracticeAssignmentDialog({
       setSearchQuery('');
       setAssignmentScope('class');
       setSelectedClassId(undefined);
+      setSelectedStudentIds([]);
+      setStudentSearchQuery('');
       setAutoMode('hybrid');
       setQuestionCount(10);
       setDifficultyRange([0.2, 0.8]);
@@ -146,6 +164,23 @@ export function CreatePracticeAssignmentDialog({
       setSelectedQuestions(questions.map(q => q.id));
     } else {
       setSelectedQuestions([]);
+    }
+  };
+  
+  // Student selection handlers
+  const handleSelectStudent = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedStudentIds([...selectedStudentIds, id]);
+    } else {
+      setSelectedStudentIds(selectedStudentIds.filter(s => s !== id));
+    }
+  };
+
+  const handleSelectAllStudents = (checked: boolean) => {
+    if (checked) {
+      setSelectedStudentIds(filteredStudents.map(s => s.id));
+    } else {
+      setSelectedStudentIds([]);
     }
   };
 
@@ -194,8 +229,9 @@ export function CreatePracticeAssignmentDialog({
   const handleCreateManual = async () => {
     if (!title.trim() || !subjectId || selectedQuestions.length === 0) return;
     if (assignmentScope === 'class' && !selectedClassId) return;
+    if (assignmentScope === 'individual' && selectedStudentIds.length === 0) return;
 
-    await createAssignment.mutateAsync({
+    const created = await createAssignment.mutateAsync({
       title: title.trim(),
       description: description.trim() || undefined,
       subject_id: subjectId,
@@ -207,14 +243,23 @@ export function CreatePracticeAssignmentDialog({
       assignment_scope: assignmentScope,
     });
 
+    // Auto-assign students for individual scope
+    if (assignmentScope === 'individual' && selectedStudentIds.length > 0 && created?.id) {
+      await assignStudents.mutateAsync({
+        assignmentId: created.id,
+        studentIds: selectedStudentIds,
+      });
+    }
+
     onOpenChange(false);
   };
 
   const handleCreateAuto = async () => {
     if (!title.trim() || !subjectId) return;
     if (assignmentScope === 'class' && !selectedClassId) return;
+    if (assignmentScope === 'individual' && selectedStudentIds.length === 0) return;
 
-    await createAdaptiveAssignment.mutateAsync({
+    const created = await createAdaptiveAssignment.mutateAsync({
       title: title.trim(),
       description: description.trim() || undefined,
       subject_id: subjectId,
@@ -229,6 +274,14 @@ export function CreatePracticeAssignmentDialog({
       auto_mode: autoMode,
     });
 
+    // Auto-assign students for individual scope
+    if (assignmentScope === 'individual' && selectedStudentIds.length > 0 && created?.id) {
+      await assignStudents.mutateAsync({
+        assignmentId: created.id,
+        studentIds: selectedStudentIds,
+      });
+    }
+
     onOpenChange(false);
   };
 
@@ -238,368 +291,469 @@ export function CreatePracticeAssignmentDialog({
     return div.textContent || div.innerText || '';
   };
 
-  const isPending = createAssignment.isPending || createAdaptiveAssignment.isPending;
+  const isPending = createAssignment.isPending || createAdaptiveAssignment.isPending || assignStudents.isPending;
 
   // Step 1: Basic Info + Mode Selection
   const renderStep1 = () => (
-    <div className="space-y-6 py-4">
-      {/* Creation Mode Selection */}
-      <div className="space-y-3">
-        <Label className="text-base font-semibold">Chế độ tạo đề</Label>
-        <div className="grid grid-cols-2 gap-4">
-          <div
-            onClick={() => setCreationMode('auto')}
-            className={cn(
-              'p-4 rounded-lg border-2 cursor-pointer transition-all',
-              creationMode === 'auto'
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50'
-            )}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn(
-                'p-2 rounded-lg',
-                creationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-              )}>
-                <Sparkles className="w-5 h-5" />
+    <ScrollArea className="flex-1 min-h-0">
+      <div className="space-y-6 py-4 px-1">
+        {/* Creation Mode Selection */}
+        <div className="space-y-3">
+          <Label className="text-base font-semibold">Chế độ tạo đề</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              onClick={() => setCreationMode('auto')}
+              className={cn(
+                'p-4 rounded-lg border-2 cursor-pointer transition-all',
+                creationMode === 'auto'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+              )}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={cn(
+                  'p-2 rounded-lg',
+                  creationMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                )}>
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div className="font-semibold">Tự động (Khuyến nghị)</div>
               </div>
-              <div className="font-semibold">Tự động (Khuyến nghị)</div>
+              <p className="text-sm text-muted-foreground">
+                Hệ thống tự chọn câu hỏi phù hợp dựa trên ma trận, độ khó và điểm yếu của học sinh
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Hệ thống tự chọn câu hỏi phù hợp dựa trên ma trận, độ khó và điểm yếu của học sinh
-            </p>
-          </div>
 
-          <div
-            onClick={() => setCreationMode('manual')}
-            className={cn(
-              'p-4 rounded-lg border-2 cursor-pointer transition-all',
-              creationMode === 'manual'
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50'
-            )}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn(
-                'p-2 rounded-lg',
-                creationMode === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-              )}>
-                <List className="w-5 h-5" />
+            <div
+              onClick={() => setCreationMode('manual')}
+              className={cn(
+                'p-4 rounded-lg border-2 cursor-pointer transition-all',
+                creationMode === 'manual'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+              )}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={cn(
+                  'p-2 rounded-lg',
+                  creationMode === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                )}>
+                  <List className="w-5 h-5" />
+                </div>
+                <div className="font-semibold">Thủ công</div>
               </div>
-              <div className="font-semibold">Thủ công</div>
+              <p className="text-sm text-muted-foreground">
+                Chọn từng câu hỏi cụ thể cho bài luyện tập
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Chọn từng câu hỏi cụ thể cho bài luyện tập
-            </p>
           </div>
         </div>
-      </div>
 
-      {/* Basic Info */}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="title">Tiêu đề *</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Nhập tiêu đề bài luyện tập"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Mô tả</Label>
-          <Textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Mô tả nội dung, yêu cầu..."
-            rows={2}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+        {/* Basic Info */}
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Môn học *</Label>
-            <Select value={subjectId || ""} onValueChange={setSubjectId}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Chọn môn học" />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                {subjects.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Thời gian (phút)</Label>
+            <Label htmlFor="title">Tiêu đề *</Label>
             <Input
-              type="number"
-              value={duration || ''}
-              onChange={(e) => setDuration(e.target.value ? parseInt(e.target.value) : undefined)}
-              placeholder="Không giới hạn"
-              min={1}
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nhập tiêu đề bài luyện tập"
             />
           </div>
-        </div>
 
-        {/* Assignment Scope */}
-        <div className="space-y-3">
-          <Label>Phạm vi giao bài</Label>
-          <Tabs
-            value={assignmentScope}
-            onValueChange={(v) => setAssignmentScope(v as AssignmentScope)}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2 h-auto">
-              <TabsTrigger
+          <div className="space-y-2">
+            <Label htmlFor="description">Mô tả</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Mô tả nội dung, yêu cầu..."
+              rows={2}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Môn học *</Label>
+              <Select value={subjectId || ""} onValueChange={setSubjectId}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Chọn môn học" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {subjects.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Thời gian (phút)</Label>
+              <Input
+                type="number"
+                value={duration || ''}
+                onChange={(e) => setDuration(e.target.value ? parseInt(e.target.value) : undefined)}
+                placeholder="Không giới hạn"
+                min={1}
+              />
+            </div>
+          </div>
+
+          {/* Assignment Scope - Segmented Control */}
+          <div className="space-y-3">
+            <Label>Phạm vi giao bài</Label>
+            <ToggleGroup
+              type="single"
+              value={assignmentScope}
+              onValueChange={(v) => {
+                if (v) setAssignmentScope(v as AssignmentScope);
+              }}
+              className="grid w-full grid-cols-2"
+            >
+              <ToggleGroupItem
                 value="class"
-                className="w-full gap-2 px-2 py-2 whitespace-normal text-center leading-tight"
+                className="w-full min-h-[44px] gap-2 px-3 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
               >
                 <School className="w-4 h-4 shrink-0" />
-                <span>Giao theo lớp</span>
-              </TabsTrigger>
-              <TabsTrigger
+                <span className="text-sm">Giao theo lớp</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem
                 value="individual"
-                className="w-full gap-2 px-2 py-2 whitespace-normal text-center leading-tight"
+                className="w-full min-h-[44px] gap-2 px-3 py-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
               >
                 <Users className="w-4 h-4 shrink-0" />
-                <span>Chọn từng học sinh</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {/* Class Selection */}
-        {assignmentScope === 'class' && (
-          <div className="space-y-2">
-            <Label>Chọn lớp *</Label>
-            <Select value={selectedClassId || ""} onValueChange={setSelectedClassId}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Chọn lớp để giao bài" />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                {availableClasses?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    <span className="font-mono text-xs mr-2">{c.code}</span>
-                    {c.name}
-                    {c.subjects && (
-                      <span className="text-muted-foreground ml-2">
-                        ({c.subjects.name})
-                      </span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {availableClasses?.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Chưa có lớp nào. Hãy tạo lớp học trước.
-              </p>
-            )}
+                <span className="text-sm">Chọn học sinh</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
-        )}
+
+          {/* Class Selection */}
+          {assignmentScope === 'class' && (
+            <div className="space-y-2">
+              <Label>Chọn lớp *</Label>
+              <Select value={selectedClassId || ""} onValueChange={setSelectedClassId}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Chọn lớp để giao bài" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  {availableClasses?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="font-mono text-xs mr-2">{c.code}</span>
+                      {c.name}
+                      {c.subjects && (
+                        <span className="text-muted-foreground ml-2">
+                          ({c.subjects.name})
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {availableClasses?.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Chưa có lớp nào. Hãy tạo lớp học trước.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Student Selection for Individual Scope */}
+          {assignmentScope === 'individual' && (
+            <div className="space-y-3">
+              <Label className="flex items-center justify-between">
+                <span>Chọn học sinh *</span>
+                {selectedStudentIds.length > 0 && (
+                  <Badge variant="secondary">
+                    Đã chọn {selectedStudentIds.length}
+                  </Badge>
+                )}
+              </Label>
+              
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm học sinh..."
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Student List */}
+              <div className="border rounded-lg max-h-[200px] overflow-y-auto">
+                {studentsLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredStudents.length > 0 ? (
+                  <div className="divide-y">
+                    {/* Select All Header */}
+                    <div className="p-2 bg-muted/50 sticky top-0 z-10">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={
+                            filteredStudents.length > 0 &&
+                            filteredStudents.every(s => selectedStudentIds.includes(s.id))
+                          }
+                          onCheckedChange={handleSelectAllStudents}
+                        />
+                        <span className="text-sm font-medium">
+                          Chọn tất cả ({filteredStudents.length})
+                        </span>
+                      </div>
+                    </div>
+
+                    {filteredStudents.map((student) => {
+                      const isSelected = selectedStudentIds.includes(student.id);
+                      return (
+                        <div
+                          key={student.id}
+                          className={cn(
+                            'p-2 flex items-center gap-2 hover:bg-muted/50 cursor-pointer transition-colors',
+                            isSelected && 'bg-primary/5'
+                          )}
+                          onClick={() => handleSelectStudent(student.id, !isSelected)}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) =>
+                              handleSelectStudent(student.id, !!checked)
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {student.full_name || 'Chưa đặt tên'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {student.email}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <UserCheck className="w-4 h-4 text-primary shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-muted-foreground">
+                    <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Không tìm thấy học sinh nào</p>
+                  </div>
+                )}
+              </div>
+              
+              {selectedStudentIds.length === 0 && (
+                <p className="text-sm text-destructive">
+                  Vui lòng chọn ít nhất 1 học sinh
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 
   // Step 2 for Auto mode: Configuration
   const renderAutoStep2 = () => (
-    <div className="flex-1 flex flex-col min-h-0 py-4 space-y-6">
-      {/* Auto Mode Selection */}
-      <div className="space-y-3">
-        <Label className="text-base font-semibold flex items-center gap-2">
-          <Settings2 className="w-4 h-4" />
-          Cách thức chọn câu hỏi
-        </Label>
-        <div className="grid grid-cols-3 gap-3">
-          <div
-            onClick={() => setAutoMode('matrix')}
-            className={cn(
-              'p-3 rounded-lg border cursor-pointer transition-all',
-              autoMode === 'matrix' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="w-4 h-4 text-primary" />
-              <span className="font-medium text-sm">Theo ma trận</span>
+    <ScrollArea className="flex-1 min-h-0">
+      <div className="py-4 px-1 space-y-6">
+        {/* Auto Mode Selection */}
+        <div className="space-y-3">
+          <Label className="text-base font-semibold flex items-center gap-2">
+            <Settings2 className="w-4 h-4" />
+            Cách thức chọn câu hỏi
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div
+              onClick={() => setAutoMode('matrix')}
+              className={cn(
+                'p-3 rounded-lg border cursor-pointer transition-all',
+                autoMode === 'matrix' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+              )}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">Theo ma trận</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Chọn ngẫu nhiên theo phân loại bạn cấu hình
+              </p>
             </div>
+
+            <div
+              onClick={() => setAutoMode('adaptive')}
+              className={cn(
+                'p-3 rounded-lg border cursor-pointer transition-all',
+                autoMode === 'adaptive' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+              )}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-4 h-4 text-orange-500" />
+                <span className="font-medium text-sm">Thích ứng</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Chọn dựa trên điểm yếu của từng học sinh
+              </p>
+            </div>
+
+            <div
+              onClick={() => setAutoMode('hybrid')}
+              className={cn(
+                'p-3 rounded-lg border cursor-pointer transition-all',
+                autoMode === 'hybrid' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+              )}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                <span className="font-medium text-sm">Kết hợp</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ma trận + điều chỉnh theo học sinh
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Question Count and Difficulty */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label>Số lượng câu hỏi: {questionCount}</Label>
+            <Slider
+              value={[questionCount]}
+              onValueChange={([v]) => setQuestionCount(v)}
+              min={5}
+              max={Math.min(50, availableCount || 50)}
+              step={1}
+              className="w-full"
+            />
             <p className="text-xs text-muted-foreground">
-              Chọn ngẫu nhiên theo phân loại bạn cấu hình
+              Có sẵn: {statsLoading ? '...' : availableCount} câu
             </p>
           </div>
 
-          <div
-            onClick={() => setAutoMode('adaptive')}
-            className={cn(
-              'p-3 rounded-lg border cursor-pointer transition-all',
-              autoMode === 'adaptive' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="w-4 h-4 text-orange-500" />
-              <span className="font-medium text-sm">Thích ứng</span>
-            </div>
+          <div className="space-y-2">
+            <Label>Độ khó: {(difficultyRange[0] * 100).toFixed(0)}% - {(difficultyRange[1] * 100).toFixed(0)}%</Label>
+            <Slider
+              value={difficultyRange}
+              onValueChange={(v) => setDifficultyRange(v as [number, number])}
+              min={0}
+              max={1}
+              step={0.1}
+              className="w-full"
+            />
             <p className="text-xs text-muted-foreground">
-              Chọn dựa trên điểm yếu của từng học sinh
-            </p>
-          </div>
-
-          <div
-            onClick={() => setAutoMode('hybrid')}
-            className={cn(
-              'p-3 rounded-lg border cursor-pointer transition-all',
-              autoMode === 'hybrid' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-4 h-4 text-purple-500" />
-              <span className="font-medium text-sm">Kết hợp</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Ma trận + điều chỉnh theo học sinh
+              {difficultyRange[0] <= 0.3 ? 'Dễ' : difficultyRange[0] <= 0.6 ? 'Trung bình' : 'Khó'} → {difficultyRange[1] <= 0.3 ? 'Dễ' : difficultyRange[1] <= 0.6 ? 'Trung bình' : 'Khó'}
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Question Count and Difficulty */}
-      <div className="grid grid-cols-2 gap-6">
+        {/* Taxonomy Selection */}
         <div className="space-y-2">
-          <Label>Số lượng câu hỏi: {questionCount}</Label>
-          <Slider
-            value={[questionCount]}
-            onValueChange={([v]) => setQuestionCount(v)}
-            min={5}
-            max={Math.min(50, availableCount || 50)}
-            step={1}
-            className="w-full"
-          />
-          <p className="text-xs text-muted-foreground">
-            Có sẵn: {statsLoading ? '...' : availableCount} câu
-          </p>
+          <Label className="flex items-center justify-between">
+            <span>Chương/Phần (để trống = tất cả)</span>
+            <span className="text-xs text-muted-foreground">
+              {selectedTaxonomyNodes.length > 0 ? `Đã chọn ${selectedTaxonomyNodes.length}` : 'Tất cả'}
+            </span>
+          </Label>
+          <div className="flex flex-wrap gap-2 p-3 border rounded-lg max-h-24 overflow-y-auto">
+            {rootNodes.length > 0 ? rootNodes.map(node => (
+              <Badge
+                key={node.id}
+                variant={selectedTaxonomyNodes.includes(node.id) ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => toggleTaxonomyNode(node.id)}
+              >
+                {node.name}
+              </Badge>
+            )) : (
+              <span className="text-sm text-muted-foreground">Chưa có phân loại</span>
+            )}
+          </div>
         </div>
 
+        {/* Cognitive Level Selection */}
         <div className="space-y-2">
-          <Label>Độ khó: {(difficultyRange[0] * 100).toFixed(0)}% - {(difficultyRange[1] * 100).toFixed(0)}%</Label>
-          <Slider
-            value={difficultyRange}
-            onValueChange={(v) => setDifficultyRange(v as [number, number])}
-            min={0}
-            max={1}
-            step={0.1}
-            className="w-full"
-          />
-          <p className="text-xs text-muted-foreground">
-            {difficultyRange[0] <= 0.3 ? 'Dễ' : difficultyRange[0] <= 0.6 ? 'Trung bình' : 'Khó'} → {difficultyRange[1] <= 0.3 ? 'Dễ' : difficultyRange[1] <= 0.6 ? 'Trung bình' : 'Khó'}
-          </p>
-        </div>
-      </div>
-
-      {/* Taxonomy Selection */}
-      <div className="space-y-2">
-        <Label className="flex items-center justify-between">
-          <span>Chương/Phần (để trống = tất cả)</span>
-          <span className="text-xs text-muted-foreground">
-            {selectedTaxonomyNodes.length > 0 ? `Đã chọn ${selectedTaxonomyNodes.length}` : 'Tất cả'}
-          </span>
-        </Label>
-        <div className="flex flex-wrap gap-2 p-3 border rounded-lg max-h-24 overflow-y-auto">
-          {rootNodes.length > 0 ? rootNodes.map(node => (
-            <Badge
-              key={node.id}
-              variant={selectedTaxonomyNodes.includes(node.id) ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => toggleTaxonomyNode(node.id)}
-            >
-              {node.name}
-            </Badge>
-          )) : (
-            <span className="text-sm text-muted-foreground">Chưa có phân loại</span>
-          )}
-        </div>
-      </div>
-
-      {/* Cognitive Level Selection */}
-      <div className="space-y-2">
-        <Label className="flex items-center justify-between">
-          <span>Mức độ nhận thức (để trống = tất cả)</span>
-          <span className="text-xs text-muted-foreground">
-            {selectedCognitiveLevels.length > 0 ? `Đã chọn ${selectedCognitiveLevels.length}` : 'Tất cả'}
-          </span>
-        </Label>
-        <div className="flex flex-wrap gap-2">
-          {cognitiveLevels.map(level => (
-            <Badge
-              key={level}
-              variant={selectedCognitiveLevels.includes(level) ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => toggleCognitiveLevel(level)}
-            >
-              {level}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      {/* Question Type Selection */}
-      <div className="space-y-2">
-        <Label className="flex items-center justify-between">
-          <span>Loại câu hỏi *</span>
-          <span className="text-xs text-muted-foreground">
-            Đã chọn {selectedQuestionTypes.length}
-          </span>
-        </Label>
-        <div className="flex flex-wrap gap-2">
-          {questionTypes.map(type => (
-            <Badge
-              key={type}
-              variant={selectedQuestionTypes.includes(type) ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => toggleQuestionType(type)}
-            >
-              {type}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="p-4 bg-muted rounded-lg">
-        <h4 className="font-medium mb-2 flex items-center gap-2">
-          <Sparkles className="w-4 h-4" />
-          Tóm tắt cấu hình
-        </h4>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-          <div className="text-muted-foreground">Số câu:</div>
-          <div className="font-medium">{questionCount}</div>
-          <div className="text-muted-foreground">Chế độ:</div>
-          <div className="font-medium">
-            {autoMode === 'matrix' ? 'Theo ma trận' : autoMode === 'adaptive' ? 'Thích ứng' : 'Kết hợp'}
+          <Label className="flex items-center justify-between">
+            <span>Mức độ nhận thức (để trống = tất cả)</span>
+            <span className="text-xs text-muted-foreground">
+              {selectedCognitiveLevels.length > 0 ? `Đã chọn ${selectedCognitiveLevels.length}` : 'Tất cả'}
+            </span>
+          </Label>
+          <div className="flex flex-wrap gap-2">
+            {cognitiveLevels.map(level => (
+              <Badge
+                key={level}
+                variant={selectedCognitiveLevels.includes(level) ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => toggleCognitiveLevel(level)}
+              >
+                {level}
+              </Badge>
+            ))}
           </div>
-          <div className="text-muted-foreground">Độ khó:</div>
-          <div className="font-medium">
-            {(difficultyRange[0] * 100).toFixed(0)}% - {(difficultyRange[1] * 100).toFixed(0)}%
+        </div>
+
+        {/* Question Type Selection */}
+        <div className="space-y-2">
+          <Label className="flex items-center justify-between">
+            <span>Loại câu hỏi *</span>
+            <span className="text-xs text-muted-foreground">
+              Đã chọn {selectedQuestionTypes.length}
+            </span>
+          </Label>
+          <div className="flex flex-wrap gap-2">
+            {questionTypes.map(type => (
+              <Badge
+                key={type}
+                variant={selectedQuestionTypes.includes(type) ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => toggleQuestionType(type)}
+              >
+                {type}
+              </Badge>
+            ))}
           </div>
-          <div className="text-muted-foreground">Câu hỏi có sẵn:</div>
-          <div className={cn("font-medium", availableCount < questionCount && "text-destructive")}>
-            {statsLoading ? '...' : availableCount}
-            {availableCount < questionCount && ' (không đủ!)'}
+        </div>
+
+        {/* Summary */}
+        <div className="p-4 bg-muted rounded-lg">
+          <h4 className="font-medium mb-2 flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            Tóm tắt cấu hình
+          </h4>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <div className="text-muted-foreground">Số câu:</div>
+            <div className="font-medium">{questionCount}</div>
+            <div className="text-muted-foreground">Chế độ:</div>
+            <div className="font-medium">
+              {autoMode === 'matrix' ? 'Theo ma trận' : autoMode === 'adaptive' ? 'Thích ứng' : 'Kết hợp'}
+            </div>
+            <div className="text-muted-foreground">Độ khó:</div>
+            <div className="font-medium">
+              {(difficultyRange[0] * 100).toFixed(0)}% - {(difficultyRange[1] * 100).toFixed(0)}%
+            </div>
+            <div className="text-muted-foreground">Câu hỏi có sẵn:</div>
+            <div className={cn("font-medium", availableCount < questionCount && "text-destructive")}>
+              {statsLoading ? '...' : availableCount}
+              {availableCount < questionCount && ' (không đủ!)'}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 
-  // Step 2 for Manual mode: Question Selection (keep existing)
+  // Step 2 for Manual mode: Question Selection
   const renderManualStep2 = () => (
     <div className="flex-1 flex flex-col min-h-0 py-4">
       {/* Filters */}
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -615,7 +769,7 @@ export function CreatePracticeAssignmentDialog({
           value={taxonomyNodeId || 'all'}
           onValueChange={(v) => setTaxonomyNodeId(v === 'all' ? undefined : v)}
         >
-          <SelectTrigger className="w-[200px] bg-background">
+          <SelectTrigger className="w-full sm:w-[200px] bg-background">
             <SelectValue placeholder="Chương/Bài" />
           </SelectTrigger>
           <SelectContent className="bg-background z-50">
@@ -672,7 +826,7 @@ export function CreatePracticeAssignmentDialog({
                     <p className="text-sm line-clamp-2">
                       {stripHtml(question.content)}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge variant="outline" className="text-xs">
                         {question.question_type}
                       </Badge>
@@ -720,14 +874,18 @@ export function CreatePracticeAssignmentDialog({
   );
 
   // Validation
-  const canProceedStep1 = title.trim() && subjectId && (assignmentScope === 'individual' || selectedClassId);
+  const canProceedStep1 = 
+    title.trim() && 
+    subjectId && 
+    (assignmentScope === 'class' ? !!selectedClassId : selectedStudentIds.length > 0);
+  
   const canCreateManual = selectedQuestions.length > 0;
   const canCreateAuto = questionCount > 0 && selectedQuestionTypes.length > 0 && availableCount >= questionCount;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>
             {step === 1 ? 'Tạo bài luyện tập' : 
               creationMode === 'auto' ? 'Cấu hình tự động' : 'Chọn câu hỏi'}
@@ -741,9 +899,11 @@ export function CreatePracticeAssignmentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {step === 1 ? renderStep1() : creationMode === 'auto' ? renderAutoStep2() : renderManualStep2()}
+        <div className="flex-1 min-h-0 flex flex-col">
+          {step === 1 ? renderStep1() : creationMode === 'auto' ? renderAutoStep2() : renderManualStep2()}
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           {step === 1 ? (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
