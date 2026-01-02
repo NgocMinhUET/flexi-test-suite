@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAssignStudents, useAssignmentStudents } from '@/hooks/usePracticeAssignments';
-import { supabase } from '@/integrations/supabase/client';
+import { useAllStudents } from '@/hooks/useAllStudents';
 import {
   Dialog,
   DialogContent,
@@ -16,18 +16,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Search, Users, CheckCircle2, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
 
 interface AssignStudentsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assignmentId: string | null;
-}
-
-interface StudentProfile {
-  id: string;
-  full_name: string | null;
-  email: string | null;
 }
 
 export function AssignStudentsDialog({
@@ -40,34 +33,7 @@ export function AssignStudentsDialog({
 
   const assignStudents = useAssignStudents();
   const { data: existingStudents } = useAssignmentStudents(assignmentId || '');
-
-  // Fetch all students
-  const { data: allStudents, isLoading: studentsLoading } = useQuery({
-    queryKey: ['all-students'],
-    queryFn: async () => {
-      // Get all users with student role
-      const { data: studentRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'student');
-
-      if (rolesError) throw rolesError;
-
-      const studentIds = studentRoles?.map(r => r.user_id) || [];
-
-      if (studentIds.length === 0) return [];
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', studentIds);
-
-      if (profilesError) throw profilesError;
-
-      return profiles as StudentProfile[];
-    },
-    enabled: open,
-  });
+  const { data: allStudents, isLoading: studentsLoading } = useAllStudents(open);
 
   // Initialize selected students from existing assignments
   useEffect(() => {
