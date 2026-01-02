@@ -19,8 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import {
   Select,
@@ -351,26 +350,28 @@ export function CreatePracticeAssignmentDialog({
         {/* Assignment Scope */}
         <div className="space-y-3">
           <Label>Phạm vi giao bài</Label>
-          <RadioGroup
+          <Tabs
             value={assignmentScope}
             onValueChange={(v) => setAssignmentScope(v as AssignmentScope)}
-            className="flex gap-4"
+            className="w-full"
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="class" id="class" />
-              <Label htmlFor="class" className="flex items-center gap-2 cursor-pointer">
-                <School className="w-4 h-4" />
-                Giao theo lớp
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="individual" id="individual" />
-              <Label htmlFor="individual" className="flex items-center gap-2 cursor-pointer">
-                <Users className="w-4 h-4" />
-                Chọn từng học sinh
-              </Label>
-            </div>
-          </RadioGroup>
+            <TabsList className="grid w-full grid-cols-2 h-auto">
+              <TabsTrigger
+                value="class"
+                className="w-full gap-2 px-2 py-2 whitespace-normal text-center leading-tight"
+              >
+                <School className="w-4 h-4 shrink-0" />
+                <span>Giao theo lớp</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="individual"
+                className="w-full gap-2 px-2 py-2 whitespace-normal text-center leading-tight"
+              >
+                <Users className="w-4 h-4 shrink-0" />
+                <span>Chọn từng học sinh</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Class Selection */}
