@@ -377,7 +377,7 @@ export function CreatePracticeAssignmentDialog({
         {assignmentScope === 'class' && (
           <div className="space-y-2">
             <Label>Chọn lớp *</Label>
-            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+            <Select value={selectedClassId || ""} onValueChange={setSelectedClassId}>
               <SelectTrigger>
                 <SelectValue placeholder="Chọn lớp để giao bài" />
               </SelectTrigger>
