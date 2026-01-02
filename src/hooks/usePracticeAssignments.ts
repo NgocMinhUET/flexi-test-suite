@@ -450,9 +450,10 @@ export function useStartAttempt() {
   });
 }
 
-// Submit attempt with results
+// Submit attempt with results and update adaptive learning data
 export function useSubmitAttempt() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({
@@ -460,11 +461,18 @@ export function useSubmitAttempt() {
       answers,
       questionResults,
       timeSpentSeconds,
+      questions,
     }: {
       attemptId: string;
       answers: Record<string, any>;
       questionResults: QuestionResult[];
       timeSpentSeconds: number;
+      questions?: Array<{
+        id: string;
+        taxonomy_node_id: string | null;
+        difficulty: number | null;
+        estimated_time: number | null;
+      }>;
     }) => {
       const earnedPoints = questionResults.reduce((sum, r) => sum + r.points_earned, 0);
       const totalPoints = questionResults.reduce((sum, r) => sum + r.points_possible, 0);
@@ -490,10 +498,24 @@ export function useSubmitAttempt() {
         .single();
 
       if (error) throw error;
+
+      // Update adaptive learning data if user and questions are available
+      if (user?.id && questions && questions.length > 0) {
+        try {
+          const { updateAdaptiveLearningData } = await import('./useUpdateAdaptiveLearning');
+          await updateAdaptiveLearningData(user.id, questionResults, questions, timeSpentSeconds);
+        } catch (adaptiveError) {
+          console.error('Error updating adaptive learning data:', adaptiveError);
+          // Don't throw - the attempt was already saved successfully
+        }
+      }
+
       return data as unknown as PracticeAssignmentAttempt;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-assigned-practices'] });
+      queryClient.invalidateQueries({ queryKey: ['skill-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['skill-masteries'] });
       toast.success('Đã nộp bài thành công');
     },
     onError: (error) => {
