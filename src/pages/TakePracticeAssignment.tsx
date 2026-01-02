@@ -219,11 +219,20 @@ const TakePracticeAssignment = () => {
       const earnedPoints = results.reduce((sum, r) => sum + r.points_earned, 0);
       const totalPoints = results.reduce((sum, r) => sum + r.points_possible, 0);
 
+      // Prepare question data for adaptive learning
+      const questionsForAdaptive = questions.map(q => ({
+        id: q.id,
+        taxonomy_node_id: q.taxonomy_node_id || null,
+        difficulty: q.difficulty || null,
+        estimated_time: q.estimated_time || null,
+      }));
+
       await submitAttemptMutation.mutateAsync({
         attemptId,
         answers: Object.fromEntries(answers),
         questionResults: results,
         timeSpentSeconds: timeSpent,
+        questions: questionsForAdaptive,
       });
 
       // Navigate to results
