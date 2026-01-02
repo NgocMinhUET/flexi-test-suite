@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { usePracticeAssignmentWithQuestions, useStudentAssignedPractices } from '@/hooks/usePracticeAssignments';
+import { usePracticeAssignmentWithQuestions, useStudentAttempts } from '@/hooks/usePracticeAssignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,25 +22,18 @@ import {
   RefreshCw,
   Lightbulb
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
-import { PracticeAssignmentAttempt } from '@/types/practiceAssignment';
 import { QuestionContentRenderer } from '@/components/exam/QuestionContentRenderer';
+
 const PracticeAssignmentResults = () => {
   const navigate = useNavigate();
   const { id: assignmentId } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
   
   const { data: assignmentData, isLoading: assignmentLoading } = usePracticeAssignmentWithQuestions(assignmentId || '');
-  const { data: studentAssignments, isLoading: attemptsLoading } = useStudentAssignedPractices();
+  const { data: attempts = [], isLoading: attemptsLoading } = useStudentAttempts(assignmentId || '');
   
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
 
-  const assignmentInfo = useMemo(() => {
-    return studentAssignments?.find(sa => sa.assignment.id === assignmentId);
-  }, [studentAssignments, assignmentId]);
-
-  const attempts = assignmentInfo?.attempts || [];
   const currentAttempt = attempts[selectedAttemptIndex];
   const questions = assignmentData?.questionData || [];
 
@@ -59,13 +52,13 @@ const PracticeAssignmentResults = () => {
     return null;
   }
 
-  if (!assignmentData || !assignmentInfo) {
+  if (!assignmentData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="max-w-md">
           <CardContent className="py-8 text-center">
             <XCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Không tìm thấy kết quả</h2>
+            <h2 className="text-xl font-semibold mb-2">Không tìm thấy bài luyện tập</h2>
             <Button onClick={() => navigate('/my-practice-assignments')}>
               Quay lại
             </Button>
