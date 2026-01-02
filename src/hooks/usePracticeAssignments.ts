@@ -236,6 +236,158 @@ export function useCreatePracticeAssignment() {
   });
 }
 
+// Create adaptive practice assignment (auto-select questions)
+export function useCreateAdaptiveAssignment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: {
+      title: string;
+      description?: string;
+      subject_id: string;
+      question_count: number;
+      difficulty_range: [number, number];
+      taxonomy_node_ids?: string[];
+      cognitive_levels?: string[];
+      question_types?: string[];
+      duration?: number;
+      class_id?: string;
+      assignment_scope?: 'class' | 'individual';
+      auto_mode: 'matrix' | 'adaptive' | 'hybrid';
+    }) => {
+      // Build query for selecting questions
+      let query = supabase
+        .from('questions')
+        .select('id, taxonomy_node_id, cognitive_level, question_type, difficulty')
+        .eq('subject_id', data.subject_id)
+        .eq('status', 'published')
+        .is('deleted_at', null)
+        .gte('difficulty', data.difficulty_range[0])
+        .lte('difficulty', data.difficulty_range[1]);
+
+      // Filter by taxonomy nodes if specified
+      if (data.taxonomy_node_ids && data.taxonomy_node_ids.length > 0) {
+        query = query.in('taxonomy_node_id', data.taxonomy_node_ids);
+      }
+
+      // Filter by cognitive levels if specified
+      if (data.cognitive_levels && data.cognitive_levels.length > 0) {
+        query = query.in('cognitive_level', data.cognitive_levels);
+      }
+
+      // Filter by question types if specified
+      if (data.question_types && data.question_types.length > 0) {
+        query = query.in('question_type', data.question_types as ('MCQ_SINGLE' | 'TRUE_FALSE_4' | 'SHORT_ANSWER' | 'CODING')[]);
+      }
+
+      const { data: availableQuestions, error: questionsError } = await query;
+      if (questionsError) throw questionsError;
+
+      if (!availableQuestions || availableQuestions.length === 0) {
+        throw new Error('Không tìm thấy câu hỏi phù hợp với tiêu chí đã chọn');
+      }
+
+      if (availableQuestions.length < data.question_count) {
+        throw new Error(`Chỉ có ${availableQuestions.length} câu hỏi, không đủ ${data.question_count} câu yêu cầu`);
+      }
+
+      // Select questions based on mode
+      let selectedQuestionIds: string[] = [];
+
+      if (data.auto_mode === 'matrix') {
+        // Random selection respecting filters
+        const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5);
+        selectedQuestionIds = shuffled.slice(0, data.question_count).map(q => q.id);
+      } else if (data.auto_mode === 'adaptive' || data.auto_mode === 'hybrid') {
+        // For adaptive/hybrid: If we have class_id, try to prioritize weak areas
+        // For now, implement weighted random based on difficulty distribution
+        const easyQuestions = availableQuestions.filter(q => (q.difficulty || 0.5) <= 0.4);
+        const mediumQuestions = availableQuestions.filter(q => (q.difficulty || 0.5) > 0.4 && (q.difficulty || 0.5) <= 0.7);
+        const hardQuestions = availableQuestions.filter(q => (q.difficulty || 0.5) > 0.7);
+
+        // Target distribution: 30% easy, 50% medium, 20% hard (adjustable)
+        const easyCount = Math.round(data.question_count * 0.3);
+        const mediumCount = Math.round(data.question_count * 0.5);
+        const hardCount = data.question_count - easyCount - mediumCount;
+
+        const pickRandom = (arr: typeof availableQuestions, count: number) => {
+          const shuffled = [...arr].sort(() => Math.random() - 0.5);
+          return shuffled.slice(0, count);
+        };
+
+        const selected = [
+          ...pickRandom(easyQuestions, Math.min(easyCount, easyQuestions.length)),
+          ...pickRandom(mediumQuestions, Math.min(mediumCount, mediumQuestions.length)),
+          ...pickRandom(hardQuestions, Math.min(hardCount, hardQuestions.length)),
+        ];
+
+        // Fill remaining from all available if distribution doesn't meet count
+        if (selected.length < data.question_count) {
+          const selectedIds = new Set(selected.map(q => q.id));
+          const remaining = availableQuestions.filter(q => !selectedIds.has(q.id));
+          const shuffledRemaining = remaining.sort(() => Math.random() - 0.5);
+          selected.push(...shuffledRemaining.slice(0, data.question_count - selected.length));
+        }
+
+        selectedQuestionIds = selected.slice(0, data.question_count).map(q => q.id);
+      }
+
+      // Shuffle the final order
+      selectedQuestionIds = selectedQuestionIds.sort(() => Math.random() - 0.5);
+
+      // Create the assignment
+      const { data: result, error } = await supabase
+        .from('practice_assignments')
+        .insert({
+          title: data.title,
+          description: data.description || null,
+          subject_id: data.subject_id,
+          questions: selectedQuestionIds,
+          duration: data.duration || null,
+          show_answers_after_submit: true,
+          allow_multiple_attempts: true,
+          created_by: user?.id,
+          class_id: data.class_id || null,
+          assignment_scope: data.assignment_scope || 'individual',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Auto-enroll class students if applicable
+      if (data.assignment_scope === 'class' && data.class_id && result) {
+        const { data: classStudents } = await supabase
+          .from('class_students')
+          .select('student_id')
+          .eq('class_id', data.class_id)
+          .eq('status', 'active');
+
+        if (classStudents && classStudents.length > 0) {
+          const enrollments = classStudents.map(cs => ({
+            assignment_id: result.id,
+            student_id: cs.student_id,
+          }));
+
+          await supabase
+            .from('practice_assignment_students')
+            .insert(enrollments);
+        }
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['practice-assignments'] });
+      toast.success('Đã tạo bài luyện tập tự động');
+    },
+    onError: (error) => {
+      toast.error('Không thể tạo bài luyện tập: ' + error.message);
+    },
+  });
+}
+
 // Update a practice assignment
 export function useUpdatePracticeAssignment() {
   const queryClient = useQueryClient();
