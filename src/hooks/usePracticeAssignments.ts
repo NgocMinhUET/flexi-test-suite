@@ -707,6 +707,34 @@ export function useCurrentAttempt(assignmentId: string) {
   });
 }
 
+// Get attempts for a specific assignment for the current student
+export function useStudentAttempts(assignmentId: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['student-attempts', assignmentId, user?.id],
+    queryFn: async () => {
+      if (!user || !assignmentId) return [];
+
+      const { data, error } = await supabase
+        .from('practice_assignment_attempts')
+        .select('*')
+        .eq('assignment_id', assignmentId)
+        .eq('student_id', user.id)
+        .order('attempt_number', { ascending: false });
+
+      if (error) throw error;
+      
+      return (data || []).map(attempt => ({
+        ...attempt,
+        question_results: (attempt.question_results || []) as unknown as QuestionResult[],
+        analysis: attempt.analysis as unknown as AttemptAnalysis | null,
+      })) as PracticeAssignmentAttempt[];
+    },
+    enabled: !!user && !!assignmentId,
+  });
+}
+
 // ========== UTILITY FUNCTIONS ==========
 
 function calculateAttemptAnalysis(
