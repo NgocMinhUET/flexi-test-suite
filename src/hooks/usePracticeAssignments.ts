@@ -154,15 +154,25 @@ export function useAssignmentAttempts(assignmentId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('practice_assignment_attempts')
-        .select(`
-          *,
-          profiles:student_id (id, full_name, email)
-        `)
+        .select('*')
         .eq('assignment_id', assignmentId)
         .order('completed_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      
+      // Fetch profiles for all students
+      const studentIds = [...new Set((data || []).map(a => a.student_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', studentIds);
+      
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      
+      return (data || []).map(attempt => ({
+        ...attempt,
+        profiles: profileMap.get(attempt.student_id) || { id: attempt.student_id, full_name: null, email: null }
+      }));
     },
     enabled: !!assignmentId,
   });

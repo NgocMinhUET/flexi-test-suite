@@ -40,6 +40,7 @@ const PracticeAssignmentManagement = lazyWithRetry(() => import("./pages/Practic
 const StudentPracticeAssignments = lazyWithRetry(() => import("./pages/StudentPracticeAssignments"));
 const TakePracticeAssignment = lazyWithRetry(() => import("./pages/TakePracticeAssignment"));
 const PracticeAssignmentResults = lazyWithRetry(() => import("./pages/PracticeAssignmentResults"));
+const TeacherAssignmentResults = lazyWithRetry(() => import("./pages/TeacherAssignmentResults"));
 const ClassManagement = lazyWithRetry(() => import("./pages/ClassManagement"));
 const ClassDetail = lazyWithRetry(() => import("./pages/ClassDetail"));
 const ClassProgressReport = lazyWithRetry(() => import("./pages/ClassProgressReport"));
@@ -112,6 +113,7 @@ const App = () => {
                 <Route path="/my-practice-assignments" element={<StudentPracticeAssignments />} />
                 <Route path="/practice-assignment/:id" element={<TakePracticeAssignment />} />
                 <Route path="/practice-assignment/:id/results" element={<PracticeAssignmentResults />} />
+                <Route path="/practice-assignments/:id/results" element={<TeacherAssignmentResults />} />
                 <Route path="/classes" element={<ClassManagement />} />
                 <Route path="/classes/:id" element={<ClassDetail />} />
                 <Route path="/classes/:id/progress" element={<ClassProgressReport />} />
