@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { usePracticeAssignmentWithQuestions, useStudentAttempts } from '@/hooks/usePracticeAssignments';
+import { usePracticeAssignmentWithQuestions, useStudentAttempts, useRecommendedAssignments } from '@/hooks/usePracticeAssignments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,10 @@ import {
   BarChart3,
   BookOpen,
   RefreshCw,
-  Lightbulb
+  Lightbulb,
+  Sparkles,
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { QuestionContentRenderer } from '@/components/exam/QuestionContentRenderer';
 
@@ -36,6 +39,18 @@ const PracticeAssignmentResults = () => {
 
   const currentAttempt = attempts[selectedAttemptIndex];
   const questions = assignmentData?.questionData || [];
+
+  // Extract weak taxonomy IDs from current attempt analysis
+  const weakTaxonomyIds = useMemo(() => {
+    if (!currentAttempt?.analysis?.weaknesses) return [];
+    return currentAttempt.analysis.weaknesses
+      .map(w => w.taxonomy_node_id)
+      .filter((id): id is string => !!id);
+  }, [currentAttempt?.analysis?.weaknesses]);
+
+  // Fetch recommended assignments based on weaknesses
+  const { data: recommendedAssignments = [], isLoading: recommendedLoading } = 
+    useRecommendedAssignments(assignmentId || '', weakTaxonomyIds);
 
   const isLoading = authLoading || assignmentLoading || attemptsLoading;
 
@@ -371,45 +386,119 @@ const PracticeAssignmentResults = () => {
 
               {/* Suggestions Tab */}
               <TabsContent value="suggestions">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="h-5 w-5 text-primary" />
-                      Gợi ý luyện tập tiếp theo
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {currentAttempt.analysis?.suggested_next_topics && 
-                     currentAttempt.analysis.suggested_next_topics.length > 0 ? (
-                      <div className="space-y-4">
-                        <p className="text-muted-foreground">
-                          Dựa trên kết quả của bạn, chúng tôi gợi ý bạn nên ôn tập thêm các chủ đề sau:
-                        </p>
-                        <div className="grid gap-3">
-                          {currentAttempt.analysis.suggested_next_topics.map((topic, idx) => (
+                <div className="space-y-6">
+                  {/* Adaptive Practice CTA */}
+                  {weakTaxonomyIds.length > 0 && (
+                    <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-full bg-primary/20">
+                              <Zap className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">Luyện tập theo điểm yếu</h3>
+                              <p className="text-muted-foreground text-sm">
+                                Hệ thống sẽ tự động chọn câu hỏi phù hợp với điểm yếu của bạn
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/adaptive-practice?focus=weak_points`)}
+                            className="gap-2"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            Bắt đầu luyện tập
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Recommended Assignments */}
+                  {recommendedAssignments.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-amber-500" />
+                          Bài luyện tập gợi ý cho bạn
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {recommendedAssignments.map((assignment) => (
                             <div 
-                              key={idx}
-                              className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors"
+                              key={assignment.id}
+                              className="flex items-center justify-between p-4 rounded-lg border hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
+                              onClick={() => navigate(`/practice-assignment/${assignment.id}`)}
                             >
-                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                <span className="text-primary font-semibold">{idx + 1}</span>
+                              <div className="flex items-center gap-4">
+                                <div className="p-2 rounded-lg bg-amber-500/10">
+                                  <BookOpen className="h-5 w-5 text-amber-600" />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium">{assignment.title}</h4>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {assignment.questionCount} câu hỏi
+                                    </Badge>
+                                    {assignment.matchingCount > 0 && (
+                                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                                        {assignment.matchingCount} câu phù hợp điểm yếu
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <span className="font-medium">{topic}</span>
+                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </div>
                           ))}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                        <p className="text-lg font-medium mb-2">Tuyệt vời!</p>
-                        <p className="text-muted-foreground">
-                          Bạn đã làm tốt. Hãy tiếp tục duy trì phong độ này!
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Suggested Topics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-primary" />
+                        Chủ đề cần ôn tập
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {currentAttempt.analysis?.suggested_next_topics && 
+                       currentAttempt.analysis.suggested_next_topics.length > 0 ? (
+                        <div className="space-y-4">
+                          <p className="text-muted-foreground">
+                            Dựa trên kết quả của bạn, chúng tôi gợi ý bạn nên ôn tập thêm các chủ đề sau:
+                          </p>
+                          <div className="grid gap-3">
+                            {currentAttempt.analysis.suggested_next_topics.map((topic, idx) => (
+                              <div 
+                                key={idx}
+                                className="flex items-center gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                                  <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                </div>
+                                <span className="font-medium text-red-700 dark:text-red-300">{topic}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-4" />
+                          <p className="text-lg font-medium mb-2">Tuyệt vời!</p>
+                          <p className="text-muted-foreground">
+                            Bạn đã làm tốt. Hãy tiếp tục duy trì phong độ này!
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
             </Tabs>
           </>

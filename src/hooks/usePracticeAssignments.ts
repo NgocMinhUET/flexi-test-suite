@@ -640,8 +640,26 @@ export function useSubmitAttempt() {
       const totalPoints = questionResults.reduce((sum, r) => sum + r.points_possible, 0);
       const percentage = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
 
-      // Calculate analysis
-      const analysis = calculateAttemptAnalysis(questionResults, timeSpentSeconds);
+      // Fetch taxonomy names for analysis
+      const taxonomyNodeIds = [...new Set(questionResults
+        .map(r => r.taxonomy_node_id)
+        .filter((id): id is string => !!id))];
+      
+      let taxonomyMap: Record<string, string> = {};
+      if (taxonomyNodeIds.length > 0) {
+        const { data: taxonomyNodes } = await supabase
+          .from('taxonomy_nodes')
+          .select('id, name')
+          .in('id', taxonomyNodeIds);
+        
+        taxonomyMap = (taxonomyNodes || []).reduce((acc, node) => {
+          acc[node.id] = node.name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      // Calculate analysis with taxonomy names
+      const analysis = calculateAttemptAnalysis(questionResults, timeSpentSeconds, taxonomyMap);
 
       const { data, error } = await supabase
         .from('practice_assignment_attempts')
@@ -745,11 +763,99 @@ export function useStudentAttempts(assignmentId: string) {
   });
 }
 
+// Get recommended practice assignments based on weak taxonomy nodes
+export function useRecommendedAssignments(
+  currentAssignmentId: string,
+  weakTaxonomyIds: string[]
+) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['recommended-assignments', currentAssignmentId, weakTaxonomyIds],
+    queryFn: async () => {
+      if (!user || weakTaxonomyIds.length === 0) return [];
+
+      // Get all active assignments that the student is assigned to
+      const { data: assignedData, error: assignedError } = await supabase
+        .from('practice_assignment_students')
+        .select(`
+          practice_assignments (
+            id,
+            title,
+            questions,
+            is_active,
+            subjects (id, name)
+          )
+        `)
+        .eq('student_id', user.id);
+
+      if (assignedError) throw assignedError;
+
+      // Filter active assignments, exclude current one
+      const availableAssignments = (assignedData || [])
+        .map(d => d.practice_assignments)
+        .filter((a): a is NonNullable<typeof a> => 
+          a !== null && 
+          a.is_active && 
+          a.id !== currentAssignmentId
+        );
+
+      if (availableAssignments.length === 0) return [];
+
+      // Get all question IDs from these assignments
+      const allQuestionIds = availableAssignments.flatMap(a => 
+        (a.questions || []) as string[]
+      );
+      
+      if (allQuestionIds.length === 0) return [];
+
+      // Fetch taxonomy info for these questions
+      const { data: questionsData } = await supabase
+        .from('questions')
+        .select('id, taxonomy_node_id')
+        .in('id', [...new Set(allQuestionIds)]);
+
+      // Create question -> taxonomy mapping
+      const questionTaxonomyMap = new Map(
+        (questionsData || []).map(q => [q.id, q.taxonomy_node_id])
+      );
+
+      // Score each assignment by how many questions match weak taxonomies
+      const scoredAssignments = availableAssignments.map(assignment => {
+        const questionIds = (assignment.questions || []) as string[];
+        const matchingCount = questionIds.filter(qId => {
+          const taxonomyId = questionTaxonomyMap.get(qId);
+          return taxonomyId && weakTaxonomyIds.includes(taxonomyId);
+        }).length;
+
+        return {
+          id: assignment.id,
+          title: assignment.title,
+          subject: (assignment.subjects as any)?.name || '',
+          questionCount: questionIds.length,
+          matchingCount,
+          matchPercentage: questionIds.length > 0 
+            ? Math.round((matchingCount / questionIds.length) * 100) 
+            : 0,
+        };
+      });
+
+      // Filter and sort by matching count
+      return scoredAssignments
+        .filter(a => a.matchingCount > 0)
+        .sort((a, b) => b.matchingCount - a.matchingCount)
+        .slice(0, 3);
+    },
+    enabled: !!user && !!currentAssignmentId && weakTaxonomyIds.length > 0,
+  });
+}
+
 // ========== UTILITY FUNCTIONS ==========
 
 function calculateAttemptAnalysis(
   results: QuestionResult[],
-  timeSpentSeconds: number
+  timeSpentSeconds: number,
+  taxonomyMap: Record<string, string> = {}
 ): AttemptAnalysis {
   // Group results by taxonomy node
   const taxonomyStats: Record<string, { correct: number; total: number; name: string }> = {};
@@ -757,7 +863,11 @@ function calculateAttemptAnalysis(
   results.forEach(r => {
     const nodeId = r.taxonomy_node_id || 'unknown';
     if (!taxonomyStats[nodeId]) {
-      taxonomyStats[nodeId] = { correct: 0, total: 0, name: '' };
+      taxonomyStats[nodeId] = { 
+        correct: 0, 
+        total: 0, 
+        name: taxonomyMap[nodeId] || '' 
+      };
     }
     taxonomyStats[nodeId].total++;
     if (r.is_correct) {
@@ -765,13 +875,15 @@ function calculateAttemptAnalysis(
     }
   });
 
-  const skills: SkillAnalysis[] = Object.entries(taxonomyStats).map(([nodeId, stats]) => ({
-    taxonomy_node_id: nodeId,
-    taxonomy_name: stats.name || nodeId,
-    correct_count: stats.correct,
-    total_count: stats.total,
-    percentage: (stats.correct / stats.total) * 100,
-  }));
+  const skills: SkillAnalysis[] = Object.entries(taxonomyStats)
+    .filter(([nodeId]) => nodeId !== 'unknown')
+    .map(([nodeId, stats]) => ({
+      taxonomy_node_id: nodeId,
+      taxonomy_name: stats.name || nodeId,
+      correct_count: stats.correct,
+      total_count: stats.total,
+      percentage: (stats.correct / stats.total) * 100,
+    }));
 
   const strengths = skills.filter(s => s.percentage >= 70).sort((a, b) => b.percentage - a.percentage);
   const weaknesses = skills.filter(s => s.percentage < 70).sort((a, b) => a.percentage - b.percentage);
@@ -792,10 +904,11 @@ function calculateAttemptAnalysis(
   else if (avgTimePerQuestion <= 60) time_efficiency = 'normal';
   else time_efficiency = 'slow';
 
+  // Return taxonomy names for suggested topics instead of IDs
   return {
     strengths,
     weaknesses,
-    suggested_next_topics: weaknesses.slice(0, 3).map(w => w.taxonomy_node_id),
+    suggested_next_topics: weaknesses.slice(0, 3).map(w => w.taxonomy_name),
     overall_performance,
     time_efficiency,
   };
