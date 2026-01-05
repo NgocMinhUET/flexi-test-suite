@@ -31,6 +31,88 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import CodingResultsDisplay from '@/components/exam/CodingResultsDisplay';
 import { QuestionContentRenderer, OptionContentRenderer } from '@/components/exam/QuestionContentRenderer';
+// Interface for legacy coding result format from database
+interface LegacyCodingResult {
+  passed: number;
+  total: number;
+  results: Array<{
+    testIndex: number;
+    input: string;
+    expectedOutput: string;
+    actualOutput?: string;
+    error?: string;
+    passed: boolean;
+    isHidden: boolean;
+    executionTime?: number;
+    weight?: number;
+  }>;
+}
+
+// Convert legacy codingResult to new CodingGradingResult format
+const convertLegacyCodingResult = (
+  legacy: LegacyCodingResult, 
+  earnedPoints: number, 
+  maxPoints: number
+): CodingGradingResult => {
+  const visibleResults = legacy.results.filter(r => !r.isHidden);
+  const hiddenResults = legacy.results.filter(r => r.isHidden);
+  
+  return {
+    passedTests: legacy.passed,
+    totalTests: legacy.total,
+    visibleTests: {
+      passed: visibleResults.filter(r => r.passed).length,
+      total: visibleResults.length,
+    },
+    hiddenTests: {
+      passed: hiddenResults.filter(r => r.passed).length,
+      total: hiddenResults.length,
+    },
+    earnedPoints,
+    maxPoints,
+    testResults: legacy.results.map(r => ({
+      testCaseId: `test-${r.testIndex}`,
+      passed: r.passed,
+      actualOutput: r.actualOutput,
+      expectedOutput: r.expectedOutput,
+      input: r.input,
+      error: r.error,
+      executionTime: r.executionTime,
+      isHidden: r.isHidden,
+      weight: r.weight,
+    })),
+    scoringMethod: 'proportional' as const,
+  };
+};
+
+// Parse question results with legacy codingResult conversion
+const parseQuestionResults = (rawResults: unknown[]): QuestionResult[] => {
+  return (rawResults || []).map((raw: Record<string, unknown>) => {
+    const result: QuestionResult = {
+      questionId: raw.questionId as number,
+      isCorrect: raw.isCorrect as boolean,
+      earnedPoints: raw.earnedPoints as number,
+      maxPoints: raw.maxPoints as number,
+      userAnswer: raw.userAnswer as string | string[],
+      correctAnswer: raw.correctAnswer as string | string[] | undefined,
+    };
+
+    // Check for codingResults (new format) or codingResult (legacy format)
+    if (raw.codingResults) {
+      result.codingResults = raw.codingResults as CodingGradingResult;
+    } else if (raw.codingResult) {
+      // Convert legacy format to new format
+      result.codingResults = convertLegacyCodingResult(
+        raw.codingResult as LegacyCodingResult,
+        result.earnedPoints,
+        result.maxPoints
+      );
+    }
+
+    return result;
+  });
+};
+
 const gradeColors: Record<string, string> = {
   'A+': 'text-success',
   'A': 'text-success',
@@ -147,7 +229,7 @@ const ExamResultPage = () => {
         earnedPoints: Number(resultData.earned_points),
         percentage: Number(resultData.percentage),
         grade: resultData.grade || 'F',
-        questionResults: (resultData.question_results as unknown as QuestionResult[]) || [],
+        questionResults: parseQuestionResults(resultData.question_results as unknown[] || []),
         violationStats: (resultData.statistics as unknown as { violationStats?: ViolationStats })?.violationStats,
         statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
           totalQuestions: examData.total_questions,
@@ -224,7 +306,7 @@ const ExamResultPage = () => {
         earnedPoints: Number(resultData.earned_points),
         percentage: Number(resultData.percentage),
         grade: resultData.grade || 'F',
-        questionResults: (resultData.question_results as unknown as QuestionResult[]) || [],
+        questionResults: parseQuestionResults(resultData.question_results as unknown[] || []),
         violationStats: (resultData.statistics as unknown as { violationStats?: ViolationStats })?.violationStats,
         statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
           totalQuestions: examData.total_questions,
