@@ -583,11 +583,20 @@ const ExamResultPage = () => {
                       )}
 
                       {/* Coding results - Enhanced display */}
-                      {question.type === 'coding' && qResult.codingResults && (
-                        <CodingResultsDisplay 
-                          codingResults={qResult.codingResults}
-                          userAnswer={qResult.userAnswer as string}
-                        />
+                      {question.type === 'coding' && (
+                        qResult.codingResults ? (
+                          <CodingResultsDisplay 
+                            codingResults={qResult.codingResults}
+                            userAnswer={qResult.userAnswer as string}
+                          />
+                        ) : (
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Code của thí sinh</h4>
+                            <pre className="p-4 bg-muted/50 rounded-lg overflow-x-auto text-sm font-mono max-h-64 overflow-y-auto border">
+                              {qResult.userAnswer || '(Không có code)'}
+                            </pre>
+                          </div>
+                        )
                       )}
                     </div>
                   )}
