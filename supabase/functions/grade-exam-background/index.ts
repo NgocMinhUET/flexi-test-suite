@@ -233,8 +233,9 @@ async function gradeExamInBackground(
       
       for (const question of codingQuestions) {
         const userCode = String(answers[question.id] || '');
-        const testCases = question.testCases || [];
+        const testCases = question.testCases || question.coding?.testCases || [];
         const questionPoints = question.points || 1;
+        const scoringMethod = question.scoringMethod || question.coding?.scoringMethod || 'proportional';
         totalPossiblePoints += questionPoints;
 
         let codingResult: { passed: number; total: number; results: any[] };
@@ -243,10 +244,30 @@ async function gradeExamInBackground(
         if (!userCode.trim() || testCases.length === 0) {
           codingResult = { passed: 0, total: testCases.length, results: [] };
         } else {
-          const language = question.language || 'python';
-          console.log(`Grading coding question ${question.id} with ${testCases.length} test cases`);
+          const language = question.language || question.coding?.defaultLanguage || 'python';
+          console.log(`Grading coding question ${question.id} with ${testCases.length} test cases, scoring: ${scoringMethod}`);
           codingResult = await runTestCases(userCode, language, testCases);
-          earnedPoints = Math.round((codingResult.passed / codingResult.total) * questionPoints * 100) / 100;
+          
+          // Calculate score based on scoring method
+          if (scoringMethod === 'all-or-nothing') {
+            earnedPoints = codingResult.passed === codingResult.total ? questionPoints : 0;
+          } else if (scoringMethod === 'weighted') {
+            let totalWeight = 0;
+            let earnedWeight = 0;
+            codingResult.results.forEach((r, idx) => {
+              const weight = testCases[idx]?.weight || 1;
+              totalWeight += weight;
+              if (r.passed) earnedWeight += weight;
+            });
+            earnedPoints = totalWeight > 0 
+              ? Math.round((earnedWeight / totalWeight) * questionPoints * 100) / 100 
+              : 0;
+          } else {
+            // proportional (default)
+            earnedPoints = codingResult.total > 0 
+              ? Math.round((codingResult.passed / codingResult.total) * questionPoints * 100) / 100 
+              : 0;
+          }
         }
 
         totalEarnedPoints += earnedPoints;
