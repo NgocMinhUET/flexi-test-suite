@@ -1051,14 +1051,16 @@ const TakeExam = () => {
           answersObject[questionId.toString()] = answer.answer;
         });
         
-        // Transform questions for edge function
+        // Transform questions for edge function - include all necessary coding info
         const questionsForGrading = exam.questions.map(q => ({
           id: q.id,
           type: q.type,
           points: q.points,
           correctAnswer: q.correctAnswer,
           testCases: q.coding?.testCases || [],
-          language: q.coding?.languages?.[0] || 'python',
+          language: q.coding?.defaultLanguage || q.coding?.languages?.[0] || 'python',
+          scoringMethod: q.coding?.scoringMethod || 'proportional',
+          coding: q.coding, // Pass full coding config for weighted scoring
         }));
         
         await startBackgroundGrading(
