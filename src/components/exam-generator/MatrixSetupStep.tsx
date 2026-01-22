@@ -27,6 +27,13 @@ export function MatrixSetupStep({
   const [selectedType, setSelectedType] = useState<string>(questionTypes[0] || '');
   const [defaultPoints, setDefaultPoints] = useState(1);
 
+  // Update selectedType when questionTypes changes
+  useEffect(() => {
+    if (questionTypes.length > 0 && !questionTypes.includes(selectedType)) {
+      setSelectedType(questionTypes[0]);
+    }
+  }, [questionTypes, selectedType]);
+
   // Get root level taxonomy nodes (level 0)
   const rootNodes = taxonomyNodes.filter(n => n.level === 0);
 
@@ -109,11 +116,21 @@ export function MatrixSetupStep({
         </div>
       </div>
 
+      {questionTypes.length === 0 ? (
+        <div className="p-4 border border-dashed border-muted-foreground/50 rounded-lg text-center">
+          <p className="text-muted-foreground">
+            Môn học chưa được cấu hình loại câu hỏi. Vui lòng thêm các loại câu hỏi (MCQ_SINGLE, TRUE_FALSE_4, SHORT_ANSWER, CODING) trong phần Quản lý môn học.
+          </p>
+        </div>
+      ) : (
       <Tabs value={selectedType} onValueChange={setSelectedType}>
         <TabsList>
           {questionTypes.map(type => (
             <TabsTrigger key={type} value={type}>
-              {type}
+              {type === 'MCQ_SINGLE' ? 'Trắc nghiệm' :
+               type === 'TRUE_FALSE_4' ? 'Đúng/Sai' :
+               type === 'SHORT_ANSWER' ? 'Tự luận ngắn' :
+               type === 'CODING' ? 'Lập trình' : type}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -213,6 +230,7 @@ export function MatrixSetupStep({
           </ScrollArea>
         </TabsContent>
       </Tabs>
+      )}
 
       {cells.length > 0 && (
         <div className="p-4 bg-muted rounded-lg">
