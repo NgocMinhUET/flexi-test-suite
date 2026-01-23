@@ -9,10 +9,10 @@ const corsHeaders = {
 const PISTON_API = 'https://emkc.org/api/v2/piston/execute';
 
 // Improved rate limiting handling
-const MAX_CONCURRENT = 2; // Reduced from 5 to avoid rate limiting
-const MAX_RETRIES = 5; // Increased from 2
-const INITIAL_RETRY_DELAY = 1000; // Increased from 500ms
-const BATCH_DELAY = 500; // Delay between batches
+const MAX_CONCURRENT = 1; // Run one test at a time for reliability
+const MAX_RETRIES = 7; // Increased for better retry handling
+const INITIAL_RETRY_DELAY = 1500; // Increased from 1000ms
+const BATCH_DELAY = 800; // Delay between batches (increased)
 
 const languageMap: Record<string, { language: string; version: string }> = {
   python: { language: 'python', version: '3.10.0' },
@@ -305,11 +305,15 @@ async function gradeExamInBackground(
     
     const duration = Math.round((Date.now() - startTime) / 1000);
 
+    // Grade scale matching TakeExam.tsx
     let grade = 'F';
-    if (percentage >= 90) grade = 'A';
-    else if (percentage >= 80) grade = 'B';
-    else if (percentage >= 70) grade = 'C';
-    else if (percentage >= 60) grade = 'D';
+    if (percentage >= 90) grade = 'A+';
+    else if (percentage >= 85) grade = 'A';
+    else if (percentage >= 80) grade = 'B+';
+    else if (percentage >= 70) grade = 'B';
+    else if (percentage >= 60) grade = 'C+';
+    else if (percentage >= 50) grade = 'C';
+    else if (percentage >= 40) grade = 'D';
 
     const resultData = {
       questionResults,
