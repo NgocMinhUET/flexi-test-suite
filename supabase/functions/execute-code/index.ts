@@ -42,9 +42,9 @@ const languageMap: Record<string, { language: string; version: string }> = {
 };
 
 // Improved retry configuration for better rate limit handling
-const MAX_RETRIES = 5; // Increased from 2
-const INITIAL_RETRY_DELAY = 1000; // Increased from 500ms
-const BATCH_DELAY = 300; // Delay between batches
+const MAX_RETRIES = 7; // Increased for better reliability
+const INITIAL_RETRY_DELAY = 1500; // Increased from 1000ms
+const BATCH_DELAY = 500; // Delay between batches (increased from 300ms)
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -197,7 +197,7 @@ function normalizeOutput(output: string): string {
 
 // Simple in-memory rate limiting (per function instance)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 20; // Reduced to be safer
+const RATE_LIMIT = 30; // Allow more requests per user
 const RATE_WINDOW = 60000; // 1 minute in milliseconds
 
 function checkRateLimit(userId: string): { allowed: boolean; waitTime?: number } {
@@ -219,7 +219,7 @@ function checkRateLimit(userId: string): { allowed: boolean; waitTime?: number }
 }
 
 // Reduced concurrent executions to avoid rate limiting
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 1; // Run one test at a time for better reliability
 
 async function executeTestsWithConcurrencyLimit(
   code: string,
