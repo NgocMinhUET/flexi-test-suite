@@ -72,15 +72,15 @@ export const ExamHeader = ({
             </p>
           </div>
 
-          {/* Progress Counter - Prominent */}
+          {/* Progress Counter - More prominent with higher contrast */}
           {totalQuestions > 0 && (
-            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 border border-border">
-              <span className="text-sm text-muted-foreground">Đã làm:</span>
-              <span className="text-lg font-bold text-primary">
+            <div className="hidden sm:flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-primary/10 border-2 border-primary/20">
+              <span className="text-sm font-medium text-primary/80">Đã làm:</span>
+              <span className="text-xl font-bold text-primary">
                 {answeredCount}
               </span>
-              <span className="text-muted-foreground">/</span>
-              <span className="text-lg font-semibold text-foreground">
+              <span className="text-xl font-bold text-primary/60">/</span>
+              <span className="text-xl font-bold text-foreground">
                 {totalQuestions}
               </span>
             </div>
