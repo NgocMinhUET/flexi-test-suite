@@ -1,17 +1,55 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseExamTimerProps {
   initialMinutes: number;
   onTimeUp?: () => void;
+  isEnabled?: boolean; // Only count down when enabled
+  savedTimeLeft?: number; // Restore time from draft (in seconds)
 }
 
-export const useExamTimer = ({ initialMinutes, onTimeUp }: UseExamTimerProps) => {
-  const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
-  const [isRunning, setIsRunning] = useState(true);
+export const useExamTimer = ({ 
+  initialMinutes, 
+  onTimeUp, 
+  isEnabled = true,
+  savedTimeLeft,
+}: UseExamTimerProps) => {
+  // Initialize from saved time or calculate from initialMinutes
+  const getInitialTime = useCallback(() => {
+    if (savedTimeLeft !== undefined && savedTimeLeft > 0) {
+      return savedTimeLeft;
+    }
+    return initialMinutes * 60;
+  }, [initialMinutes, savedTimeLeft]);
+
+  const [timeLeft, setTimeLeft] = useState(getInitialTime);
+  const [isRunning, setIsRunning] = useState(false);
+  const hasCalledTimeUp = useRef(false);
+
+  // Update time when savedTimeLeft changes (draft restoration)
+  useEffect(() => {
+    if (savedTimeLeft !== undefined && savedTimeLeft > 0) {
+      setTimeLeft(savedTimeLeft);
+    }
+  }, [savedTimeLeft]);
+
+  // Start running when enabled
+  useEffect(() => {
+    if (isEnabled) {
+      setIsRunning(true);
+      hasCalledTimeUp.current = false;
+    } else {
+      setIsRunning(false);
+    }
+  }, [isEnabled]);
 
   useEffect(() => {
-    if (!isRunning || timeLeft <= 0) {
-      if (timeLeft <= 0 && onTimeUp) {
+    if (!isRunning || !isEnabled) {
+      return;
+    }
+
+    if (timeLeft <= 0) {
+      if (!hasCalledTimeUp.current && onTimeUp) {
+        hasCalledTimeUp.current = true;
         onTimeUp();
       }
       return;
@@ -21,6 +59,10 @@ export const useExamTimer = ({ initialMinutes, onTimeUp }: UseExamTimerProps) =>
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setIsRunning(false);
+          if (!hasCalledTimeUp.current && onTimeUp) {
+            hasCalledTimeUp.current = true;
+            setTimeout(() => onTimeUp(), 0);
+          }
           return 0;
         }
         return prev - 1;
@@ -28,7 +70,7 @@ export const useExamTimer = ({ initialMinutes, onTimeUp }: UseExamTimerProps) =>
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft, onTimeUp]);
+  }, [isRunning, isEnabled, timeLeft, onTimeUp]);
 
   const formatTime = useCallback(() => {
     const hours = Math.floor(timeLeft / 3600);

@@ -10,6 +10,8 @@ interface ExamDraft {
   currentQuestion: number;
   violationStats: ViolationStats;
   savedAt: string;
+  // Timer state - critical for restoration
+  timeLeft?: number; // Non-sectioned exam: total seconds remaining
   // Sectioned exam state
   currentSection?: number;
   completedSections?: number[];
@@ -24,6 +26,8 @@ interface UseExamAutoSaveProps {
   currentQuestion: number;
   violationStats: ViolationStats;
   isEnabled: boolean;
+  // Timer state for restoration
+  timeLeft?: number; // Non-sectioned exam timer
   // Sectioned exam state
   currentSection?: number;
   completedSections?: Set<number>;
@@ -52,6 +56,7 @@ export const useExamAutoSave = ({
   currentQuestion,
   violationStats,
   isEnabled,
+  timeLeft,
   currentSection,
   completedSections,
   sectionTimes,
@@ -82,12 +87,14 @@ export const useExamAutoSave = ({
       currentQuestion,
       violationStats,
       savedAt: new Date().toISOString(),
+      // Timer state - critical for restoration
+      timeLeft,
       // Include section state if available
       currentSection,
       completedSections: completedSections ? Array.from(completedSections) : undefined,
       sectionTimes,
     };
-  }, [answers, flaggedQuestions, currentQuestion, violationStats, currentSection, completedSections, sectionTimes]);
+  }, [answers, flaggedQuestions, currentQuestion, violationStats, timeLeft, currentSection, completedSections, sectionTimes]);
 
   // Save to localStorage (fast, immediate backup)
   const saveToLocal = useCallback(() => {
@@ -118,6 +125,21 @@ export const useExamAutoSave = ({
       setSaveStatus('saving');
       const draft = getCurrentDraft();
 
+      // Prepare the data object with all fields
+      const draftDbData = {
+        answers: JSON.parse(JSON.stringify(draft.answers)) as Json,
+        flagged_questions: draft.flaggedQuestions,
+        current_question: draft.currentQuestion,
+        violation_stats: JSON.parse(JSON.stringify(draft.violationStats)) as Json,
+        saved_at: new Date().toISOString(),
+        // Timer state for restoration
+        time_left: draft.timeLeft || null,
+        // Sectioned exam state
+        current_section: draft.currentSection ?? null,
+        completed_sections: draft.completedSections || null,
+        section_times: draft.sectionTimes ? JSON.parse(JSON.stringify(draft.sectionTimes)) as Json : null,
+      };
+
       // First try to update existing draft
       const { data: existing } = await supabase
         .from('exam_drafts')
@@ -131,13 +153,7 @@ export const useExamAutoSave = ({
         // Update existing
         const result = await supabase
           .from('exam_drafts')
-          .update({
-            answers: JSON.parse(JSON.stringify(draft.answers)) as Json,
-            flagged_questions: draft.flaggedQuestions,
-            current_question: draft.currentQuestion,
-            violation_stats: JSON.parse(JSON.stringify(draft.violationStats)) as Json,
-            saved_at: new Date().toISOString(),
-          })
+          .update(draftDbData)
           .eq('id', existing.id);
         error = result.error;
       } else {
@@ -147,11 +163,7 @@ export const useExamAutoSave = ({
           .insert([{
             exam_id: examId,
             user_id: userId,
-            answers: JSON.parse(JSON.stringify(draft.answers)) as Json,
-            flagged_questions: draft.flaggedQuestions,
-            current_question: draft.currentQuestion,
-            violation_stats: JSON.parse(JSON.stringify(draft.violationStats)) as Json,
-            saved_at: new Date().toISOString(),
+            ...draftDbData,
           }]);
         error = result.error;
       }
@@ -225,9 +237,10 @@ export const useExamAutoSave = ({
     };
   }, [isEnabled, syncToCloud, saveToLocal]);
 
-  // Check for existing draft on mount
+  // Check for existing draft on mount - IMPORTANT: Check even when not enabled
+  // so we can show restore dialog before exam starts
   useEffect(() => {
-    if (!isEnabled || !examId || !userId) return;
+    if (!examId || !userId) return;
 
     const checkForDraft = async () => {
       // Check localStorage first
@@ -262,6 +275,12 @@ export const useExamAutoSave = ({
             currentQuestion: data.current_question || 0,
             violationStats: (data.violation_stats as unknown as ViolationStats) || { tabSwitchCount: 0, fullscreenExitCount: 0 },
             savedAt: data.saved_at,
+            // Restore timer state
+            timeLeft: data.time_left || undefined,
+            // Restore sectioned exam state
+            currentSection: data.current_section ?? undefined,
+            completedSections: data.completed_sections || undefined,
+            sectionTimes: data.section_times as unknown as Record<string, number> || undefined,
           };
           setDraftData(cloudDraft);
           setHasDraft(true);
@@ -272,7 +291,7 @@ export const useExamAutoSave = ({
     };
 
     checkForDraft();
-  }, [isEnabled, examId, userId, getLocalStorageKey]);
+  }, [examId, userId, getLocalStorageKey]);
 
   // Restore from draft
   const restoreFromDraft = useCallback(() => {
