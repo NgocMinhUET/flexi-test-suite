@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Play, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Play, CheckCircle2, Sparkles, Users, BookOpen, Award } from "lucide-react";
 
 const HeroSection = () => {
   const features = [
@@ -11,41 +11,46 @@ const HeroSection = () => {
     "Phân tích kết quả chi tiết",
   ];
 
+  const stats = [
+    { value: "50K+", label: "Học viên", icon: Users },
+    { value: "1000+", label: "Đề thi", icon: BookOpen },
+    { value: "99%", label: "Hài lòng", icon: Award },
+  ];
+
   return (
-    <section className="relative min-h-screen flex items-center gradient-hero overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse-slow delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
-      </div>
+    <section className="relative min-h-screen flex items-center overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background hero-pattern" />
+      
+      {/* Decorative elements */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-4 pt-24 pb-12 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left Content */}
-          <div className="text-center lg:text-left animate-slide-up">
-            <Badge variant="accent" className="mb-6 animate-fade-in">
-              <Sparkles className="w-3 h-3 mr-1" />
-              Nền tảng thi ExamPro
+          <div className="text-center lg:text-left">
+            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20 hover:bg-primary/15 animate-fade-in">
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              Nền tảng thi trực tuyến #1 Việt Nam
             </Badge>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight mb-6">
-              Thi trắc nghiệm & <span className="text-gradient">Lập trình</span>
-              <br />
-              ...
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight mb-6 animate-slide-up">
+              Nền tảng thi
+              <span className="block text-primary mt-2">Trắc nghiệm & Lập trình</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0">
-              Nền tảng thi toàn diện với đa dạng hình thức và đặc biệt là thi lập trình.
+            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0 animate-slide-up" style={{ animationDelay: "100ms" }}>
+              Tạo, tổ chức và quản lý bài thi trực tuyến một cách dễ dàng. 
+              Hỗ trợ đa dạng hình thức từ trắc nghiệm đến thi lập trình chuyên nghiệp.
             </p>
 
             {/* Feature Pills */}
-            <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-8">
+            <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-8 animate-slide-up" style={{ animationDelay: "150ms" }}>
               {features.map((feature, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-2 px-4 py-2 bg-card rounded-full border border-border/50 text-sm font-medium animate-fade-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-card rounded-full border border-border shadow-sm text-sm font-medium"
                 >
                   <CheckCircle2 className="w-4 h-4 text-success" />
                   {feature}
@@ -54,52 +59,47 @@ const HeroSection = () => {
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button variant="hero" size="xl">
-                Bắt đầu ngay
-                <ArrowRight className="w-5 h-5" />
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up" style={{ animationDelay: "200ms" }}>
+              <Button size="lg" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 text-base px-8">
+                Bắt đầu miễn phí
+                <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
               <Link to="/exam/demo">
-                <Button variant="glass" size="xl">
-                  <Play className="w-5 h-5" />
-                  Làm bài thi
+                <Button variant="outline" size="lg" className="border-2 text-base px-8">
+                  <Play className="w-5 h-5 mr-2" />
+                  Xem demo
                 </Button>
               </Link>
             </div>
 
             {/* Stats */}
-            <div className="flex items-center justify-center lg:justify-start gap-8 mt-12">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-foreground">50K+</div>
-                <div className="text-sm text-muted-foreground">Sinh viên</div>
-              </div>
-              <div className="w-px h-12 bg-border" />
-              <div className="text-center">
-                <div className="text-3xl font-bold text-foreground">..</div>
-                <div className="text-sm text-muted-foreground">Đề thi</div>
-              </div>
-              <div className="w-px h-12 bg-border" />
-              <div className="text-center">
-                <div className="text-3xl font-bold text-foreground">..</div>
-                <div className="text-sm text-muted-foreground">Hài lòng</div>
-              </div>
+            <div className="flex items-center justify-center lg:justify-start gap-8 mt-12 animate-slide-up" style={{ animationDelay: "250ms" }}>
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <stat.icon className="w-5 h-5 text-primary" />
+                    <span className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{stat.label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Right Content - Exam Preview */}
+          {/* Right Content - Exam Preview Card */}
           <div className="relative animate-fade-in" style={{ animationDelay: "300ms" }}>
-            <div className="relative">
+            <div className="relative max-w-md mx-auto lg:max-w-none">
               {/* Main Card */}
-              <div className="bg-card rounded-2xl border border-border/50 shadow-xl overflow-hidden">
+              <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden">
                 {/* Header */}
-                <div className="gradient-primary p-4 flex items-center justify-between">
+                <div className="bg-primary p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary-foreground/20 flex items-center justify-center">
-                      <span className="text-primary-foreground font-bold text-sm">01</span>
+                    <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
+                      <span className="text-primary-foreground font-bold">01</span>
                     </div>
                     <div>
                       <h3 className="text-primary-foreground font-semibold">Câu hỏi trắc nghiệm</h3>
-                      <p className="text-primary-foreground/70 text-xs">Thời gian: 02:30</p>
+                      <p className="text-primary-foreground/70 text-sm">Thời gian: 02:30</p>
                     </div>
                   </div>
                   <Badge className="bg-primary-foreground/20 text-primary-foreground border-0">1/20</Badge>
@@ -107,7 +107,7 @@ const HeroSection = () => {
 
                 {/* Question */}
                 <div className="p-6">
-                  <p className="text-foreground font-medium mb-4">
+                  <p className="text-foreground font-medium mb-5 text-lg">
                     Ngôn ngữ lập trình nào được sử dụng phổ biến nhất cho phát triển web frontend?
                   </p>
 
@@ -124,7 +124,7 @@ const HeroSection = () => {
                       >
                         <div
                           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            index === 1 ? "border-primary bg-primary" : "border-muted-foreground"
+                            index === 1 ? "border-primary bg-primary" : "border-muted-foreground/50"
                           }`}
                         >
                           {index === 1 && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
@@ -138,29 +138,30 @@ const HeroSection = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-border/50 flex justify-between">
+                <div className="p-4 border-t border-border flex justify-between bg-muted/30">
                   <Button variant="ghost" size="sm">
                     ← Câu trước
                   </Button>
-                  <Button variant="default" size="sm">
+                  <Button size="sm" className="bg-primary hover:bg-primary/90">
                     Câu tiếp →
                   </Button>
                 </div>
               </div>
 
               {/* Floating elements */}
-              <div className="absolute -top-4 -right-4 bg-success text-success-foreground px-4 py-2 rounded-xl shadow-lg animate-float text-sm font-semibold">
-                ✓ Đúng!
+              <div className="absolute -top-3 -right-3 bg-success text-success-foreground px-4 py-2 rounded-xl shadow-lg animate-bounce-subtle text-sm font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Chính xác!
               </div>
 
-              <div className="absolute -bottom-4 -left-4 bg-card border border-border px-4 py-3 rounded-xl shadow-lg animate-float delay-500">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-                    <span className="text-accent">⚡</span>
+              <div className="absolute -bottom-3 -left-3 bg-card border border-border px-4 py-3 rounded-xl shadow-lg animate-float">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-accent" />
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Điểm hiện tại</div>
-                    <div className="text-foreground font-bold">850 pts</div>
+                    <div className="text-foreground font-bold text-lg">850 pts</div>
                   </div>
                 </div>
               </div>
