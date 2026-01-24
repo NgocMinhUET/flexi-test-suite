@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 
 interface ExamDraft {
-  answers: Record<number, Answer>;
-  flaggedQuestions: number[];
+  answers: Record<string, Answer>; // Use string keys to preserve any format
+  flaggedQuestions: number[]; // Keep as number array for DB compatibility
   currentQuestion: number;
   violationStats: ViolationStats;
   savedAt: string;
@@ -75,10 +75,12 @@ export const useExamAutoSave = ({
   }, [examId, userId]);
 
   // Convert current state to draft format
+  // IMPORTANT: Use string keys for answers to preserve any ID format during JSON
   const getCurrentDraft = useCallback((): ExamDraft => {
-    const answersObj: Record<number, Answer> = {};
+    const answersObj: Record<string, Answer> = {};
     answers.forEach((value, key) => {
-      answersObj[key] = value;
+      // Store with string key to preserve format during serialization
+      answersObj[String(key)] = value;
     });
 
     return {
@@ -213,7 +215,7 @@ export const useExamAutoSave = ({
     };
   }, [isEnabled, syncToCloud]);
 
-  // Sync to cloud on tab blur/visibility change
+  // Sync to cloud on tab blur/visibility change + HARDENED beforeunload
   useEffect(() => {
     if (!isEnabled) return;
 
@@ -224,8 +226,43 @@ export const useExamAutoSave = ({
     };
 
     const handleBeforeUnload = () => {
-      // Force save to localStorage before unload
+      // Force save to localStorage before unload (synchronous, always works)
       saveToLocal();
+      
+      // Also try sendBeacon for cloud sync (fire-and-forget, works during tab close)
+      if (examId && userId && navigator.sendBeacon) {
+        try {
+          const draft = getCurrentDraft();
+          const payload = JSON.stringify({
+            exam_id: examId,
+            user_id: userId,
+            answers: draft.answers,
+            flagged_questions: draft.flaggedQuestions,
+            current_question: draft.currentQuestion,
+            violation_stats: draft.violationStats,
+            saved_at: new Date().toISOString(),
+            time_left: draft.timeLeft || null,
+            current_section: draft.currentSection ?? null,
+            completed_sections: draft.completedSections || null,
+            section_times: draft.sectionTimes || null,
+          });
+          
+          // Use sendBeacon - it queues the request even if page is closing
+          const beaconUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/exam_drafts?on_conflict=exam_id,user_id`;
+          const headers = {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Prefer': 'resolution=merge-duplicates',
+          };
+          
+          // Create blob with proper headers for POST
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon(beaconUrl, blob);
+        } catch (e) {
+          console.warn('sendBeacon failed:', e);
+        }
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -235,7 +272,7 @@ export const useExamAutoSave = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isEnabled, syncToCloud, saveToLocal]);
+  }, [isEnabled, syncToCloud, saveToLocal, examId, userId, getCurrentDraft]);
 
   // Check for existing draft on mount - IMPORTANT: Check even when not enabled
   // so we can show restore dialog before exam starts
