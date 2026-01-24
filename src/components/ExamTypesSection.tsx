@@ -58,20 +58,20 @@ const ExamTypesSection = () => {
   ];
 
   return (
-    <section id="exams" className="section-spacing bg-secondary/40">
+    <section id="exams" className="section-spacing bg-secondary/30">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+        <div className="text-center max-w-2xl mx-auto mb-20">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5">
             Mọi hình thức thi bạn cần
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-muted-foreground leading-relaxed">
             Từ trắc nghiệm đơn giản đến thi lập trình, FlexiTest hỗ trợ tất cả.
           </p>
         </div>
 
         {/* Exam Types Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {examTypes.map((type, index) => (
             <Card
               key={index}
@@ -82,9 +82,9 @@ const ExamTypesSection = () => {
               }`}
             >
               <CardHeader className="pb-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center transition-transform group-hover:scale-110">
-                    <type.icon className="w-6 h-6 text-primary" />
+                <div className="flex items-start justify-between mb-5">
+                  <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center transition-transform group-hover:scale-110">
+                    <type.icon className="w-7 h-7 text-primary" />
                   </div>
                   {type.badge && (
                     <Badge 
@@ -96,12 +96,12 @@ const ExamTypesSection = () => {
                   )}
                 </div>
                 <CardTitle className="text-xl font-semibold">{type.title}</CardTitle>
-                <CardDescription className="text-base text-muted-foreground">
+                <CardDescription className="text-base text-muted-foreground leading-relaxed">
                   {type.description}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2.5 mb-6">
+                <ul className="space-y-3 mb-6">
                   {type.features.map((feature, fIndex) => (
                     <li key={fIndex} className="flex items-center gap-3 text-sm text-muted-foreground">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
