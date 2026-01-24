@@ -17,17 +17,27 @@ export const StatSection = memo(({
   columns = 4,
 }: StatSectionProps) => {
   return (
-    <section className="mb-8">
-      <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-        <Icon className={cn('w-5 h-5', iconColorClass)} />
-        {title}
-      </h2>
+    <section className="mb-10">
+      {/* Section Header */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className={cn(
+          'w-8 h-8 rounded-lg flex items-center justify-center',
+          'bg-muted/50 ring-1 ring-border/50'
+        )}>
+          <Icon className={cn('w-4 h-4', iconColorClass)} />
+        </div>
+        <h2 className="text-lg font-bold text-foreground tracking-tight">
+          {title}
+        </h2>
+      </div>
+      
+      {/* Stats Grid */}
       <div
         className={cn(
           'grid gap-4',
           columns === 4
             ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+            : 'grid-cols-1 sm:grid-cols-3'
         )}
       >
         {children}
