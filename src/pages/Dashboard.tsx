@@ -1,9 +1,8 @@
-import { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Code2,
   FileText,
@@ -22,55 +21,41 @@ import {
   School,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { QuickLinkCard } from '@/components/dashboard/QuickLinkCard';
+import { StatSection } from '@/components/dashboard/StatSection';
 
-// Memoized stat card component
-const StatCard = memo(({ 
-  icon: Icon, 
-  value, 
-  label, 
-  colorClass 
-}: { 
-  icon: React.ElementType; 
-  value: string | number; 
-  label: string; 
-  colorClass: string;
-}) => (
-  <Card>
-    <CardContent className="pt-6">
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl ${colorClass} flex items-center justify-center`}>
-          <Icon className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-));
+interface DashboardStats {
+  totalExams: number;
+  totalSubmissions: number;
+  avgScore: number;
+  publishedExams: number;
+  totalPractice: number;
+  practiceAttempts: number;
+  practiceAvgScore: number;
+  totalContests: number;
+  totalContestParticipants: number;
+  contestAvgScore: number;
+}
 
-StatCard.displayName = 'StatCard';
+const initialStats: DashboardStats = {
+  totalExams: 0,
+  totalSubmissions: 0,
+  avgScore: 0,
+  publishedExams: 0,
+  totalPractice: 0,
+  practiceAttempts: 0,
+  practiceAvgScore: 0,
+  totalContests: 0,
+  totalContestParticipants: 0,
+  contestAvgScore: 0,
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, isAdmin, isTeacher, isLoading: authLoading, signOut } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    // Exam stats
-    totalExams: 0,
-    totalSubmissions: 0,
-    avgScore: 0,
-    publishedExams: 0,
-    // Practice stats
-    totalPractice: 0,
-    practiceAttempts: 0,
-    practiceAvgScore: 0,
-    // Contest stats
-    totalContests: 0,
-    totalContestParticipants: 0,
-    contestAvgScore: 0,
-  });
+  const [stats, setStats] = useState<DashboardStats>(initialStats);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -90,7 +75,6 @@ const Dashboard = () => {
   const fetchStats = async () => {
     setIsLoading(true);
     try {
-      // Use COUNT() queries instead of loading all data - much more efficient!
       const [
         examCountRes,
         publishedExamCountRes,
@@ -103,57 +87,46 @@ const Dashboard = () => {
         practiceAttemptsCountRes,
         practiceAvgScoreRes,
       ] = await Promise.all([
-        // Count official exams (mode = exam or null, source_type = standalone or null)
         supabase
           .from('exams')
           .select('*', { count: 'exact', head: true })
           .or('mode.is.null,mode.eq.exam')
           .or('source_type.is.null,source_type.eq.standalone'),
-        // Count published official exams
         supabase
           .from('exams')
           .select('*', { count: 'exact', head: true })
           .eq('is_published', true)
           .or('mode.is.null,mode.eq.exam')
           .or('source_type.is.null,source_type.eq.standalone'),
-        // Count practice mode exams
         supabase
           .from('exams')
           .select('*', { count: 'exact', head: true })
           .eq('mode', 'practice'),
-        // Count submissions
         supabase
           .from('exam_results')
           .select('*', { count: 'exact', head: true }),
-        // Get average score (need to fetch percentages for calculation)
         supabase
           .from('exam_results')
           .select('percentage')
-          .limit(1000), // Limit for avg calculation
-        // Count contests
+          .limit(1000),
         supabase
           .from('contests')
           .select('*', { count: 'exact', head: true }),
-        // Count contest participants
         supabase
           .from('contest_participants')
           .select('*', { count: 'exact', head: true }),
-        // Count practice configs
         supabase
           .from('practice_configs')
           .select('*', { count: 'exact', head: true }),
-        // Count practice attempts
         supabase
           .from('practice_attempts')
           .select('*', { count: 'exact', head: true }),
-        // Get practice avg score
         supabase
           .from('practice_attempts')
           .select('score')
           .limit(1000),
       ]);
 
-      // Calculate averages from limited data
       const avgScoreData = avgScoreRes.data || [];
       const avgScore = avgScoreData.length
         ? avgScoreData.reduce((acc, r) => acc + Number(r.percentage || 0), 0) / avgScoreData.length
@@ -174,7 +147,7 @@ const Dashboard = () => {
         practiceAvgScore: Math.round(practiceAvgScore * 10) / 10,
         totalContests: contestsCountRes.count ?? 0,
         totalContestParticipants: participantsCountRes.count ?? 0,
-        contestAvgScore: 0, // Simplified - contest avg requires more complex query
+        contestAvgScore: 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -204,11 +177,11 @@ const Dashboard = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
                 <Code2 className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold text-foreground">
-                Exam<span className="text-gradient">Pro</span>
+                Exam<span className="text-primary">Pro</span>
               </span>
             </Link>
 
@@ -216,7 +189,7 @@ const Dashboard = () => {
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {isAdmin ? 'Admin' : 'Giáo viên'}
+                  {isAdmin ? 'Quản trị viên' : 'Giáo viên'}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleSignOut}>
@@ -231,19 +204,19 @@ const Dashboard = () => {
         {/* Page Title */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Thống kê và báo cáo tổng quan</p>
+            <h1 className="text-3xl font-bold text-foreground">Tổng quan</h1>
+            <p className="text-muted-foreground">Thống kê và báo cáo hệ thống</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {isAdmin && (
               <>
-                <Button variant="outline" asChild>
+                <Button variant="outline" size="sm" asChild>
                   <Link to="/admin/users">
                     <Users className="w-4 h-4 mr-2" />
                     Người dùng
                   </Link>
                 </Button>
-                <Button variant="outline" asChild>
+                <Button variant="outline" size="sm" asChild>
                   <Link to="/admin/subjects">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Môn học
@@ -251,13 +224,7 @@ const Dashboard = () => {
                 </Button>
               </>
             )}
-            <Button variant="outline" asChild>
-              <Link to="/classes">
-                <School className="w-4 h-4 mr-2" />
-                Quản lý lớp
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
+            <Button variant="outline" size="sm" asChild>
               <Link to="/questions">
                 <FileText className="w-4 h-4 mr-2" />
                 Ngân hàng câu hỏi
@@ -267,161 +234,141 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/exams?mode=exam')}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <ClipboardCheck className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Đề thi chính thức</CardTitle>
-                  <CardDescription>Tạo và quản lý bài thi</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/exams?mode=practice')}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <GraduationCap className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Bài luyện tập</CardTitle>
-                  <CardDescription>Tạo bài tập cho học sinh</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/practice-assignments')}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                  <ClipboardList className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Bài luyện tập được giao</CardTitle>
-                  <CardDescription>Giao bài và theo dõi kết quả</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/contests')}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Trophy className="w-5 h-5 text-warning" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Cuộc thi</CardTitle>
-                  <CardDescription>Tổ chức cuộc thi lớn</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/classes')}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <School className="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <CardTitle className="text-base">Quản lý lớp học</CardTitle>
-                  <CardDescription>Tạo lớp và quản lý học sinh</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </div>
+        <section className="mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <QuickLinkCard
+              icon={ClipboardCheck}
+              title="Đề thi chính thức"
+              description="Tạo và quản lý bài thi"
+              variant="primary"
+              onClick={() => navigate('/exams?mode=exam')}
+            />
+            <QuickLinkCard
+              icon={GraduationCap}
+              title="Bài luyện tập"
+              description="Tạo bài tập cho học sinh"
+              variant="amber"
+              onClick={() => navigate('/exams?mode=practice')}
+            />
+            <QuickLinkCard
+              icon={ClipboardList}
+              title="Bài tập được giao"
+              description="Giao bài và theo dõi"
+              variant="success"
+              onClick={() => navigate('/practice-assignments')}
+            />
+            <QuickLinkCard
+              icon={Trophy}
+              title="Cuộc thi"
+              description="Tổ chức cuộc thi lớn"
+              variant="warning"
+              onClick={() => navigate('/contests')}
+            />
+            <QuickLinkCard
+              icon={School}
+              title="Quản lý lớp học"
+              description="Tạo lớp và quản lý"
+              variant="primary"
+              onClick={() => navigate('/classes')}
+            />
+          </div>
+        </section>
 
         {/* Exam Stats */}
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <ClipboardCheck className="w-5 h-5 text-primary" />
-          Đề thi chính thức
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard 
-            icon={FileText} 
-            value={stats.totalExams} 
-            label="Tổng đề thi" 
-            colorClass="bg-primary/10 text-primary" 
+        <StatSection
+          icon={ClipboardCheck}
+          title="Đề thi chính thức"
+          iconColorClass="text-primary"
+          columns={4}
+        >
+          <StatCard
+            icon={FileText}
+            value={stats.totalExams}
+            label="Tổng số đề thi"
+            variant="quantity"
           />
-          <StatCard 
-            icon={CheckCircle} 
-            value={stats.publishedExams} 
-            label="Đã công khai" 
-            colorClass="bg-success/10 text-success" 
+          <StatCard
+            icon={CheckCircle}
+            value={stats.publishedExams}
+            label="Đã công khai"
+            variant="published"
           />
-          <StatCard 
-            icon={Users} 
-            value={stats.totalSubmissions} 
-            label="Bài nộp" 
-            colorClass="bg-accent/10 text-accent" 
+          <StatCard
+            icon={Users}
+            value={stats.totalSubmissions}
+            label="Bài nộp"
+            variant="submissions"
           />
-          <StatCard 
-            icon={BarChart3} 
-            value={`${stats.avgScore}%`} 
-            label="Điểm TB" 
-            colorClass="bg-warning/10 text-warning" 
+          <StatCard
+            icon={BarChart3}
+            value={stats.avgScore}
+            label="Điểm trung bình"
+            variant="average"
+            suffix="%"
+            showGauge
+            gaugeValue={stats.avgScore}
           />
-        </div>
+        </StatSection>
 
         {/* Practice Stats */}
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <GraduationCap className="w-5 h-5 text-accent" />
-          Bài luyện tập
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          <StatCard 
-            icon={Target} 
-            value={stats.totalPractice} 
-            label="Bài luyện tập" 
-            colorClass="bg-accent/10 text-accent" 
+        <StatSection
+          icon={GraduationCap}
+          title="Bài luyện tập"
+          iconColorClass="text-amber-600"
+          columns={3}
+        >
+          <StatCard
+            icon={Target}
+            value={stats.totalPractice}
+            label="Bài luyện tập"
+            variant="quantity"
           />
-          <StatCard 
-            icon={Repeat} 
-            value={stats.practiceAttempts} 
-            label="Lượt làm bài" 
-            colorClass="bg-primary/10 text-primary" 
+          <StatCard
+            icon={Repeat}
+            value={stats.practiceAttempts}
+            label="Lượt làm bài"
+            variant="submissions"
           />
-          <StatCard 
-            icon={BarChart3} 
-            value={`${stats.practiceAvgScore}%`} 
-            label="Điểm TB" 
-            colorClass="bg-success/10 text-success" 
+          <StatCard
+            icon={BarChart3}
+            value={stats.practiceAvgScore}
+            label="Điểm trung bình"
+            variant="average"
+            suffix="%"
+            showGauge
+            gaugeValue={stats.practiceAvgScore}
           />
-        </div>
+        </StatSection>
 
         {/* Contest Stats */}
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-warning" />
-          Cuộc thi
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard 
-            icon={Trophy} 
-            value={stats.totalContests} 
-            label="Số cuộc thi" 
-            colorClass="bg-primary/10 text-primary" 
+        <StatSection
+          icon={Trophy}
+          title="Cuộc thi"
+          iconColorClass="text-orange-600"
+          columns={3}
+        >
+          <StatCard
+            icon={Trophy}
+            value={stats.totalContests}
+            label="Số cuộc thi"
+            variant="quantity"
           />
-          <StatCard 
-            icon={Users} 
-            value={stats.totalContestParticipants} 
-            label="Thí sinh tham gia" 
-            colorClass="bg-accent/10 text-accent" 
+          <StatCard
+            icon={Users}
+            value={stats.totalContestParticipants}
+            label="Thí sinh tham gia"
+            variant="submissions"
           />
-          <StatCard 
-            icon={BarChart3} 
-            value={`${stats.contestAvgScore}%`} 
-            label="Điểm TB cuộc thi" 
-            colorClass="bg-warning/10 text-warning" 
+          <StatCard
+            icon={BarChart3}
+            value={stats.contestAvgScore}
+            label="Điểm trung bình"
+            variant="average"
+            suffix="%"
+            showGauge
+            gaugeValue={stats.contestAvgScore}
           />
-        </div>
+        </StatSection>
       </main>
     </div>
   );
