@@ -1,94 +1,110 @@
-import { Code2, Facebook, Youtube, MessageCircle } from "lucide-react";
+import { GraduationCap, Facebook, Youtube, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
-  // --- DỮ LIỆU CŨ (Đã ẩn để dùng sau này) ---
-  /*
-  const links = {
-    product: [
-      { label: "Tính năng", href: "#" },
-      { label: "Bảng giá", href: "#" },
-      { label: "Thi lập trình", href: "#" },
-      { label: "API", href: "#" }
-    ],
-    resources: [
-      { label: "Hướng dẫn", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Cộng đồng", href: "#" },
-      { label: "Changelog", href: "#" }
-    ],
-    company: [
-      { label: "Về chúng tôi", href: "#" },
-      { label: "Liên hệ", href: "#" },
-      { label: "Tuyển dụng", href: "#" },
-      { label: "Đối tác", href: "#" }
-    ],
-    legal: [
-      { label: "Điều khoản", href: "#" },
-      { label: "Bảo mật", href: "#" },
-      { label: "Cookie", href: "#" }
-    ]
-  };
-  */
+  const quickLinks = [
+    { label: "Tính năng", href: "#features" },
+    { label: "Hình thức thi", href: "#exams" },
+    { label: "Thi lập trình", href: "#coding" },
+    { label: "Bảng giá", href: "#pricing" },
+  ];
+
+  const supportLinks = [
+    { label: "Hướng dẫn sử dụng", href: "#" },
+    { label: "Câu hỏi thường gặp", href: "#" },
+    { label: "Liên hệ hỗ trợ", href: "#" },
+    { label: "Điều khoản sử dụng", href: "#" },
+  ];
 
   return (
-    <footer className="bg-card border-t border-border mt-auto">
-      <div className="container mx-auto px-4 py-6">
-        {/* --- PHẦN GIAO DIỆN ĐƠN GIẢN CHO SINH VIÊN --- */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Logo & Tên ứng dụng */}
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Code2 className="w-5 h-5 text-primary-foreground" />
+    <footer className="bg-card border-t border-border">
+      <div className="container mx-auto px-4">
+        {/* Main Footer */}
+        <div className="py-12 grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Brand */}
+          <div className="lg:col-span-2">
+            <Link to="/" className="flex items-center gap-2.5 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+                <GraduationCap className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold text-foreground">
+                Flexi<span className="text-primary">Test</span>
+              </span>
+            </Link>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Nền tảng thi trực tuyến toàn diện, hỗ trợ đa dạng hình thức từ trắc nghiệm 
+              đến thi lập trình chuyên nghiệp với chấm điểm tự động.
+            </p>
+            <div className="flex gap-3">
+              <a 
+                href="#" 
+                className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-colors"
+                aria-label="Facebook"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a 
+                href="#" 
+                className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-colors"
+                aria-label="Youtube"
+              >
+                <Youtube className="w-5 h-5" />
+              </a>
+              <a 
+                href="mailto:support@flexitest.edu.vn" 
+                className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-colors"
+                aria-label="Email"
+              >
+                <Mail className="w-5 h-5" />
+              </a>
             </div>
-            <span className="text-lg font-bold text-foreground">
-              Exam<span className="text-primary">Pro</span>
-            </span>
           </div>
 
-          {/* Dòng bản quyền đơn giản */}
-          <p className="text-sm text-muted-foreground text-center md:text-right">© 2025 ExamPro. DoNgocMinh</p>
+          {/* Quick Links */}
+          <div>
+            <h4 className="font-semibold text-foreground mb-4">Liên kết nhanh</h4>
+            <ul className="space-y-3">
+              {quickLinks.map((link, index) => (
+                <li key={index}>
+                  <a 
+                    href={link.href} 
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Support */}
+          <div>
+            <h4 className="font-semibold text-foreground mb-4">Hỗ trợ</h4>
+            <ul className="space-y-3">
+              {supportLinks.map((link, index) => (
+                <li key={index}>
+                  <a 
+                    href={link.href} 
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        {/* --- PHẦN GIAO DIỆN CŨ (Đã ẩn - Bỏ comment bên dưới để mở rộng) --- */}
-        {/* <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mt-8 pt-8 border-t border-border">
-          <div className="col-span-2 md:col-span-1">
-             <p className="text-sm text-muted-foreground mb-4">Nền tảng thi trực tuyến toàn diện</p>
-             <div className="flex gap-3">
-               <a href="#" className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"><Facebook className="w-4 h-4"/></a>
-               <a href="#" className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"><Youtube className="w-4 h-4"/></a>
-               <a href="#" className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"><MessageCircle className="w-4 h-4"/></a>
-             </div>
+        {/* Bottom Bar */}
+        <div className="py-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            © 2025 FlexiTest. Developed by DoNgocMinh
+          </p>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="#" className="hover:text-primary transition-colors">Chính sách bảo mật</a>
+            <a href="#" className="hover:text-primary transition-colors">Điều khoản dịch vụ</a>
           </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Sản phẩm</h4>
-            <ul className="space-y-2">
-              {links.product.map((link, index) => <li key={index}><a href={link.href} className="text-sm text-muted-foreground hover:text-foreground">{link.label}</a></li>)}
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Tài nguyên</h4>
-             <ul className="space-y-2">
-              {links.resources.map((link, index) => <li key={index}><a href={link.href} className="text-sm text-muted-foreground hover:text-foreground">{link.label}</a></li>)}
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Công ty</h4>
-             <ul className="space-y-2">
-              {links.company.map((link, index) => <li key={index}><a href={link.href} className="text-sm text-muted-foreground hover:text-foreground">{link.label}</a></li>)}
-            </ul>
-          </div>
-          
-           <div>
-            <h4 className="font-semibold text-foreground mb-4">Pháp lý</h4>
-             <ul className="space-y-2">
-              {links.legal.map((link, index) => <li key={index}><a href={link.href} className="text-sm text-muted-foreground hover:text-foreground">{link.label}</a></li>)}
-            </ul>
-          </div>
-        </div> 
-        */}
+        </div>
       </div>
     </footer>
   );
