@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Play, CheckCircle2, Sparkles, Users, BookOpen, Award } from "lucide-react";
+import { ArrowRight, Play, CheckCircle2, Users, BookOpen, Award } from "lucide-react";
 
 const HeroSection = () => {
-  const features = [
+  const highlights = [
     "Đa dạng hình thức thi",
-    "Thi lập trình trực tiếp",
     "Chấm điểm tự động",
     "Phân tích kết quả chi tiết",
   ];
@@ -18,54 +17,69 @@ const HeroSection = () => {
   ];
 
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background hero-pattern" />
+    <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+      {/* Clean gradient background */}
+      <div className="absolute inset-0 gradient-hero-light" />
       
-      {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
+      {/* Subtle decorative elements */}
+      <div className="absolute top-40 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-accent/5 rounded-full blur-3xl" />
 
-      <div className="container mx-auto px-4 pt-24 pb-12 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
           {/* Left Content */}
-          <div className="text-center lg:text-left">
-            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20 hover:bg-primary/15 animate-fade-in">
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+          <div className="text-center lg:text-left max-w-xl mx-auto lg:mx-0">
+            <Badge 
+              variant="secondary" 
+              className="mb-6 px-4 py-1.5 text-sm font-medium border border-primary/20 bg-primary/5 text-primary animate-fade-in"
+            >
               Nền tảng thi trực tuyến #1 Việt Nam
             </Badge>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight mb-6 animate-slide-up">
+            <h1 
+              className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] mb-6 animate-slide-up"
+            >
               Nền tảng thi
               <span className="block text-primary mt-2">Trắc nghiệm & Lập trình</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto lg:mx-0 animate-slide-up" style={{ animationDelay: "100ms" }}>
+            <p 
+              className="text-lg text-muted-foreground mb-8 leading-relaxed animate-slide-up"
+              style={{ animationDelay: "100ms" }}
+            >
               Tạo, tổ chức và quản lý bài thi trực tuyến một cách dễ dàng. 
               Hỗ trợ đa dạng hình thức từ trắc nghiệm đến thi lập trình chuyên nghiệp.
             </p>
 
-            {/* Feature Pills */}
-            <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-8 animate-slide-up" style={{ animationDelay: "150ms" }}>
-              {features.map((feature, index) => (
+            {/* Highlights */}
+            <div 
+              className="flex flex-wrap gap-4 justify-center lg:justify-start mb-10 animate-slide-up"
+              style={{ animationDelay: "150ms" }}
+            >
+              {highlights.map((item, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-card rounded-full border border-border shadow-sm text-sm font-medium"
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-success" />
-                  {feature}
+                  <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                  <span>{item}</span>
                 </div>
               ))}
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up" style={{ animationDelay: "200ms" }}>
-              <Button size="lg" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 text-base px-8">
-                Bắt đầu miễn phí
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
+            <div 
+              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up"
+              style={{ animationDelay: "200ms" }}
+            >
+              <Link to="/auth">
+                <Button size="lg" className="w-full sm:w-auto px-8 text-base font-semibold shadow-lg shadow-primary/20">
+                  Bắt đầu miễn phí
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
               <Link to="/exam/demo">
-                <Button variant="outline" size="lg" className="border-2 text-base px-8">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 text-base font-medium border-2">
                   <Play className="w-5 h-5 mr-2" />
                   Xem demo
                 </Button>
@@ -73,7 +87,10 @@ const HeroSection = () => {
             </div>
 
             {/* Stats */}
-            <div className="flex items-center justify-center lg:justify-start gap-8 mt-12 animate-slide-up" style={{ animationDelay: "250ms" }}>
+            <div 
+              className="flex items-center justify-center lg:justify-start gap-10 mt-14 pt-8 border-t border-border animate-slide-up"
+              style={{ animationDelay: "250ms" }}
+            >
               {stats.map((stat, index) => (
                 <div key={index} className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
@@ -87,27 +104,30 @@ const HeroSection = () => {
           </div>
 
           {/* Right Content - Exam Preview Card */}
-          <div className="relative animate-fade-in" style={{ animationDelay: "300ms" }}>
-            <div className="relative max-w-md mx-auto lg:max-w-none">
+          <div 
+            className="relative animate-fade-in lg:pl-8" 
+            style={{ animationDelay: "300ms" }}
+          >
+            <div className="relative max-w-md mx-auto">
               {/* Main Card */}
               <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden">
                 {/* Header */}
-                <div className="bg-primary p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
-                      <span className="text-primary-foreground font-bold">01</span>
+                <div className="gradient-hero p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">01</span>
                     </div>
                     <div>
-                      <h3 className="text-primary-foreground font-semibold">Câu hỏi trắc nghiệm</h3>
-                      <p className="text-primary-foreground/70 text-sm">Thời gian: 02:30</p>
+                      <h3 className="text-white font-semibold text-lg">Câu hỏi trắc nghiệm</h3>
+                      <p className="text-white/70 text-sm">Thời gian: 02:30</p>
                     </div>
                   </div>
-                  <Badge className="bg-primary-foreground/20 text-primary-foreground border-0">1/20</Badge>
+                  <Badge className="bg-white/20 text-white border-0 font-medium">1/20</Badge>
                 </div>
 
                 {/* Question */}
                 <div className="p-6">
-                  <p className="text-foreground font-medium mb-5 text-lg">
+                  <p className="text-foreground font-medium mb-6 text-lg leading-relaxed">
                     Ngôn ngữ lập trình nào được sử dụng phổ biến nhất cho phát triển web frontend?
                   </p>
 
@@ -116,18 +136,18 @@ const HeroSection = () => {
                     {["Python", "JavaScript", "Java", "C++"].map((option, index) => (
                       <label
                         key={index}
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                           index === 1
                             ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                            : "border-border hover:border-primary/30"
                         }`}
                       >
                         <div
-                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            index === 1 ? "border-primary bg-primary" : "border-muted-foreground/50"
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            index === 1 ? "border-primary bg-primary" : "border-muted-foreground/40"
                           }`}
                         >
-                          {index === 1 && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
+                          {index === 1 && <div className="w-2 h-2 rounded-full bg-white" />}
                         </div>
                         <span className={index === 1 ? "text-foreground font-medium" : "text-muted-foreground"}>
                           {option}
@@ -138,23 +158,24 @@ const HeroSection = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-border flex justify-between bg-muted/30">
-                  <Button variant="ghost" size="sm">
+                <div className="p-4 border-t border-border flex justify-between bg-secondary/30">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground">
                     ← Câu trước
                   </Button>
-                  <Button size="sm" className="bg-primary hover:bg-primary/90">
+                  <Button size="sm">
                     Câu tiếp →
                   </Button>
                 </div>
               </div>
 
-              {/* Floating elements */}
-              <div className="absolute -top-3 -right-3 bg-success text-success-foreground px-4 py-2 rounded-xl shadow-lg animate-bounce-subtle text-sm font-semibold flex items-center gap-2">
+              {/* Floating badge */}
+              <div className="absolute -top-4 -right-4 bg-success text-white px-4 py-2 rounded-xl shadow-lg animate-bounce-soft text-sm font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Chính xác!
               </div>
 
-              <div className="absolute -bottom-3 -left-3 bg-card border border-border px-4 py-3 rounded-xl shadow-lg animate-float">
+              {/* Score badge */}
+              <div className="absolute -bottom-4 -left-4 bg-card border border-border px-5 py-3 rounded-xl shadow-lg animate-float">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
                     <Award className="w-5 h-5 text-accent" />
