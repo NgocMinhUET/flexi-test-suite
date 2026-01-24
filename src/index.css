@@ -122,11 +122,11 @@
 @layer utilities {
   /* Section spacing - Increased whitespace */
   .section-spacing {
-    @apply py-20 md:py-28 lg:py-32;
+    @apply py-24 md:py-32 lg:py-40;
   }
 
   .section-spacing-sm {
-    @apply py-16 md:py-20;
+    @apply py-16 md:py-24;
   }
 
   /* Card styles */
@@ -135,7 +135,7 @@
   }
 
   .card-hover {
-    @apply hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/20;
+    @apply hover:shadow-lg hover:-translate-y-1 hover:border-primary/20;
   }
 
   .card-interactive {
@@ -148,7 +148,7 @@
   }
 
   .gradient-hero-light {
-    background: linear-gradient(180deg, hsl(211 82% 42% / 0.03) 0%, transparent 60%);
+    background: linear-gradient(180deg, hsl(211 82% 42% / 0.04) 0%, transparent 50%);
   }
 
   /* Animation utilities */

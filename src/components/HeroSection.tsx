@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Play, CheckCircle2, Users, BookOpen, Award } from "lucide-react";
+import { ArrowRight, Play, CheckCircle2 } from "lucide-react";
 
 const HeroSection = () => {
   const highlights = [
@@ -10,30 +10,24 @@ const HeroSection = () => {
     "Phân tích kết quả chi tiết",
   ];
 
-  const stats = [
-    { value: "50K+", label: "Học viên", icon: Users },
-    { value: "1000+", label: "Đề thi", icon: BookOpen },
-    { value: "99%", label: "Hài lòng", icon: Award },
-  ];
-
   return (
-    <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+    <section className="relative min-h-[85vh] flex items-center overflow-hidden">
       {/* Clean gradient background */}
       <div className="absolute inset-0 gradient-hero-light" />
       
       {/* Subtle decorative elements */}
       <div className="absolute top-40 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-accent/5 rounded-full blur-3xl" />
+      <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-primary/3 rounded-full blur-3xl" />
 
-      <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+      <div className="container mx-auto px-4 pt-28 pb-20 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* Left Content */}
           <div className="text-center lg:text-left max-w-xl mx-auto lg:mx-0">
             <Badge 
               variant="secondary" 
               className="mb-6 px-4 py-1.5 text-sm font-medium border border-primary/20 bg-primary/5 text-primary animate-fade-in"
             >
-              Nền tảng thi trực tuyến #1 Việt Nam
+              Nền tảng thi trực tuyến hàng đầu Việt Nam
             </Badge>
 
             <h1 
@@ -41,10 +35,13 @@ const HeroSection = () => {
             >
               Nền tảng thi
               <span className="block text-primary mt-2">Trắc nghiệm & Lập trình</span>
+              <span className="block text-2xl md:text-3xl font-medium text-muted-foreground mt-4">
+                Chuyên nghiệp & Hiệu quả
+              </span>
             </h1>
 
             <p 
-              className="text-lg text-muted-foreground mb-8 leading-relaxed animate-slide-up"
+              className="text-lg text-muted-foreground mb-10 leading-relaxed animate-slide-up"
               style={{ animationDelay: "100ms" }}
             >
               Tạo, tổ chức và quản lý bài thi trực tuyến một cách dễ dàng. 
@@ -53,7 +50,7 @@ const HeroSection = () => {
 
             {/* Highlights */}
             <div 
-              className="flex flex-wrap gap-4 justify-center lg:justify-start mb-10 animate-slide-up"
+              className="flex flex-wrap gap-6 justify-center lg:justify-start mb-12 animate-slide-up"
               style={{ animationDelay: "150ms" }}
             >
               {highlights.map((item, index) => (
@@ -61,7 +58,7 @@ const HeroSection = () => {
                   key={index}
                   className="flex items-center gap-2 text-sm text-muted-foreground"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
                   <span>{item}</span>
                 </div>
               ))}
@@ -73,33 +70,17 @@ const HeroSection = () => {
               style={{ animationDelay: "200ms" }}
             >
               <Link to="/auth">
-                <Button size="lg" className="w-full sm:w-auto px-8 text-base font-semibold shadow-lg shadow-primary/20">
+                <Button size="lg" className="w-full sm:w-auto px-10 py-6 text-base font-semibold shadow-lg shadow-primary/25">
                   Bắt đầu miễn phí
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
               <Link to="/exam/demo">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 text-base font-medium border-2">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto px-10 py-6 text-base font-medium border-2">
                   <Play className="w-5 h-5 mr-2" />
                   Xem demo
                 </Button>
               </Link>
-            </div>
-
-            {/* Stats */}
-            <div 
-              className="flex items-center justify-center lg:justify-start gap-10 mt-14 pt-8 border-t border-border animate-slide-up"
-              style={{ animationDelay: "250ms" }}
-            >
-              {stats.map((stat, index) => (
-                <div key={index} className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <stat.icon className="w-5 h-5 text-primary" />
-                    <span className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{stat.label}</span>
-                </div>
-              ))}
             </div>
           </div>
 
@@ -168,21 +149,21 @@ const HeroSection = () => {
                 </div>
               </div>
 
-              {/* Floating badge */}
-              <div className="absolute -top-4 -right-4 bg-success text-white px-4 py-2 rounded-xl shadow-lg animate-bounce-soft text-sm font-semibold flex items-center gap-2">
+              {/* Floating badge - Using primary color instead of green */}
+              <div className="absolute -top-4 -right-4 bg-primary text-white px-4 py-2 rounded-xl shadow-lg animate-bounce-soft text-sm font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Chính xác!
               </div>
 
-              {/* Score badge */}
+              {/* Score badge - Using primary color scheme */}
               <div className="absolute -bottom-4 -left-4 bg-card border border-border px-5 py-3 rounded-xl shadow-lg animate-float">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-accent" />
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold text-lg">A</span>
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground">Điểm hiện tại</div>
-                    <div className="text-foreground font-bold text-lg">850 pts</div>
+                    <div className="text-xs text-muted-foreground">Điểm số</div>
+                    <div className="text-foreground font-bold text-lg">Xuất sắc</div>
                   </div>
                 </div>
               </div>

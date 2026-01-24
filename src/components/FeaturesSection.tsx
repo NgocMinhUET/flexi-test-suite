@@ -57,26 +57,26 @@ const FeaturesSection = () => {
     <section id="features" className="section-spacing bg-background">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+        <div className="text-center max-w-2xl mx-auto mb-20">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5">
             Tất cả những gì bạn cần
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-muted-foreground leading-relaxed">
             Công cụ mạnh mẽ giúp bạn tạo, quản lý và phân tích bài thi một cách chuyên nghiệp.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group p-6 rounded-2xl bg-card border border-border card-hover"
+              className="group p-7 rounded-2xl bg-card border border-border card-hover"
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 transition-transform group-hover:scale-110">
-                <feature.icon className="w-6 h-6 text-primary" />
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 transition-transform group-hover:scale-110">
+                <feature.icon className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
                 {feature.title}
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
