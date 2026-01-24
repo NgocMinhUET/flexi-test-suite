@@ -199,11 +199,11 @@ const StudentExams = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <Code2 className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold text-foreground">
-                Exam<span className="text-gradient">Pro</span>
+                Flexi<span className="text-primary">Test</span>
               </span>
             </Link>
 
@@ -306,7 +306,7 @@ const StudentExams = () => {
                           </Link>
                         </Button>
                       ) : status.canTake ? (
-                        <Button variant="hero" className="w-full" asChild>
+                        <Button className="w-full" asChild>
                           <Link to={`/exam/${assignment.exam_id}`}>
                             <Play className="w-4 h-4 mr-2" />
                             Bắt đầu làm bài
