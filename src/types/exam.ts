@@ -57,7 +57,7 @@ export interface ExamData {
 }
 
 export interface Answer {
-  questionId: number;
+  questionId: number; // Keep as number to match Question.id
   answer: string | string[];
   language?: ProgrammingLanguage;
 }

@@ -142,10 +142,19 @@ const TakeExam = () => {
   const handleRestoreDraft = useCallback(() => {
     if (!draftData) return;
 
-    // Restore answers
+    // Restore answers - CRITICAL: parse key as number only if it's a valid number
+    // This prevents NaN when keys are UUIDs (strings)
     const restoredAnswers = new Map<number, Answer>();
     Object.entries(draftData.answers).forEach(([key, value]) => {
-      restoredAnswers.set(Number(key), value);
+      // Try to parse as number, but only if it's actually numeric
+      const numKey = Number(key);
+      if (!isNaN(numKey)) {
+        restoredAnswers.set(numKey, value);
+      } else {
+        // For non-numeric keys (like UUIDs), we need to match by finding the question
+        // This is a fallback - ideally keys should be consistent
+        console.warn('Non-numeric answer key found:', key);
+      }
     });
     setAnswers(restoredAnswers);
 
@@ -1429,32 +1438,31 @@ const TakeExam = () => {
         />
       )}
 
-      {/* Restore Draft Dialog */}
-      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+      {/* Restore Draft Dialog - Auto-continue, no retake option */}
+      <AlertDialog open={showRestoreDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <RotateCcw className="w-5 h-5 text-primary" />
-              Khôi phục bài làm trước đó?
+              Tiếp tục bài làm
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Phát hiện bài làm chưa nộp từ phiên trước. Bạn có muốn tiếp tục từ nơi đã dừng lại không?
+              Phát hiện bài làm chưa nộp từ phiên trước. Bạn sẽ tiếp tục từ nơi đã dừng lại.
               {draftData && (
                 <div className="mt-3 p-3 bg-muted rounded-lg text-sm">
                   <p><strong>Đã trả lời:</strong> {Object.keys(draftData.answers).length} câu</p>
                   <p><strong>Lần lưu cuối:</strong> {new Date(draftData.savedAt).toLocaleString('vi-VN')}</p>
+                  {draftData.timeLeft && draftData.timeLeft > 0 && (
+                    <p><strong>Thời gian còn lại:</strong> {Math.floor(draftData.timeLeft / 60)} phút {draftData.timeLeft % 60} giây</p>
+                  )}
                 </div>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDismissDraft} className="gap-2">
-              <X className="w-4 h-4" />
-              Bắt đầu mới
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestoreDraft} className="gap-2">
+            <AlertDialogAction onClick={handleRestoreDraft} className="gap-2 w-full">
               <RotateCcw className="w-4 h-4" />
-              Khôi phục
+              Tiếp tục làm bài
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
