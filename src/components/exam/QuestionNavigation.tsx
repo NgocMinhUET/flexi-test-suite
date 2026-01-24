@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from 'react';
-import { Flag, CheckCircle2, Circle } from 'lucide-react';
+import { Flag, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { QuestionStatus } from '@/types/exam';
 
@@ -11,7 +11,7 @@ interface QuestionNavigationProps {
   onToggleFlag: (questionIndex: number) => void;
 }
 
-// Memoized question button to prevent re-renders
+// Memoized question button - simplified colors
 const QuestionButton = memo(({
   index,
   status,
@@ -37,17 +37,17 @@ const QuestionButton = memo(({
       onContextMenu={handleContextMenu}
       className={cn(
         "relative w-10 h-10 rounded-lg font-medium text-sm transition-all",
-        "hover:scale-110 hover:shadow-md",
+        "hover:scale-105",
         isCurrent && "ring-2 ring-primary ring-offset-2 ring-offset-card",
-        status === 'answered' && "bg-success text-success-foreground",
-        status === 'flagged' && "bg-warning text-warning-foreground",
+        status === 'answered' && "bg-primary text-primary-foreground",
+        status === 'flagged' && "bg-amber-500 text-white",
         status === 'unanswered' && "bg-muted text-muted-foreground hover:bg-muted/80"
       )}
       title={`Câu ${index + 1} - Click phải để đánh dấu`}
     >
       {index + 1}
       {status === 'flagged' && (
-        <Flag className="absolute -top-1 -right-1 w-3 h-3 text-warning" />
+        <Flag className="absolute -top-1 -right-1 w-3 h-3 text-amber-500 fill-amber-500" />
       )}
     </button>
   );
@@ -68,8 +68,8 @@ export const QuestionNavigation = memo(({
     flaggedCount: questionStatuses.filter((s) => s === 'flagged').length,
   }), [questionStatuses]);
 
-  const progressWidth = useMemo(() => 
-    `${(answeredCount / totalQuestions) * 100}%`,
+  const progressPercentage = useMemo(() => 
+    Math.round((answeredCount / totalQuestions) * 100),
     [answeredCount, totalQuestions]
   );
 
@@ -84,49 +84,39 @@ export const QuestionNavigation = memo(({
   }, [questionStatuses, onNavigate]);
 
   return (
-    <aside className="fixed left-4 top-24 w-64 bg-card rounded-2xl border border-border shadow-lg p-4 max-h-[calc(100vh-120px)] overflow-y-auto">
-      {/* Stats */}
-      <div className="mb-4 p-3 bg-muted/50 rounded-xl">
-        <h3 className="font-semibold text-foreground mb-2">Tiến độ làm bài</h3>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Đã trả lời:</span>
-            <span className="font-medium text-success">
-              {answeredCount}/{totalQuestions}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Đánh dấu:</span>
-            <span className="font-medium text-warning">{flaggedCount}</span>
-          </div>
+    <aside className="fixed left-4 top-20 w-56 bg-card rounded-xl border border-border shadow-md p-4 max-h-[calc(100vh-100px)] overflow-y-auto">
+      {/* Progress - Minimal */}
+      <div className="mb-4">
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="text-sm font-medium text-foreground">Tiến độ</span>
+          <span className="text-lg font-bold text-primary">
+            {answeredCount}/{totalQuestions}
+          </span>
         </div>
         {/* Progress bar */}
-        <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-300"
-            style={{ width: progressWidth }}
+            className="h-full bg-primary transition-all duration-300 rounded-full"
+            style={{ width: `${progressPercentage}%` }}
           />
         </div>
+        <p className="text-xs text-muted-foreground mt-1 text-right">{progressPercentage}%</p>
       </div>
 
-      {/* Legend */}
-      <div className="mb-4 flex flex-wrap gap-2 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-success" />
+      {/* Legend - Simplified */}
+      <div className="mb-3 flex gap-3 text-xs">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-primary" />
           <span className="text-muted-foreground">Đã làm</span>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-warning" />
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-amber-500" />
           <span className="text-muted-foreground">Đánh dấu</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-muted" />
-          <span className="text-muted-foreground">Chưa làm</span>
         </div>
       </div>
 
       {/* Question Grid */}
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {Array.from({ length: totalQuestions }, (_, i) => (
           <QuestionButton
             key={i}
@@ -140,21 +130,23 @@ export const QuestionNavigation = memo(({
       </div>
 
       {/* Quick actions */}
-      <div className="mt-4 pt-4 border-t border-border space-y-2">
+      <div className="mt-4 pt-3 border-t border-border space-y-1.5">
         <button
           onClick={handleGoToUnanswered}
-          className="w-full text-sm text-primary hover:underline flex items-center gap-2"
+          className="w-full text-xs text-muted-foreground hover:text-primary flex items-center gap-2 py-1"
         >
-          <Circle className="w-4 h-4" />
+          <Circle className="w-3.5 h-3.5" />
           Đến câu chưa làm
         </button>
-        <button
-          onClick={handleGoToFlagged}
-          className="w-full text-sm text-warning hover:underline flex items-center gap-2"
-        >
-          <Flag className="w-4 h-4" />
-          Đến câu đánh dấu
-        </button>
+        {flaggedCount > 0 && (
+          <button
+            onClick={handleGoToFlagged}
+            className="w-full text-xs text-amber-600 hover:text-amber-700 flex items-center gap-2 py-1"
+          >
+            <Flag className="w-3.5 h-3.5" />
+            Đến câu đánh dấu ({flaggedCount})
+          </button>
+        )}
       </div>
     </aside>
   );
