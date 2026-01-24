@@ -1,25 +1,35 @@
 import { memo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type QuickLinkVariant = 'primary' | 'success' | 'warning' | 'amber';
 
-const variantStyles: Record<QuickLinkVariant, { bg: string; text: string }> = {
+// Consistent icon styling with deeper, more saturated colors
+const variantStyles: Record<QuickLinkVariant, { 
+  iconBg: string; 
+  iconText: string;
+  hoverBorder: string;
+}> = {
   primary: {
-    bg: 'bg-primary/10',
-    text: 'text-primary',
+    iconBg: 'bg-primary/15',
+    iconText: 'text-primary',
+    hoverBorder: 'hover:border-primary/40',
   },
   success: {
-    bg: 'bg-success/10',
-    text: 'text-success',
+    iconBg: 'bg-success/15',
+    iconText: 'text-success',
+    hoverBorder: 'hover:border-success/40',
   },
   warning: {
-    bg: 'bg-orange-500/10',
-    text: 'text-orange-600',
+    iconBg: 'bg-orange-500/15',
+    iconText: 'text-orange-600 dark:text-orange-500',
+    hoverBorder: 'hover:border-orange-500/40',
   },
   amber: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-600',
+    iconBg: 'bg-amber-500/15',
+    iconText: 'text-amber-600 dark:text-amber-500',
+    hoverBorder: 'hover:border-amber-500/40',
   },
 };
 
@@ -44,7 +54,9 @@ export const QuickLinkCard = memo(({
     <Card
       className={cn(
         'cursor-pointer transition-all duration-200',
-        'hover:shadow-md hover:-translate-y-0.5',
+        'shadow-sm hover:shadow-md hover:-translate-y-0.5',
+        'border border-border/60',
+        styles.hoverBorder,
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
       )}
       onClick={onClick}
@@ -57,25 +69,27 @@ export const QuickLinkCard = memo(({
         }
       }}
     >
-      <CardHeader className="pb-3">
+      <CardHeader className="py-4 px-4">
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-              styles.bg,
-              styles.text
+              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+              'ring-1 ring-inset ring-black/5 shadow-sm',
+              styles.iconBg,
+              styles.iconText
             )}
           >
             <Icon className="w-5 h-5" />
           </div>
-          <div className="min-w-0">
-            <CardTitle className="text-base font-semibold truncate">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-sm font-bold text-foreground truncate">
               {title}
             </CardTitle>
-            <CardDescription className="text-sm truncate">
+            <CardDescription className="text-xs text-muted-foreground truncate">
               {description}
             </CardDescription>
           </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
         </div>
       </CardHeader>
     </Card>
