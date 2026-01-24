@@ -37,14 +37,14 @@ const OptionButton = memo(({
     <button
       onClick={handleClick}
       className={cn(
-        "w-full p-4 rounded-xl border-2 text-left transition-all",
-        "hover:border-primary/50 hover:bg-primary/5",
+        "w-full p-4 rounded-lg border-2 text-left transition-all",
+        "hover:border-primary/40 hover:bg-muted/50",
         isSelected
-          ? "border-primary bg-primary/10"
+          ? "border-primary bg-primary/5"
           : "border-border bg-card"
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         <span
           className={cn(
             "flex items-center justify-center w-8 h-8 rounded-lg font-semibold text-sm flex-shrink-0",
@@ -55,7 +55,7 @@ const OptionButton = memo(({
         >
           {String.fromCharCode(65 + index)}
         </span>
-        <div className="flex-1">
+        <div className="flex-1 pt-1">
           <OptionContentRenderer 
             text={option.text} 
             imageUrl={option.imageUrl}
@@ -181,22 +181,22 @@ export const QuestionDisplay = memo(({
   }, [question.id, question.coding, currentAnswer]);
 
   return (
-    <div className="ml-72 pt-24 pb-8 px-8">
-      <Card variant="elevated" className={cn(
-        "mx-auto p-8",
-        question.type === 'coding' ? 'max-w-6xl' : 'max-w-4xl'
+    <div className="ml-60 pt-20 pb-8 px-4 lg:px-6">
+      <div className={cn(
+        "mx-auto bg-card rounded-xl border border-border shadow-sm p-6 lg:p-8",
+        question.type === 'coding' ? 'max-w-[1400px]' : 'max-w-[900px]'
       )}>
-        {/* Question Header */}
-        <div className="flex items-start justify-between mb-6">
+        {/* Question Header - Simplified */}
+        <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
-            <span className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary font-bold text-lg">
+            <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-lg">
               {questionIndex + 1}
             </span>
             <div>
-              <Badge variant="secondary" className="mb-1">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {questionTypeLabel}
-              </Badge>
-              <p className="text-sm text-muted-foreground">
+              </span>
+              <p className="text-sm text-foreground font-medium">
                 {question.points} điểm
               </p>
             </div>
@@ -206,28 +206,28 @@ export const QuestionDisplay = memo(({
             size="sm"
             onClick={onToggleFlag}
             className={cn(
-              "gap-2",
-              status === 'flagged' && "bg-warning text-warning-foreground hover:bg-warning/90"
+              "gap-1.5",
+              status === 'flagged' && "bg-amber-500 hover:bg-amber-600 text-white border-amber-500"
             )}
           >
-            <Flag className="w-4 h-4" />
+            <Flag className="w-3.5 h-3.5" />
             {status === 'flagged' ? 'Bỏ đánh dấu' : 'Đánh dấu'}
           </Button>
         </div>
 
-        {/* Question Content with Images */}
-        <div className="mb-8">
+        {/* Question Content */}
+        <div className="mb-6">
           <QuestionContentRenderer
             content={question.content}
             media={question.media}
-            className="text-lg text-foreground leading-relaxed"
+            className="text-base lg:text-lg text-foreground leading-relaxed"
           />
         </div>
 
         {/* Answer Area */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {question.type === 'multiple-choice' && question.options && (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {question.options.map((option, idx) => (
                 <OptionButton
                   key={option.id}
@@ -250,8 +250,8 @@ export const QuestionDisplay = memo(({
                   : 'Viết bài luận của bạn...'
               }
               className={cn(
-                "w-full resize-none",
-                question.type === 'essay' ? 'min-h-[300px]' : 'min-h-[80px]'
+                "w-full resize-none border-border focus:border-primary",
+                question.type === 'essay' ? 'min-h-[280px]' : 'min-h-[70px]'
               )}
             />
           )}
@@ -269,35 +269,38 @@ export const QuestionDisplay = memo(({
           )}
         </div>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+        {/* Navigation - Two large buttons, same style */}
+        <div className="flex items-center justify-between mt-8 pt-5 border-t border-border">
           <Button
             variant="outline"
+            size="lg"
             onClick={onPrevious}
             disabled={questionIndex === 0}
-            className="gap-2"
+            className="gap-2 min-w-[140px] border-border hover:bg-muted"
           >
             <ChevronLeft className="w-4 h-4" />
             Câu trước
           </Button>
 
-          <span className="text-sm text-muted-foreground">
-            Câu {questionIndex + 1} / {totalQuestions}
+          <span className="text-sm font-medium text-muted-foreground">
+            {questionIndex + 1} / {totalQuestions}
           </span>
 
           <Button
-            variant="default"
+            size="lg"
             onClick={onNext}
             disabled={questionIndex === totalQuestions - 1}
-            className="gap-2"
+            className="gap-2 min-w-[140px] bg-primary hover:bg-primary/90"
           >
             Câu tiếp
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 });
+
+QuestionDisplay.displayName = 'QuestionDisplay';
 
 QuestionDisplay.displayName = 'QuestionDisplay';

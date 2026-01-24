@@ -1355,15 +1355,13 @@ const TakeExam = () => {
         </div>
       )}
 
-      {/* Violation Stats Badge */}
+      {/* Violation Stats Badge - Red only for warnings */}
       {(violationStatsRef.current.tabSwitchCount > 0 || violationStatsRef.current.fullscreenExitCount > 0) && (
         <div className="fixed top-20 right-4 z-40">
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 py-2 px-3">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              Vi phạm: {violationStatsRef.current.tabSwitchCount + violationStatsRef.current.fullscreenExitCount} lần
-            </AlertDescription>
-          </Alert>
+          <div className="flex items-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg py-1.5 px-3 text-xs font-medium">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Vi phạm: {violationStatsRef.current.tabSwitchCount + violationStatsRef.current.fullscreenExitCount}
+          </div>
         </div>
       )}
 
@@ -1378,6 +1376,8 @@ const TakeExam = () => {
         lastSavedAt={lastSavedAt}
         sectionName={exam.isSectioned ? exam.sections?.[currentSection]?.name : undefined}
         sectionProgress={exam.isSectioned ? sectionedTimer.sectionProgress : undefined}
+        answeredCount={questionStatuses.filter(s => s === 'answered').length}
+        totalQuestions={exam.totalQuestions}
       />
 
       {exam.isSectioned && exam.sections ? (
