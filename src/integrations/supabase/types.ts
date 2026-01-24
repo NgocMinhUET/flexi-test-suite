@@ -465,31 +465,43 @@ export type Database = {
       exam_drafts: {
         Row: {
           answers: Json
+          completed_sections: number[] | null
           current_question: number | null
+          current_section: number | null
           exam_id: string
           flagged_questions: number[] | null
           id: string
           saved_at: string
+          section_times: Json | null
+          time_left: number | null
           user_id: string
           violation_stats: Json | null
         }
         Insert: {
           answers?: Json
+          completed_sections?: number[] | null
           current_question?: number | null
+          current_section?: number | null
           exam_id: string
           flagged_questions?: number[] | null
           id?: string
           saved_at?: string
+          section_times?: Json | null
+          time_left?: number | null
           user_id: string
           violation_stats?: Json | null
         }
         Update: {
           answers?: Json
+          completed_sections?: number[] | null
           current_question?: number | null
+          current_section?: number | null
           exam_id?: string
           flagged_questions?: number[] | null
           id?: string
           saved_at?: string
+          section_times?: Json | null
+          time_left?: number | null
           user_id?: string
           violation_stats?: Json | null
         }

@@ -53,6 +53,7 @@ const TakeExam = () => {
   const violationStatsRef = useRef<ViolationStats>({ tabSwitchCount: 0, fullscreenExitCount: 0 });
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [savedTimeLeft, setSavedTimeLeft] = useState<number | undefined>(undefined);
 
   // Sectioned exam state
   const [currentSection, setCurrentSection] = useState(0);
@@ -60,6 +61,27 @@ const TakeExam = () => {
   const [showSectionTransitionDialog, setShowSectionTransitionDialog] = useState(false);
   const [isSectionTimeUp, setIsSectionTimeUp] = useState(false);
   const [sectionTimes, setSectionTimes] = useState<Record<string, number>>({});
+
+  // Ref to track current timer value for auto-save (updated by timer hook)
+  const currentTimeLeftRef = useRef<number | undefined>(undefined);
+
+  // Fullscreen management - moved up to be available for restore
+  const enterFullscreen = useCallback(async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } catch (err) {
+      console.error('Failed to enter fullscreen:', err);
+      toast.error('Không thể vào chế độ toàn màn hình');
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(console.error);
+    }
+    setIsFullscreen(false);
+  }, []);
 
   // Background grading hook
   const { job: gradingJob, isGrading: isBackgroundGrading, startBackgroundGrading } = useBackgroundGrading({
@@ -86,7 +108,7 @@ const TakeExam = () => {
     },
   });
 
-  // Auto-save hook
+  // Auto-save hook - Note: check for draft even before exam started
   const {
     saveStatus,
     lastSavedAt,
@@ -103,6 +125,7 @@ const TakeExam = () => {
     currentQuestion,
     violationStats: violationStatsRef.current,
     isEnabled: examStarted && !isSubmitting && !!exam,
+    timeLeft: exam?.isSectioned ? undefined : currentTimeLeftRef.current, // Save timer state via ref
     currentSection: exam?.isSectioned ? currentSection : undefined,
     completedSections: exam?.isSectioned ? completedSections : undefined,
     sectionTimes: exam?.isSectioned ? sectionTimes : undefined,
@@ -137,6 +160,11 @@ const TakeExam = () => {
       violationStatsRef.current = draftData.violationStats;
     }
 
+    // Restore timer state (critical for continuing exam)
+    if (draftData.timeLeft !== undefined && draftData.timeLeft > 0) {
+      setSavedTimeLeft(draftData.timeLeft);
+    }
+
     // Restore section state if available
     if (draftData.currentSection !== undefined) {
       setCurrentSection(draftData.currentSection);
@@ -150,31 +178,17 @@ const TakeExam = () => {
 
     restoreFromDraft();
     setShowRestoreDialog(false);
-  }, [draftData, restoreFromDraft]);
+    
+    // Auto-start exam after restoration
+    setExamStarted(true);
+    enterFullscreen();
+  }, [draftData, restoreFromDraft, enterFullscreen]);
 
   // Handle dismiss draft
   const handleDismissDraft = useCallback(() => {
     dismissDraft();
     setShowRestoreDialog(false);
   }, [dismissDraft]);
-
-  // Fullscreen management
-  const enterFullscreen = useCallback(async () => {
-    try {
-      await document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } catch (err) {
-      console.error('Failed to enter fullscreen:', err);
-      toast.error('Không thể vào chế độ toàn màn hình');
-    }
-  }, []);
-
-  const exitFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(console.error);
-    }
-    setIsFullscreen(false);
-  }, []);
 
   // Handle fullscreen change detection
   useEffect(() => {
@@ -831,9 +845,11 @@ const TakeExam = () => {
     }
   }, [navigate, exam, calculateResults]);
 
-  const { formattedTime, isWarning, isCritical } = useExamTimer({
+  const { formattedTime, isWarning, isCritical, timeLeft } = useExamTimer({
     initialMinutes: exam?.duration || 60,
     onTimeUp: handleTimeUp,
+    isEnabled: examStarted && !isSubmitting && !!exam && !exam.isSectioned,
+    savedTimeLeft: savedTimeLeft,
   });
 
   // Sectioned timer - handle section time up
@@ -850,6 +866,13 @@ const TakeExam = () => {
     savedSectionTimes: Object.keys(sectionTimes).length > 0 ? sectionTimes : undefined,
     isEnabled: examStarted && !isSubmitting && !!exam?.isSectioned,
   });
+
+  // Update ref with current time for auto-save
+  useEffect(() => {
+    if (!exam?.isSectioned) {
+      currentTimeLeftRef.current = timeLeft;
+    }
+  }, [timeLeft, exam?.isSectioned]);
 
   // Update sectionTimes for auto-save
   useEffect(() => {
