@@ -37,8 +37,8 @@ const OptionButton = memo(({
     <button
       onClick={handleClick}
       className={cn(
-        "w-full p-4 rounded-lg border-2 text-left transition-all",
-        "hover:border-primary/40 hover:bg-muted/50",
+        "w-full p-4 rounded-lg border-2 text-left transition-all min-h-[56px]",
+        "hover:border-primary/40 hover:bg-muted/50 active:scale-[0.99]",
         isSelected
           ? "border-primary bg-primary/5"
           : "border-border bg-card"
@@ -47,7 +47,7 @@ const OptionButton = memo(({
       <div className="flex items-start gap-3">
         <span
           className={cn(
-            "flex items-center justify-center w-8 h-8 rounded-lg font-semibold text-sm flex-shrink-0",
+            "flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg font-semibold text-base flex-shrink-0",
             isSelected
               ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground"
@@ -55,7 +55,7 @@ const OptionButton = memo(({
         >
           {String.fromCharCode(65 + index)}
         </span>
-        <div className="flex-1 pt-1">
+        <div className="flex-1 pt-1.5">
           <OptionContentRenderer 
             text={option.text} 
             imageUrl={option.imageUrl}
@@ -269,31 +269,31 @@ export const QuestionDisplay = memo(({
           )}
         </div>
 
-        {/* Navigation - Two large buttons, same style */}
+        {/* Navigation - Large touch-friendly buttons */}
         <div className="flex items-center justify-between mt-8 pt-5 border-t border-border">
           <Button
             variant="outline"
             size="lg"
             onClick={onPrevious}
             disabled={questionIndex === 0}
-            className="gap-2 min-w-[140px] border-border hover:bg-muted"
+            className="gap-2 min-w-[140px] min-h-[48px] border-border hover:bg-muted text-base"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
             Câu trước
           </Button>
 
-          <span className="text-sm font-medium text-muted-foreground">
-            {questionIndex + 1} / {totalQuestions}
+          <span className="text-lg font-bold text-primary">
+            {questionIndex + 1}<span className="text-primary/60">/</span>{totalQuestions}
           </span>
 
           <Button
             size="lg"
             onClick={onNext}
             disabled={questionIndex === totalQuestions - 1}
-            className="gap-2 min-w-[140px] bg-primary hover:bg-primary/90"
+            className="gap-2 min-w-[140px] min-h-[48px] bg-primary hover:bg-primary/90 text-base"
           >
             Câu tiếp
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
       </div>

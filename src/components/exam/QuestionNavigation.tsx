@@ -36,8 +36,8 @@ const QuestionButton = memo(({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       className={cn(
-        "relative w-10 h-10 rounded-lg font-medium text-sm transition-all",
-        "hover:scale-105",
+        "relative w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg font-medium text-sm transition-all",
+        "hover:scale-105 active:scale-95",
         isCurrent && "ring-2 ring-primary ring-offset-2 ring-offset-card",
         status === 'answered' && "bg-primary text-primary-foreground",
         status === 'flagged' && "bg-amber-500 text-white",
@@ -47,7 +47,7 @@ const QuestionButton = memo(({
     >
       {index + 1}
       {status === 'flagged' && (
-        <Flag className="absolute -top-1 -right-1 w-3 h-3 text-amber-500 fill-amber-500" />
+        <Flag className="absolute -top-1 -right-1 w-3.5 h-3.5 text-amber-500 fill-amber-500" />
       )}
     </button>
   );
@@ -85,22 +85,22 @@ export const QuestionNavigation = memo(({
 
   return (
     <aside className="fixed left-4 top-20 w-56 bg-card rounded-xl border border-border shadow-md p-4 max-h-[calc(100vh-100px)] overflow-y-auto">
-      {/* Progress - Minimal */}
+      {/* Progress - High contrast */}
       <div className="mb-4">
         <div className="flex items-baseline justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">Tiến độ</span>
-          <span className="text-lg font-bold text-primary">
-            {answeredCount}/{totalQuestions}
+          <span className="text-sm font-semibold text-foreground">Tiến độ</span>
+          <span className="text-xl font-bold text-primary">
+            {answeredCount}<span className="text-primary/60">/</span>{totalQuestions}
           </span>
         </div>
         {/* Progress bar */}
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-2.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary transition-all duration-300 rounded-full"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1 text-right">{progressPercentage}%</p>
+        <p className="text-sm font-semibold text-primary mt-1.5 text-right">{progressPercentage}%</p>
       </div>
 
       {/* Legend - Simplified */}
@@ -129,21 +129,21 @@ export const QuestionNavigation = memo(({
         ))}
       </div>
 
-      {/* Quick actions */}
-      <div className="mt-4 pt-3 border-t border-border space-y-1.5">
+      {/* Quick actions - Larger touch targets */}
+      <div className="mt-4 pt-3 border-t border-border space-y-1">
         <button
           onClick={handleGoToUnanswered}
-          className="w-full text-xs text-muted-foreground hover:text-primary flex items-center gap-2 py-1"
+          className="w-full text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 flex items-center gap-2 py-2.5 px-2 rounded-lg transition-colors min-h-[44px]"
         >
-          <Circle className="w-3.5 h-3.5" />
+          <Circle className="w-4 h-4" />
           Đến câu chưa làm
         </button>
         {flaggedCount > 0 && (
           <button
             onClick={handleGoToFlagged}
-            className="w-full text-xs text-amber-600 hover:text-amber-700 flex items-center gap-2 py-1"
+            className="w-full text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50 flex items-center gap-2 py-2.5 px-2 rounded-lg transition-colors min-h-[44px]"
           >
-            <Flag className="w-3.5 h-3.5" />
+            <Flag className="w-4 h-4" />
             Đến câu đánh dấu ({flaggedCount})
           </button>
         )}
