@@ -1,17 +1,16 @@
 import { useState, useEffect, lazy, Suspense, memo, useMemo, useCallback } from 'react';
-import { Flag, ChevronLeft, ChevronRight, Loader2, Headphones, BookOpen, Pencil, Mic } from 'lucide-react';
+import { Flag, ChevronLeft, ChevronRight, Loader2, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Question, QuestionStatus, Answer, ProgrammingLanguage } from '@/types/exam';
 import { QuestionContentRenderer, OptionContentRenderer, MediaItem } from './QuestionContentRenderer';
-import { isLanguageQuestionType } from '@/utils/questionTypeStats';
 
 // Lazy load heavy components
 const CodingEditor = lazy(() => import('./CodingEditor').then(m => ({ default: m.CodingEditor })));
 const ListeningQuestionDisplay = lazy(() => import('./ListeningQuestionDisplay').then(m => ({ default: m.ListeningQuestionDisplay })));
+const ReadingQuestionDisplay = lazy(() => import('./ReadingQuestionDisplay').then(m => ({ default: m.ReadingQuestionDisplay })));
+const WritingQuestionDisplay = lazy(() => import('./WritingQuestionDisplay').then(m => ({ default: m.WritingQuestionDisplay })));
 
 const CodingEditorLoader = memo(() => (
   <div className="flex items-center justify-center h-[400px] bg-muted rounded-lg">
@@ -302,24 +301,28 @@ export const QuestionDisplay = memo(({
             </Suspense>
           )}
 
-          {/* Reading Question Types - Placeholder for future implementation */}
+          {/* Reading Question Types */}
           {(question.type === 'reading-mcq' || question.type === 'reading-order' || question.type === 'reading-match') && (
-            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <BookOpen className="w-5 h-5" />
-                <span>Loại câu hỏi đọc hiểu - Đang phát triển</span>
-              </div>
-            </div>
+            <Suspense fallback={<QuestionTypeLoader />}>
+              <ReadingQuestionDisplay
+                question={question}
+                questionType={question.type}
+                currentAnswer={currentAnswer}
+                onAnswer={onAnswer}
+              />
+            </Suspense>
           )}
 
-          {/* Writing Question Types - Placeholder for future implementation */}
+          {/* Writing Question Types */}
           {(question.type === 'writing-sentence' || question.type === 'writing-essay') && (
-            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Pencil className="w-5 h-5" />
-                <span>Loại câu hỏi viết - Đang phát triển</span>
-              </div>
-            </div>
+            <Suspense fallback={<QuestionTypeLoader />}>
+              <WritingQuestionDisplay
+                question={question}
+                questionType={question.type}
+                currentAnswer={currentAnswer}
+                onAnswer={onAnswer}
+              />
+            </Suspense>
           )}
 
           {/* Speaking Question Types - Placeholder for future implementation */}
@@ -364,7 +367,5 @@ export const QuestionDisplay = memo(({
     </div>
   );
 });
-
-QuestionDisplay.displayName = 'QuestionDisplay';
 
 QuestionDisplay.displayName = 'QuestionDisplay';
