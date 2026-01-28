@@ -14,6 +14,7 @@ import { useBackgroundGrading } from '@/hooks/useBackgroundGrading';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats, ExamSection } from '@/types/exam';
+import { createDefaultByTypeStats } from '@/utils/questionTypeStats';
 import { Loader2, Maximize, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -515,13 +516,7 @@ const TakeExam = () => {
       setGradingProgress({ current: 0, total: totalCodingQuestions });
     }
     
-    const byType: Record<QuestionType, { correct: number; total: number; points: number; partial: number }> = {
-      'multiple-choice': { correct: 0, total: 0, points: 0, partial: 0 },
-      'short-answer': { correct: 0, total: 0, points: 0, partial: 0 },
-      'essay': { correct: 0, total: 0, points: 0, partial: 0 },
-      'drag-drop': { correct: 0, total: 0, points: 0, partial: 0 },
-      'coding': { correct: 0, total: 0, points: 0, partial: 0 },
-    };
+    const byType = createDefaultByTypeStats();
 
     let correctCount = 0;
     let incorrectCount = 0;

@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense, memo, useMemo, useCallback } from 'react';
-import { Flag, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Flag, ChevronLeft, ChevronRight, Loader2, Headphones, BookOpen, Pencil, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Question, QuestionStatus, Answer, ProgrammingLanguage } from '@/types/exam';
 import { QuestionContentRenderer, OptionContentRenderer, MediaItem } from './QuestionContentRenderer';
+import { isLanguageQuestionType } from '@/utils/questionTypeStats';
 
-// Lazy load CodingEditor - it's heavy with CodeMirror dependencies
+// Lazy load heavy components
 const CodingEditor = lazy(() => import('./CodingEditor').then(m => ({ default: m.CodingEditor })));
+const ListeningQuestionDisplay = lazy(() => import('./ListeningQuestionDisplay').then(m => ({ default: m.ListeningQuestionDisplay })));
 
 const CodingEditorLoader = memo(() => (
   <div className="flex items-center justify-center h-[400px] bg-muted rounded-lg">
@@ -68,12 +70,32 @@ const OptionButton = memo(({
 
 OptionButton.displayName = 'OptionButton';
 
+// Loading component for lazy-loaded question types
+const QuestionTypeLoader = memo(() => (
+  <div className="flex items-center justify-center h-[200px] bg-muted rounded-lg">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+));
+
+QuestionTypeLoader.displayName = 'QuestionTypeLoader';
+
 const questionTypeLabels: Record<string, string> = {
   'multiple-choice': 'Trắc nghiệm',
   'short-answer': 'Điền đáp án',
   'essay': 'Tự luận',
   'drag-drop': 'Kéo thả',
   'coding': 'Lập trình',
+  // Language exam types
+  'listening-mcq': 'Nghe - Chọn đáp án',
+  'listening-fill': 'Nghe - Điền từ',
+  'reading-mcq': 'Đọc - Chọn đáp án',
+  'reading-order': 'Đọc - Sắp xếp',
+  'reading-match': 'Đọc - Ghép cặp',
+  'writing-sentence': 'Viết - Sắp xếp câu',
+  'writing-essay': 'Viết - Bài luận',
+  'speaking-read': 'Nói - Đọc to',
+  'speaking-describe': 'Nói - Mô tả',
+  'speaking-answer': 'Nói - Trả lời',
 };
 
 interface QuestionDisplayProps {
@@ -257,7 +279,7 @@ export const QuestionDisplay = memo(({
           )}
 
           {question.type === 'coding' && question.coding && (
-            <Suspense fallback={<CodingEditorLoader />}>
+            <Suspense fallback={<QuestionTypeLoader />}>
               <CodingEditor
                 codingQuestion={question.coding}
                 currentCode={codeAnswer}
@@ -266,6 +288,48 @@ export const QuestionDisplay = memo(({
                 onLanguageChange={handleLanguageChange}
               />
             </Suspense>
+          )}
+
+          {/* Listening Question Types */}
+          {(question.type === 'listening-mcq' || question.type === 'listening-fill') && (
+            <Suspense fallback={<QuestionTypeLoader />}>
+              <ListeningQuestionDisplay
+                question={question}
+                questionType={question.type}
+                currentAnswer={currentAnswer}
+                onAnswer={onAnswer}
+              />
+            </Suspense>
+          )}
+
+          {/* Reading Question Types - Placeholder for future implementation */}
+          {(question.type === 'reading-mcq' || question.type === 'reading-order' || question.type === 'reading-match') && (
+            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <BookOpen className="w-5 h-5" />
+                <span>Loại câu hỏi đọc hiểu - Đang phát triển</span>
+              </div>
+            </div>
+          )}
+
+          {/* Writing Question Types - Placeholder for future implementation */}
+          {(question.type === 'writing-sentence' || question.type === 'writing-essay') && (
+            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Pencil className="w-5 h-5" />
+                <span>Loại câu hỏi viết - Đang phát triển</span>
+              </div>
+            </div>
+          )}
+
+          {/* Speaking Question Types - Placeholder for future implementation */}
+          {(question.type === 'speaking-read' || question.type === 'speaking-describe' || question.type === 'speaking-answer') && (
+            <div className="p-4 bg-muted/50 rounded-lg border border-dashed">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Mic className="w-5 h-5" />
+                <span>Loại câu hỏi nói - Đang phát triển</span>
+              </div>
+            </div>
           )}
         </div>
 
