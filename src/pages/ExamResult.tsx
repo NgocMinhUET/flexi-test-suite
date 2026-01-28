@@ -17,7 +17,11 @@ import {
   ArrowLeft,
   Star,
   AlertTriangle,
-  MonitorOff
+  MonitorOff,
+  Headphones,
+  BookOpen,
+  Pencil,
+  Mic
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -28,6 +32,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ExamResult, QuestionResult, QuestionType, Question, CodingGradingResult, ViolationStats } from '@/types/exam';
 import { supabase } from '@/integrations/supabase/client';
+import { createDefaultByTypeStats, questionTypeLabels as importedQuestionTypeLabels } from '@/utils/questionTypeStats';
 import { useAuth } from '@/hooks/useAuth';
 import CodingResultsDisplay from '@/components/exam/CodingResultsDisplay';
 import { QuestionContentRenderer, OptionContentRenderer } from '@/components/exam/QuestionContentRenderer';
@@ -130,15 +135,20 @@ const questionTypeIcons: Record<QuestionType, React.ReactNode> = {
   'essay': <FileText className="w-4 h-4" />,
   'drag-drop': <Target className="w-4 h-4" />,
   'coding': <Code2 className="w-4 h-4" />,
+  // Language exam types
+  'listening-mcq': <Headphones className="w-4 h-4" />,
+  'listening-fill': <Headphones className="w-4 h-4" />,
+  'reading-mcq': <BookOpen className="w-4 h-4" />,
+  'reading-order': <BookOpen className="w-4 h-4" />,
+  'reading-match': <BookOpen className="w-4 h-4" />,
+  'writing-sentence': <Pencil className="w-4 h-4" />,
+  'writing-essay': <Pencil className="w-4 h-4" />,
+  'speaking-read': <Mic className="w-4 h-4" />,
+  'speaking-describe': <Mic className="w-4 h-4" />,
+  'speaking-answer': <Mic className="w-4 h-4" />,
 };
 
-const questionTypeLabels: Record<QuestionType, string> = {
-  'multiple-choice': 'Trắc nghiệm',
-  'short-answer': 'Tự luận ngắn',
-  'essay': 'Tự luận',
-  'drag-drop': 'Kéo thả',
-  'coding': 'Lập trình',
-};
+const questionTypeLabels = importedQuestionTypeLabels;
 
 interface LocationState {
   result: ExamResult;
@@ -237,13 +247,7 @@ const ExamResultPage = () => {
           incorrectAnswers: 0,
           unanswered: 0,
           partialCredit: 0,
-          byType: {
-            'multiple-choice': { correct: 0, total: 0, points: 0, partial: 0 },
-            'short-answer': { correct: 0, total: 0, points: 0, partial: 0 },
-            'essay': { correct: 0, total: 0, points: 0, partial: 0 },
-            'drag-drop': { correct: 0, total: 0, points: 0, partial: 0 },
-            'coding': { correct: 0, total: 0, points: 0, partial: 0 },
-          },
+          byType: createDefaultByTypeStats(),
         },
       };
 
@@ -314,13 +318,7 @@ const ExamResultPage = () => {
           incorrectAnswers: 0,
           unanswered: 0,
           partialCredit: 0,
-          byType: {
-            'multiple-choice': { correct: 0, total: 0, points: 0, partial: 0 },
-            'short-answer': { correct: 0, total: 0, points: 0, partial: 0 },
-            'essay': { correct: 0, total: 0, points: 0, partial: 0 },
-            'drag-drop': { correct: 0, total: 0, points: 0, partial: 0 },
-            'coding': { correct: 0, total: 0, points: 0, partial: 0 },
-          },
+          byType: createDefaultByTypeStats(),
         },
       };
 

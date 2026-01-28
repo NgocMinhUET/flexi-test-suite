@@ -1,4 +1,21 @@
-export type QuestionType = 'multiple-choice' | 'short-answer' | 'essay' | 'drag-drop' | 'coding';
+// Core question types
+export type QuestionType = 
+  | 'multiple-choice' 
+  | 'short-answer' 
+  | 'essay' 
+  | 'drag-drop' 
+  | 'coding'
+  // Language exam question types
+  | 'listening-mcq'      // Nghe và chọn đáp án
+  | 'listening-fill'     // Nghe và điền từ
+  | 'reading-mcq'        // Đọc hiểu trắc nghiệm
+  | 'reading-order'      // Sắp xếp câu/đoạn
+  | 'reading-match'      // Ghép cặp (matching)
+  | 'writing-sentence'   // Sắp xếp từ thành câu
+  | 'writing-essay'      // Viết đoạn văn/bài luận
+  | 'speaking-read'      // Đọc to (ghi âm)
+  | 'speaking-describe'  // Mô tả hình ảnh (ghi âm)
+  | 'speaking-answer';   // Trả lời câu hỏi (ghi âm)
 
 export type ProgrammingLanguage = 'python' | 'javascript' | 'java' | 'cpp' | 'c' | 'go' | 'rust';
 
@@ -35,6 +52,42 @@ export interface CodingQuestion {
   scoringMethod?: 'proportional' | 'all-or-nothing' | 'weighted'; // Default: proportional
 }
 
+// Language exam specific question data
+export interface ListeningQuestion {
+  audioUrl: string;           // URL file audio
+  audioTranscript?: string;   // Transcript (ẩn khi thi)
+  playCount: number;          // Số lần được nghe (1-3)
+  audioDuration: number;      // Độ dài audio (giây)
+}
+
+export interface SpeakingQuestion {
+  promptAudioUrl?: string;    // Audio hướng dẫn (nếu có)
+  imageUrl?: string;          // Hình ảnh để mô tả
+  recordingTimeLimit: number; // Giới hạn thời gian ghi âm (giây)
+  preparationTime: number;    // Thời gian chuẩn bị (giây)
+}
+
+export interface MatchingItem {
+  id: string;
+  text: string;
+}
+
+export interface MatchingQuestion {
+  leftItems: MatchingItem[];   // Cột trái
+  rightItems: MatchingItem[];  // Cột phải
+  correctPairs: { left: string; right: string }[];
+}
+
+export interface OrderingItem {
+  id: string;
+  text: string;
+}
+
+export interface OrderingQuestion {
+  items: OrderingItem[];       // Các phần tử cần sắp xếp
+  correctOrder: string[];      // Thứ tự đúng (mảng ID)
+}
+
 export interface Question {
   id: number;
   type: QuestionType;
@@ -43,6 +96,11 @@ export interface Question {
   points: number;
   coding?: CodingQuestion;
   correctAnswer?: string | string[]; // For grading
+  // Language exam specific fields
+  listening?: ListeningQuestion;
+  speaking?: SpeakingQuestion;
+  matching?: MatchingQuestion;
+  ordering?: OrderingQuestion;
 }
 
 export interface ExamData {

@@ -769,6 +769,47 @@ export type Database = {
           },
         ]
       }
+      language_media: {
+        Row: {
+          created_at: string | null
+          duration: number | null
+          id: string
+          media_type: string
+          question_id: string | null
+          storage_path: string
+          transcript: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration?: number | null
+          id?: string
+          media_type: string
+          question_id?: string | null
+          storage_path: string
+          transcript?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration?: number | null
+          id?: string
+          media_type?: string
+          question_id?: string | null
+          storage_path?: string
+          transcript?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "language_media_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboards: {
         Row: {
           id: string
@@ -1367,6 +1408,65 @@ export type Database = {
           },
         ]
       }
+      speaking_responses: {
+        Row: {
+          ai_feedback: string | null
+          ai_score: number | null
+          created_at: string | null
+          duration: number
+          exam_result_id: string | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          manual_feedback: string | null
+          manual_score: number | null
+          question_id: string
+          recording_url: string
+          transcript: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_feedback?: string | null
+          ai_score?: number | null
+          created_at?: string | null
+          duration: number
+          exam_result_id?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          manual_feedback?: string | null
+          manual_score?: number | null
+          question_id: string
+          recording_url: string
+          transcript?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_feedback?: string | null
+          ai_score?: number | null
+          created_at?: string | null
+          duration?: number
+          exam_result_id?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          manual_feedback?: string | null
+          manual_score?: number | null
+          question_id?: string
+          recording_url?: string
+          transcript?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaking_responses_exam_result_id_fkey"
+            columns: ["exam_result_id"]
+            isOneToOne: false
+            referencedRelation: "exam_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_skill_profiles: {
         Row: {
           created_at: string | null
@@ -1635,7 +1735,21 @@ export type Database = {
       class_teacher_role: "primary" | "assistant" | "substitute"
       enrollment_status: "active" | "inactive" | "dropped" | "graduated"
       question_status: "draft" | "review" | "approved" | "published"
-      question_type: "MCQ_SINGLE" | "TRUE_FALSE_4" | "SHORT_ANSWER" | "CODING"
+      question_type:
+        | "MCQ_SINGLE"
+        | "TRUE_FALSE_4"
+        | "SHORT_ANSWER"
+        | "CODING"
+        | "LISTENING_MCQ"
+        | "LISTENING_FILL"
+        | "READING_MCQ"
+        | "READING_ORDER"
+        | "READING_MATCH"
+        | "WRITING_SENTENCE"
+        | "WRITING_ESSAY"
+        | "SPEAKING_READ"
+        | "SPEAKING_DESCRIBE"
+        | "SPEAKING_ANSWER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1769,7 +1883,22 @@ export const Constants = {
       class_teacher_role: ["primary", "assistant", "substitute"],
       enrollment_status: ["active", "inactive", "dropped", "graduated"],
       question_status: ["draft", "review", "approved", "published"],
-      question_type: ["MCQ_SINGLE", "TRUE_FALSE_4", "SHORT_ANSWER", "CODING"],
+      question_type: [
+        "MCQ_SINGLE",
+        "TRUE_FALSE_4",
+        "SHORT_ANSWER",
+        "CODING",
+        "LISTENING_MCQ",
+        "LISTENING_FILL",
+        "READING_MCQ",
+        "READING_ORDER",
+        "READING_MATCH",
+        "WRITING_SENTENCE",
+        "WRITING_ESSAY",
+        "SPEAKING_READ",
+        "SPEAKING_DESCRIBE",
+        "SPEAKING_ANSWER",
+      ],
     },
   },
 } as const
