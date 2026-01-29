@@ -12,6 +12,7 @@ interface ExamDraft {
   savedAt: string;
   // Timer state - critical for restoration
   timeLeft?: number; // Non-sectioned exam: total seconds remaining
+  startedAt?: number; // Unix timestamp when exam was started - for duration calculation
   // Sectioned exam state
   currentSection?: number;
   completedSections?: number[];
@@ -28,6 +29,7 @@ interface UseExamAutoSaveProps {
   isEnabled: boolean;
   // Timer state for restoration
   timeLeft?: number; // Non-sectioned exam timer
+  startedAt?: number; // Unix timestamp when exam was started
   // Sectioned exam state
   currentSection?: number;
   completedSections?: Set<number>;
@@ -57,6 +59,7 @@ export const useExamAutoSave = ({
   violationStats,
   isEnabled,
   timeLeft,
+  startedAt,
   currentSection,
   completedSections,
   sectionTimes,
@@ -91,12 +94,13 @@ export const useExamAutoSave = ({
       savedAt: new Date().toISOString(),
       // Timer state - critical for restoration
       timeLeft,
+      startedAt, // Unix timestamp when exam was started
       // Include section state if available
       currentSection,
       completedSections: completedSections ? Array.from(completedSections) : undefined,
       sectionTimes,
     };
-  }, [answers, flaggedQuestions, currentQuestion, violationStats, timeLeft, currentSection, completedSections, sectionTimes]);
+  }, [answers, flaggedQuestions, currentQuestion, violationStats, timeLeft, startedAt, currentSection, completedSections, sectionTimes]);
 
   // Save to localStorage (fast, immediate backup)
   const saveToLocal = useCallback(() => {
