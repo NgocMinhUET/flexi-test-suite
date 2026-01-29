@@ -769,6 +769,416 @@ export type Database = {
           },
         ]
       }
+      lang_exam_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          end_time: string | null
+          exam_id: string
+          id: string
+          start_time: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          end_time?: string | null
+          exam_id: string
+          id?: string
+          start_time?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          end_time?: string | null
+          exam_id?: string
+          id?: string
+          start_time?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lang_exam_assignments_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "lang_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lang_exam_drafts: {
+        Row: {
+          answers: Json | null
+          current_question: number | null
+          current_section: number | null
+          exam_id: string
+          id: string
+          saved_at: string
+          section_times: Json | null
+          time_left: number | null
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          current_question?: number | null
+          current_section?: number | null
+          exam_id: string
+          id?: string
+          saved_at?: string
+          section_times?: Json | null
+          time_left?: number | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          current_question?: number | null
+          current_section?: number | null
+          exam_id?: string
+          id?: string
+          saved_at?: string
+          section_times?: Json | null
+          time_left?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lang_exam_drafts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "lang_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lang_exam_results: {
+        Row: {
+          created_at: string
+          duration: number | null
+          earned_points: number | null
+          exam_id: string
+          grade: string | null
+          id: string
+          percentage: number | null
+          question_results: Json | null
+          skill_scores: Json | null
+          speaking_recordings: Json | null
+          started_at: string | null
+          submitted_at: string
+          total_points: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          earned_points?: number | null
+          exam_id: string
+          grade?: string | null
+          id?: string
+          percentage?: number | null
+          question_results?: Json | null
+          skill_scores?: Json | null
+          speaking_recordings?: Json | null
+          started_at?: string | null
+          submitted_at?: string
+          total_points?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          earned_points?: number | null
+          exam_id?: string
+          grade?: string | null
+          id?: string
+          percentage?: number | null
+          question_results?: Json | null
+          skill_scores?: Json | null
+          speaking_recordings?: Json | null
+          started_at?: string | null
+          submitted_at?: string
+          total_points?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lang_exam_results_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "lang_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lang_exams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_published: boolean | null
+          is_sectioned: boolean | null
+          proficiency_level: string | null
+          questions: Json
+          sections: Json | null
+          status: Database["public"]["Enums"]["lang_exam_status"]
+          subject_id: string
+          title: string
+          total_duration: number
+          total_points: number | null
+          total_questions: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_published?: boolean | null
+          is_sectioned?: boolean | null
+          proficiency_level?: string | null
+          questions?: Json
+          sections?: Json | null
+          status?: Database["public"]["Enums"]["lang_exam_status"]
+          subject_id: string
+          title: string
+          total_duration?: number
+          total_points?: number | null
+          total_questions?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_published?: boolean | null
+          is_sectioned?: boolean | null
+          proficiency_level?: string | null
+          questions?: Json
+          sections?: Json | null
+          status?: Database["public"]["Enums"]["lang_exam_status"]
+          subject_id?: string
+          title?: string
+          total_duration?: number
+          total_points?: number | null
+          total_questions?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lang_exams_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "lang_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lang_questions: {
+        Row: {
+          answer_data: Json
+          audio_duration: number | null
+          audio_play_count: number | null
+          audio_transcript: string | null
+          audio_url: string | null
+          code: string | null
+          content: string
+          content_plain: string | null
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          difficulty: number | null
+          estimated_time: number | null
+          id: string
+          image_url: string | null
+          labels: Json | null
+          points: number | null
+          proficiency_level: string | null
+          question_type: Database["public"]["Enums"]["lang_question_type"]
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          skill_type: string
+          status: Database["public"]["Enums"]["lang_question_status"]
+          subject_id: string
+          taxonomy_node_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          answer_data?: Json
+          audio_duration?: number | null
+          audio_play_count?: number | null
+          audio_transcript?: string | null
+          audio_url?: string | null
+          code?: string | null
+          content: string
+          content_plain?: string | null
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          difficulty?: number | null
+          estimated_time?: number | null
+          id?: string
+          image_url?: string | null
+          labels?: Json | null
+          points?: number | null
+          proficiency_level?: string | null
+          question_type: Database["public"]["Enums"]["lang_question_type"]
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          skill_type: string
+          status?: Database["public"]["Enums"]["lang_question_status"]
+          subject_id: string
+          taxonomy_node_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answer_data?: Json
+          audio_duration?: number | null
+          audio_play_count?: number | null
+          audio_transcript?: string | null
+          audio_url?: string | null
+          code?: string | null
+          content?: string
+          content_plain?: string | null
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          difficulty?: number | null
+          estimated_time?: number | null
+          id?: string
+          image_url?: string | null
+          labels?: Json | null
+          points?: number | null
+          proficiency_level?: string | null
+          question_type?: Database["public"]["Enums"]["lang_question_type"]
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          skill_type?: string
+          status?: Database["public"]["Enums"]["lang_question_status"]
+          subject_id?: string
+          taxonomy_node_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lang_questions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "lang_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lang_questions_taxonomy_node_id_fkey"
+            columns: ["taxonomy_node_id"]
+            isOneToOne: false
+            referencedRelation: "lang_taxonomy_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lang_subjects: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          proficiency_levels: Json | null
+          skill_types: Json | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          proficiency_levels?: Json | null
+          skill_types?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          proficiency_levels?: Json | null
+          skill_types?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lang_taxonomy_nodes: {
+        Row: {
+          code: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          level: number
+          name: string
+          order_index: number | null
+          parent_id: string | null
+          subject_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          level?: number
+          name: string
+          order_index?: number | null
+          parent_id?: string | null
+          subject_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          level?: number
+          name?: string
+          order_index?: number | null
+          parent_id?: string | null
+          subject_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lang_taxonomy_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "lang_taxonomy_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lang_taxonomy_nodes_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "lang_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       language_media: {
         Row: {
           created_at: string | null
@@ -1734,6 +2144,19 @@ export type Database = {
       class_member_role: "student" | "monitor" | "deputy"
       class_teacher_role: "primary" | "assistant" | "substitute"
       enrollment_status: "active" | "inactive" | "dropped" | "graduated"
+      lang_exam_status: "draft" | "published" | "archived"
+      lang_question_status: "draft" | "review" | "approved" | "published"
+      lang_question_type:
+        | "LISTENING_MCQ"
+        | "LISTENING_FILL"
+        | "READING_MCQ"
+        | "READING_ORDER"
+        | "READING_MATCH"
+        | "WRITING_SENTENCE"
+        | "WRITING_ESSAY"
+        | "SPEAKING_READ"
+        | "SPEAKING_DESCRIBE"
+        | "SPEAKING_ANSWER"
       question_status: "draft" | "review" | "approved" | "published"
       question_type:
         | "MCQ_SINGLE"
@@ -1882,6 +2305,20 @@ export const Constants = {
       class_member_role: ["student", "monitor", "deputy"],
       class_teacher_role: ["primary", "assistant", "substitute"],
       enrollment_status: ["active", "inactive", "dropped", "graduated"],
+      lang_exam_status: ["draft", "published", "archived"],
+      lang_question_status: ["draft", "review", "approved", "published"],
+      lang_question_type: [
+        "LISTENING_MCQ",
+        "LISTENING_FILL",
+        "READING_MCQ",
+        "READING_ORDER",
+        "READING_MATCH",
+        "WRITING_SENTENCE",
+        "WRITING_ESSAY",
+        "SPEAKING_READ",
+        "SPEAKING_DESCRIBE",
+        "SPEAKING_ANSWER",
+      ],
       question_status: ["draft", "review", "approved", "published"],
       question_type: [
         "MCQ_SINGLE",

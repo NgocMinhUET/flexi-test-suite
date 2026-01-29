@@ -46,6 +46,11 @@ const ClassDetail = lazyWithRetry(() => import("./pages/ClassDetail"));
 const ClassProgressReport = lazyWithRetry(() => import("./pages/ClassProgressReport"));
 const MyClasses = lazyWithRetry(() => import("./pages/MyClasses"));
 
+// Language Module (Independent)
+const LanguageDashboard = lazyWithRetry(() => import("./pages/language/LanguageDashboard"));
+const LanguageSubjects = lazyWithRetry(() => import("./pages/language/LanguageSubjects"));
+const LanguageQuestionBank = lazyWithRetry(() => import("./pages/language/LanguageQuestionBank"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -118,6 +123,12 @@ const App = () => {
                 <Route path="/classes/:id" element={<ClassDetail />} />
                 <Route path="/classes/:id/progress" element={<ClassProgressReport />} />
                 <Route path="/my-classes" element={<MyClasses />} />
+                
+                {/* Language Module Routes */}
+                <Route path="/language" element={<LanguageDashboard />} />
+                <Route path="/language/subjects" element={<LanguageSubjects />} />
+                <Route path="/language/questions" element={<LanguageQuestionBank />} />
+                
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
