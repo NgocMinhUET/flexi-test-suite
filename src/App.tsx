@@ -50,6 +50,8 @@ const MyClasses = lazyWithRetry(() => import("./pages/MyClasses"));
 const LanguageDashboard = lazyWithRetry(() => import("./pages/language/LanguageDashboard"));
 const LanguageSubjects = lazyWithRetry(() => import("./pages/language/LanguageSubjects"));
 const LanguageQuestionBank = lazyWithRetry(() => import("./pages/language/LanguageQuestionBank"));
+const LanguageQuestionEditor = lazyWithRetry(() => import("./pages/language/LanguageQuestionEditor"));
+const LanguageExamManagement = lazyWithRetry(() => import("./pages/language/LanguageExamManagement"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -128,6 +130,9 @@ const App = () => {
                 <Route path="/language" element={<LanguageDashboard />} />
                 <Route path="/language/subjects" element={<LanguageSubjects />} />
                 <Route path="/language/questions" element={<LanguageQuestionBank />} />
+                <Route path="/language/questions/new" element={<LanguageQuestionEditor />} />
+                <Route path="/language/questions/:id/edit" element={<LanguageQuestionEditor />} />
+                <Route path="/language/exams" element={<LanguageExamManagement />} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
