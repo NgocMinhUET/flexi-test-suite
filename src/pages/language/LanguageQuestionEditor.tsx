@@ -327,8 +327,8 @@ export default function LanguageQuestionEditor() {
                         <FormItem>
                           <FormLabel>Phân loại</FormLabel>
                           <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value}
+                            onValueChange={(val) => field.onChange(val === "none" ? "" : val)} 
+                            value={field.value || "none"}
                             disabled={!selectedSubjectId}
                           >
                             <FormControl>
@@ -337,7 +337,7 @@ export default function LanguageQuestionEditor() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Không phân loại</SelectItem>
+                              <SelectItem value="none">Không phân loại</SelectItem>
                               {taxonomyNodes.map((node) => (
                                 <SelectItem key={node.id} value={node.id}>
                                   {node.name}
