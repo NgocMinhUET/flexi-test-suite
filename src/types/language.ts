@@ -24,6 +24,15 @@ export type ProficiencyLevel = 'beginner' | 'elementary' | 'intermediate' | 'upp
 // SUBJECT & TAXONOMY
 // =============================================
 
+export interface LangMatrixConfig {
+  dimensions: string[];
+  sections?: {
+    name: string;
+    skills: SkillType[];
+    duration: number;
+  }[];
+}
+
 export interface LangSubject {
   id: string;
   code: string;
@@ -32,6 +41,8 @@ export interface LangSubject {
   icon?: string;
   skill_types: SkillType[];
   proficiency_levels: ProficiencyLevel[];
+  cognitive_levels: string[];
+  matrix_config?: LangMatrixConfig | null;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -150,6 +161,7 @@ export interface LangQuestion {
   question_type: LangQuestionType;
   skill_type: SkillType;
   proficiency_level: ProficiencyLevel;
+  cognitive_level?: string | null;
   difficulty: number;
   estimated_time: number;
   points: number;
@@ -302,6 +314,8 @@ export interface LangSubjectFormData {
   icon?: string;
   skill_types: SkillType[];
   proficiency_levels: ProficiencyLevel[];
+  cognitive_levels?: string[];
+  matrix_config?: LangMatrixConfig;
 }
 
 export interface LangQuestionFormData {
@@ -311,6 +325,7 @@ export interface LangQuestionFormData {
   question_type: LangQuestionType;
   skill_type: SkillType;
   proficiency_level: ProficiencyLevel;
+  cognitive_level?: string;
   difficulty: number;
   estimated_time: number;
   points: number;

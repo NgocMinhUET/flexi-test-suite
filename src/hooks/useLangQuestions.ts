@@ -16,6 +16,7 @@ interface LangQuestionFilters {
   question_type?: LangQuestionType;
   status?: LangQuestionStatus;
   proficiency_level?: string;
+  cognitive_level?: string;
   search?: string;
 }
 
@@ -46,6 +47,9 @@ export function useLangQuestions(filters: LangQuestionFilters = {}) {
       }
       if (filters.proficiency_level) {
         query = query.eq('proficiency_level', filters.proficiency_level);
+      }
+      if (filters.cognitive_level) {
+        query = query.eq('cognitive_level', filters.cognitive_level);
       }
       if (filters.search) {
         query = query.ilike('content_plain', `%${filters.search}%`);
@@ -100,6 +104,7 @@ export function useCreateLangQuestion() {
         question_type: formData.question_type as string,
         skill_type: formData.skill_type,
         proficiency_level: formData.proficiency_level,
+        cognitive_level: formData.cognitive_level,
         difficulty: formData.difficulty,
         estimated_time: formData.estimated_time,
         points: formData.points,
@@ -158,6 +163,7 @@ export function useUpdateLangQuestion() {
       if (formData.question_type) updatePayload.question_type = formData.question_type as string;
       if (formData.skill_type) updatePayload.skill_type = formData.skill_type;
       if (formData.proficiency_level) updatePayload.proficiency_level = formData.proficiency_level;
+      if (formData.cognitive_level !== undefined) updatePayload.cognitive_level = formData.cognitive_level;
       if (formData.difficulty !== undefined) updatePayload.difficulty = formData.difficulty;
       if (formData.estimated_time !== undefined) updatePayload.estimated_time = formData.estimated_time;
       if (formData.points !== undefined) updatePayload.points = formData.points;

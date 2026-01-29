@@ -76,6 +76,7 @@ const formSchema = z.object({
   skill_type: z.enum(['listening', 'reading', 'writing', 'speaking']),
   question_type: z.string().min(1, "Vui lòng chọn loại câu hỏi"),
   proficiency_level: z.enum(['beginner', 'elementary', 'intermediate', 'upper-intermediate', 'advanced']),
+  cognitive_level: z.string().optional(),
   difficulty: z.number().min(1).max(5),
   estimated_time: z.number().min(1).max(600),
   points: z.number().min(0.25).max(10),
@@ -111,6 +112,7 @@ export default function LanguageQuestionEditor() {
       skill_type: "listening",
       question_type: "LISTENING_MCQ",
       proficiency_level: "intermediate",
+      cognitive_level: "",
       difficulty: 3,
       estimated_time: 60,
       points: 1,
@@ -121,6 +123,10 @@ export default function LanguageQuestionEditor() {
   const selectedSubjectId = form.watch("subject_id");
   const selectedSkillType = form.watch("skill_type");
   const selectedQuestionType = form.watch("question_type") as LangQuestionType;
+  
+  // Get selected subject to access its cognitive_levels
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+  const cognitiveLevels = selectedSubject?.cognitive_levels || [];
 
   const { flatNodes: taxonomyNodes = [] } = useLangTaxonomyTree(selectedSubjectId);
 
@@ -133,6 +139,7 @@ export default function LanguageQuestionEditor() {
         skill_type: existingQuestion.skill_type as SkillType,
         question_type: existingQuestion.question_type,
         proficiency_level: existingQuestion.proficiency_level as ProficiencyLevel,
+        cognitive_level: existingQuestion.cognitive_level || "",
         difficulty: existingQuestion.difficulty,
         estimated_time: existingQuestion.estimated_time,
         points: existingQuestion.points,
@@ -168,6 +175,7 @@ export default function LanguageQuestionEditor() {
       question_type: values.question_type as LangQuestionType,
       skill_type: values.skill_type,
       proficiency_level: values.proficiency_level,
+      cognitive_level: values.cognitive_level || undefined,
       difficulty: values.difficulty,
       estimated_time: values.estimated_time,
       points: values.points,
@@ -448,6 +456,37 @@ export default function LanguageQuestionEditor() {
                         </FormItem>
                       )}
                     />
+
+                    {cognitiveLevels.length > 0 && (
+                      <FormField
+                        control={form.control}
+                        name="cognitive_level"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Mức nhận thức</FormLabel>
+                            <Select 
+                              onValueChange={(val) => field.onChange(val === "none" ? "" : val)} 
+                              value={field.value || "none"}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Chọn mức nhận thức" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="none">Không xác định</SelectItem>
+                                {cognitiveLevels.map((level) => (
+                                  <SelectItem key={level} value={level}>
+                                    {level}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </div>
