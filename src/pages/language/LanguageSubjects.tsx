@@ -45,6 +45,7 @@ import type { LangSubject, LangSubjectFormData, SkillType, ProficiencyLevel } fr
 
 const DEFAULT_SKILLS: SkillType[] = ['listening', 'reading', 'writing', 'speaking'];
 const DEFAULT_LEVELS: ProficiencyLevel[] = ['beginner', 'elementary', 'intermediate', 'upper-intermediate', 'advanced'];
+const DEFAULT_COGNITIVE_LEVELS = ['Nhận diện', 'Hiểu nghĩa', 'Suy luận', 'Ứng dụng'];
 
 export default function LanguageSubjects() {
   const navigate = useNavigate();
@@ -65,6 +66,7 @@ export default function LanguageSubjects() {
     icon: 'Languages',
     skill_types: DEFAULT_SKILLS,
     proficiency_levels: DEFAULT_LEVELS,
+    cognitive_levels: DEFAULT_COGNITIVE_LEVELS,
   });
 
   const isEducator = isAdmin || isTeacher;
@@ -79,6 +81,7 @@ export default function LanguageSubjects() {
         icon: subject.icon || 'Languages',
         skill_types: subject.skill_types as SkillType[],
         proficiency_levels: subject.proficiency_levels as ProficiencyLevel[],
+        cognitive_levels: subject.cognitive_levels || DEFAULT_COGNITIVE_LEVELS,
       });
     } else {
       setEditingSubject(null);
@@ -89,6 +92,7 @@ export default function LanguageSubjects() {
         icon: 'Languages',
         skill_types: DEFAULT_SKILLS,
         proficiency_levels: DEFAULT_LEVELS,
+        cognitive_levels: DEFAULT_COGNITIVE_LEVELS,
       });
     }
     setIsDialogOpen(true);
@@ -191,6 +195,46 @@ export default function LanguageSubjects() {
                         </Badge>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Mức nhận thức (Cognitive Levels)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(formData.cognitive_levels || []).map((level, index) => (
+                        <Badge
+                          key={index}
+                          variant="default"
+                          className="cursor-pointer"
+                          onClick={() => {
+                            const newLevels = (formData.cognitive_levels || []).filter((_, i) => i !== index);
+                            setFormData({ ...formData, cognitive_levels: newLevels });
+                          }}
+                        >
+                          {level} ×
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Thêm mức nhận thức..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const value = e.currentTarget.value.trim();
+                            if (value && !(formData.cognitive_levels || []).includes(value)) {
+                              setFormData({ 
+                                ...formData, 
+                                cognitive_levels: [...(formData.cognitive_levels || []), value] 
+                              });
+                              e.currentTarget.value = '';
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Nhấn Enter để thêm. Các mức mặc định: Nhận diện, Hiểu nghĩa, Suy luận, Ứng dụng
+                    </p>
                   </div>
                 </div>
 

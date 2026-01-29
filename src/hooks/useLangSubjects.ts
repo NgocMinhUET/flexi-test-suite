@@ -19,6 +19,8 @@ export function useLangSubjects() {
         ...subject,
         skill_types: subject.skill_types as string[],
         proficiency_levels: subject.proficiency_levels as string[],
+        cognitive_levels: (subject.cognitive_levels as string[]) || [],
+        matrix_config: subject.matrix_config as any,
       })) as LangSubject[];
     },
   });
@@ -42,6 +44,8 @@ export function useLangSubject(id: string | undefined) {
         ...data,
         skill_types: data.skill_types as string[],
         proficiency_levels: data.proficiency_levels as string[],
+        cognitive_levels: (data.cognitive_levels as string[]) || [],
+        matrix_config: data.matrix_config as any,
       } as LangSubject;
     },
     enabled: !!id,
@@ -63,8 +67,10 @@ export function useCreateLangSubject() {
           name: formData.name,
           description: formData.description,
           icon: formData.icon || 'Languages',
-          skill_types: formData.skill_types,
-          proficiency_levels: formData.proficiency_levels,
+          skill_types: formData.skill_types as unknown as any,
+          proficiency_levels: formData.proficiency_levels as unknown as any,
+          cognitive_levels: (formData.cognitive_levels || []) as unknown as any,
+          matrix_config: formData.matrix_config as unknown as any,
           created_by: userData.user?.id,
         })
         .select()
@@ -100,8 +106,10 @@ export function useUpdateLangSubject() {
           name: formData.name,
           description: formData.description,
           icon: formData.icon,
-          skill_types: formData.skill_types,
-          proficiency_levels: formData.proficiency_levels,
+          skill_types: formData.skill_types as unknown as any,
+          proficiency_levels: formData.proficiency_levels as unknown as any,
+          cognitive_levels: formData.cognitive_levels as unknown as any,
+          matrix_config: formData.matrix_config as unknown as any,
         })
         .eq('id', id)
         .select()
