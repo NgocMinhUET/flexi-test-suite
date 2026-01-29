@@ -94,8 +94,8 @@ export default function LanguageQuestionBank() {
             </div>
           </div>
           
-          {isEducator && selectedSubject && (
-            <Button onClick={() => navigate(`/language/questions/new?subject=${selectedSubject}`)}>
+          {isEducator && (
+            <Button onClick={() => navigate(selectedSubject ? `/language/questions/new?subject=${selectedSubject}` : '/language/questions/new')}>
               <Plus className="h-4 w-4 mr-2" />
               Tạo câu hỏi
             </Button>
