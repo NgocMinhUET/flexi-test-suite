@@ -986,6 +986,7 @@ export type Database = {
           audio_transcript: string | null
           audio_url: string | null
           code: string | null
+          cognitive_level: string | null
           content: string
           content_plain: string | null
           created_at: string
@@ -1015,6 +1016,7 @@ export type Database = {
           audio_transcript?: string | null
           audio_url?: string | null
           code?: string | null
+          cognitive_level?: string | null
           content: string
           content_plain?: string | null
           created_at?: string
@@ -1044,6 +1046,7 @@ export type Database = {
           audio_transcript?: string | null
           audio_url?: string | null
           code?: string | null
+          cognitive_level?: string | null
           content?: string
           content_plain?: string | null
           created_at?: string
@@ -1086,12 +1089,14 @@ export type Database = {
       lang_subjects: {
         Row: {
           code: string
+          cognitive_levels: Json | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
           description: string | null
           icon: string | null
           id: string
+          matrix_config: Json | null
           name: string
           proficiency_levels: Json | null
           skill_types: Json | null
@@ -1099,12 +1104,14 @@ export type Database = {
         }
         Insert: {
           code: string
+          cognitive_levels?: Json | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          matrix_config?: Json | null
           name: string
           proficiency_levels?: Json | null
           skill_types?: Json | null
@@ -1112,12 +1119,14 @@ export type Database = {
         }
         Update: {
           code?: string
+          cognitive_levels?: Json | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          matrix_config?: Json | null
           name?: string
           proficiency_levels?: Json | null
           skill_types?: Json | null
