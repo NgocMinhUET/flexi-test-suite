@@ -19,6 +19,7 @@ import {
   Target,
   ClipboardList,
   School,
+  Languages,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -235,7 +236,7 @@ const Dashboard = () => {
 
         {/* Quick Links */}
         <section className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <QuickLinkCard
               icon={ClipboardCheck}
               title="Đề thi chính thức"
@@ -270,6 +271,13 @@ const Dashboard = () => {
               description="Tạo lớp và quản lý"
               variant="primary"
               onClick={() => navigate('/classes')}
+            />
+            <QuickLinkCard
+              icon={Languages}
+              title="Thi Ngoại ngữ"
+              description="Module thi ngoại ngữ"
+              variant="success"
+              onClick={() => navigate('/language')}
             />
           </div>
         </section>
