@@ -1,219 +1,173 @@
 
-# Kế hoạch hoàn thiện Module Thi Ngoại ngữ
+# Kế hoạch Nâng cấp Cấu trúc Language Module cho Ma trận sinh đề
 
-## Tổng quan tiến độ
+## Phân tích vấn đề
 
-```text
-+------------------+------------------+------------------+------------------+
-|   ĐÃ HOÀN THÀNH  |  CẦN LÀM TIẾP   |   ƯU TIÊN CAO   |   ƯU TIÊN THẤP  |
-+------------------+------------------+------------------+------------------+
-| - Database (8    | - Question       | 1. Question      | 8. Import Excel |
-|   bảng lang_*)   |   Editor (10     |    Editor        | 9. Thống kê     |
-| - Types/Hooks    |   loại)          | 2. Exam          |    chi tiết     |
-| - Dashboard      | - Exam Mgmt      |    Management    | 10. Export PDF  |
-| - Subject Mgmt   | - Take Exam      | 3. Take Exam     |                 |
-| - Question Bank  | - My Exams       | 4. Taxonomy      |                 |
-|   (view only)    | - Results        |                  |                 |
-+------------------+------------------+------------------+------------------+
-```
-
-## Giai đoạn 1: Question Editor (Ưu tiên cao nhất)
-
-### Mục tiêu
-Tạo trang `/language/questions/new` và `/language/questions/:id/edit` hỗ trợ 10 loại câu hỏi ngoại ngữ.
-
-### Files cần tạo
-
-**1. `src/pages/language/LanguageQuestionEditor.tsx`**
-- Wizard form với các bước:
-  1. Chọn kỹ năng (Listening/Reading/Writing/Speaking)
-  2. Chọn loại câu hỏi tương ứng
-  3. Nhập nội dung + câu trả lời
-  4. Cấu hình (điểm, thời gian, độ khó)
-
-**2. Các component con cho từng loại câu hỏi:**
-
-| Kỹ năng | Component | Chức năng |
-|---------|-----------|-----------|
-| **Listening** | `ListeningMCQEditor.tsx` | Trắc nghiệm + upload audio |
-| | `ListeningFillEditor.tsx` | Điền từ vào chỗ trống + audio |
-| **Reading** | `ReadingMCQEditor.tsx` | Trắc nghiệm đọc hiểu |
-| | `ReadingOrderEditor.tsx` | Sắp xếp câu/đoạn văn |
-| | `ReadingMatchEditor.tsx` | Ghép cặp (matching) |
-| **Writing** | `WritingSentenceEditor.tsx` | Sắp xếp từ thành câu |
-| | `WritingEssayEditor.tsx` | Viết luận + rubric |
-| **Speaking** | `SpeakingReadEditor.tsx` | Đọc to + sample answer |
-| | `SpeakingDescribeEditor.tsx` | Mô tả hình ảnh |
-| | `SpeakingAnswerEditor.tsx` | Trả lời câu hỏi |
-
-**3. Component tiện ích:**
-- `AudioUploader.tsx` - Upload audio lên bucket `language-audio`
-- `ImageUploader.tsx` - Upload hình ảnh (đã có sẵn có thể tái sử dụng)
-
-### Routes cần thêm vào App.tsx
-```text
-/language/questions/new
-/language/questions/:id/edit
-```
-
----
-
-## Giai đoạn 2: Quản lý Đề thi (Exam Management)
-
-### Files cần tạo
-
-**1. `src/pages/language/LanguageExamManagement.tsx`**
-- Danh sách đề thi ngoại ngữ
-- Filter theo môn học, trạng thái, cấp độ
-- CRUD đề thi
-
-**2. `src/pages/language/LanguageExamEditor.tsx`**
-- Tạo/sửa đề thi
-- Chọn câu hỏi từ ngân hàng
-- Cấu hình sections (Listening → Reading → Writing → Speaking)
-- Thiết lập thời gian cho từng section
-
-**3. `src/hooks/useLangExams.ts`**
-- CRUD operations cho bảng `lang_exams`
-- Gán đề thi cho học sinh (`lang_exam_assignments`)
-
-### Routes cần thêm
-```text
-/language/exams
-/language/exams/new
-/language/exams/:id/edit
-```
-
----
-
-## Giai đoạn 3: Làm bài thi (Take Exam)
-
-### Files cần tạo
-
-**1. `src/pages/language/TakeLanguageExam.tsx`**
-- Giao diện làm bài với timer
-- Navigation giữa các câu hỏi
-- Auto-save draft
-
-**2. Display components cho từng loại câu hỏi:**
-
-| Component | Chức năng |
-|-----------|-----------|
-| `LangListeningDisplay.tsx` | AudioPlayer với giới hạn lần nghe |
-| `LangReadingMatchDisplay.tsx` | Drag-and-drop ghép cặp |
-| `LangReadingOrderDisplay.tsx` | Drag-and-drop sắp xếp |
-| `LangWritingSentenceDisplay.tsx` | Word chips để sắp xếp từ |
-| `LangWritingEssayDisplay.tsx` | Text editor với word count |
-| `LangSpeakingDisplay.tsx` | Voice recorder + timer |
-
-**3. `src/components/language/VoiceRecorder.tsx`**
-- Sử dụng RecordRTC (đã cài sẵn)
-- Upload lên bucket `student-recordings`
-
-### Routes cần thêm
-```text
-/language/exam/:id
-/language/my-exams
-```
-
----
-
-## Giai đoạn 4: Kết quả & Phân loại
-
-### Files cần tạo
-
-**1. `src/pages/language/LanguageExamResult.tsx`**
-- Hiển thị kết quả chi tiết
-- Phân tích theo kỹ năng (Listening, Reading, Writing, Speaking)
-- Feedback cho từng câu
-
-**2. `src/pages/language/LanguageTaxonomyManagement.tsx`**
-- Quản lý phân loại (Chương/Bài/Mục) cho từng môn
-- Tree view với drag-and-drop reorder
-
-### Routes cần thêm
-```text
-/language/exam/:id/result
-/language/subjects/:id/taxonomy
-```
-
----
-
-## Chi tiết kỹ thuật
-
-### Cấu trúc thư mục đề xuất
+### Ma trận sinh đề tiêu chuẩn (Hệ thống chính)
 
 ```text
-src/
-├── pages/language/
-│   ├── LanguageDashboard.tsx        ✅ Done
-│   ├── LanguageSubjects.tsx         ✅ Done
-│   ├── LanguageQuestionBank.tsx     ✅ Done
-│   ├── LanguageQuestionEditor.tsx   ⏳ Phase 1
-│   ├── LanguageExamManagement.tsx   ⏳ Phase 2
-│   ├── LanguageExamEditor.tsx       ⏳ Phase 2
-│   ├── TakeLanguageExam.tsx         ⏳ Phase 3
-│   ├── LanguageMyExams.tsx          ⏳ Phase 3
-│   ├── LanguageExamResult.tsx       ⏳ Phase 4
-│   └── LanguageTaxonomyManagement.tsx ⏳ Phase 4
-│
-├── components/language/
-│   ├── editors/                     ⏳ Phase 1
-│   │   ├── ListeningMCQEditor.tsx
-│   │   ├── ListeningFillEditor.tsx
-│   │   ├── ReadingMCQEditor.tsx
-│   │   ├── ReadingMatchEditor.tsx
-│   │   ├── ReadingOrderEditor.tsx
-│   │   ├── WritingSentenceEditor.tsx
-│   │   ├── WritingEssayEditor.tsx
-│   │   ├── SpeakingReadEditor.tsx
-│   │   ├── SpeakingDescribeEditor.tsx
-│   │   └── SpeakingAnswerEditor.tsx
-│   │
-│   ├── display/                     ⏳ Phase 3
-│   │   ├── LangListeningDisplay.tsx
-│   │   ├── LangMatchingDisplay.tsx
-│   │   ├── LangOrderingDisplay.tsx
-│   │   ├── LangSentenceDisplay.tsx
-│   │   ├── LangEssayDisplay.tsx
-│   │   └── LangSpeakingDisplay.tsx
-│   │
-│   ├── AudioUploader.tsx            ⏳ Phase 1
-│   └── VoiceRecorder.tsx            ⏳ Phase 3
-│
-├── hooks/
-│   ├── useLangSubjects.ts           ✅ Done
-│   ├── useLangQuestions.ts          ✅ Done
-│   ├── useLangTaxonomy.ts           ✅ Done
-│   └── useLangExams.ts              ⏳ Phase 2
-│
-└── types/
-    └── language.ts                  ✅ Done
+                        Mức nhận thức Bloom
+                 +------------+------------+------------+
+                 | Nhận biết  | Thông hiểu | Vận dụng   |
++--------------+------------+------------+------------+
+| Chương 1     |     5      |     3      |     2      | → 10 câu
+| Chương 2     |     4      |     4      |     2      | → 10 câu  
+| Chương 3     |     3      |     4      |     3      | → 10 câu
++--------------+------------+------------+------------+
+                 Theo từng loại câu hỏi (MCQ, Tự luận...)
 ```
 
-### Thứ tự thực hiện đề xuất
+### Yêu cầu đặc thù cho Ngoại ngữ (HSK, TOPIK, IELTS...)
 
-| Bước | Nội dung | Ước tính |
-|------|----------|----------|
-| 1 | **Sửa lỗi 404**: Tạo placeholder cho `/language/exams` | Nhỏ |
-| 2 | **AudioUploader**: Component upload audio | Vừa |
-| 3 | **Question Editor base**: Form chung + routing | Vừa |
-| 4 | **10 Editor components**: Từng loại câu hỏi | Lớn |
-| 5 | **Exam Management**: Tạo/quản lý đề thi | Lớn |
-| 6 | **Display components**: Hiển thị câu hỏi khi làm bài | Lớn |
-| 7 | **Take Exam**: Giao diện làm bài hoàn chỉnh | Lớn |
-| 8 | **Voice Recorder**: Ghi âm cho Speaking | Vừa |
-| 9 | **Results & Taxonomy**: Hoàn thiện | Vừa |
+Ngoài ma trận trên, đề thi ngoại ngữ cần phân theo:
+- **Skill (Kỹ năng)**: Listening, Reading, Writing, Speaking
+- **Proficiency Level**: HSK1-6, TOPIK I-II, IELTS Band...
+- **Topic/Theme (Chủ đề)**: Gia đình, Du lịch, Công việc, Môi trường...
+- **Cognitive Level**: Vẫn áp dụng Bloom (Hiểu nghĩa → Suy luận → Ứng dụng)
 
----
+## Giải pháp đề xuất
 
-## Bước tiếp theo đề xuất
+### 1. Bổ sung cột `cognitive_level` vào bảng `lang_questions`
 
-Tôi đề xuất bắt đầu với **Giai đoạn 1** theo thứ tự:
+```text
+ALTER TABLE lang_questions 
+ADD COLUMN cognitive_level text;
+```
 
-1. **Sửa ngay lỗi 404**: Tạo trang placeholder `/language/exams` để không còn lỗi
-2. **Tạo LanguageQuestionEditor.tsx**: Giao diện wizard chọn loại câu hỏi
-3. **Tạo AudioUploader.tsx**: Hỗ trợ upload audio cho Listening
-4. **Tạo các Editor components**: Bắt đầu với Listening MCQ và Reading MCQ (phổ biến nhất)
+Các mức nhận thức cho ngoại ngữ:
+- **Nhận diện** (Recognition): Nghe/đọc từ vựng đơn lẻ
+- **Hiểu nghĩa** (Comprehension): Hiểu nghĩa câu/đoạn
+- **Suy luận** (Inference): Suy ra ý ẩn, ngữ cảnh
+- **Ứng dụng** (Application): Tạo lập văn bản/lời nói
 
-Bạn có muốn tôi bắt đầu triển khai theo kế hoạch này không?
+### 2. Mở rộng cấu hình `lang_subjects` với `cognitive_levels`
+
+Thêm cột JSONB `cognitive_levels` để mỗi môn tự định nghĩa:
+
+```text
+// Tiếng Trung (HSK-style)
+["Nhận diện", "Hiểu nghĩa", "Suy luận", "Ứng dụng"]
+
+// Tiếng Anh (IELTS-style) 
+["Literal", "Inferential", "Evaluative", "Applied"]
+```
+
+### 3. Chuẩn hóa Taxonomy theo Topic/Theme
+
+Bảng `lang_taxonomy_nodes` đã có nhưng cần thiết lập cấu trúc:
+
+```text
+Level 0: Chủ đề lớn (Topic)
+├── 家庭 (Gia đình)
+├── 工作 (Công việc)
+├── 旅游 (Du lịch)
+└── 环境 (Môi trường)
+
+Level 1: Chủ đề con (Sub-topic)
+├── 家庭 > 家庭成员 (Thành viên gia đình)
+├── 家庭 > 家庭活动 (Hoạt động gia đình)
+└── ...
+```
+
+### 4. Tạo config `matrix_config` cho `lang_subjects`
+
+Thêm JSONB config để định nghĩa cấu trúc ma trận linh hoạt:
+
+```text
+{
+  "dimensions": ["skill_type", "proficiency_level", "cognitive_level", "taxonomy"],
+  "sections": [
+    {"name": "Listening", "skills": ["listening"], "duration": 30},
+    {"name": "Reading", "skills": ["reading"], "duration": 50},
+    {"name": "Writing", "skills": ["writing"], "duration": 60},
+    {"name": "Speaking", "skills": ["speaking"], "duration": 15}
+  ]
+}
+```
+
+## Thay đổi Database
+
+### Migration SQL
+
+```sql
+-- 1. Thêm cognitive_level vào câu hỏi
+ALTER TABLE lang_questions 
+ADD COLUMN cognitive_level text;
+
+-- 2. Thêm cognitive_levels và matrix_config vào môn học
+ALTER TABLE lang_subjects 
+ADD COLUMN cognitive_levels jsonb DEFAULT '[]'::jsonb,
+ADD COLUMN matrix_config jsonb;
+
+-- 3. Cập nhật 4 môn học mẫu với cognitive_levels
+UPDATE lang_subjects SET cognitive_levels = '["Nhận diện", "Hiểu nghĩa", "Suy luận", "Ứng dụng"]'::jsonb;
+```
+
+## Thay đổi Frontend
+
+### 1. Cập nhật Types (`src/types/language.ts`)
+
+```typescript
+// Thêm vào LangSubject
+export interface LangSubject {
+  // ... existing fields
+  cognitive_levels: string[];  // NEW
+  matrix_config?: MatrixConfig; // NEW
+}
+
+// Thêm vào LangQuestion
+export interface LangQuestion {
+  // ... existing fields
+  cognitive_level?: string | null; // NEW
+}
+```
+
+### 2. Cập nhật Question Editor
+
+Thêm Select cho `cognitive_level` trong form tạo câu hỏi (ngay sau `proficiency_level`)
+
+### 3. Cập nhật Language Subject Form
+
+Thêm UI quản lý `cognitive_levels` array (tương tự `skill_types`)
+
+### 4. Tạo Ma trận sinh đề cho Language
+
+Cấu trúc ma trận 4 chiều:
+
+```text
+Ma trận sinh đề ngoại ngữ
+├── Chọn Skill: [Listening] [Reading] [Writing] [Speaking]
+├── Chọn Proficiency: [HSK1] [HSK2] [HSK3] ... 
+└── Ma trận 2D:
+    - Rows: Taxonomy (Topics/Themes)
+    - Columns: Cognitive Levels
+    - Cells: Số lượng câu hỏi + điểm
+```
+
+## So sánh trước/sau
+
+| Thuộc tính | Trước | Sau |
+|------------|-------|-----|
+| Phân loại theo Topic | ✅ taxonomy | ✅ taxonomy |
+| Phân loại theo Kỹ năng | ✅ skill_type | ✅ skill_type |
+| Phân loại theo Cấp độ | ✅ proficiency_level | ✅ proficiency_level |
+| Phân loại theo Mức nhận thức | ❌ Thiếu | ✅ cognitive_level |
+| Cấu hình linh hoạt theo môn | ❌ Cố định | ✅ cognitive_levels[] + matrix_config |
+
+## Thứ tự thực hiện
+
+| Bước | Nội dung |
+|------|----------|
+| 1 | Chạy SQL migration thêm cột mới |
+| 2 | Cập nhật `src/types/language.ts` |
+| 3 | Cập nhật `LanguageQuestionEditor` thêm cognitive_level select |
+| 4 | Cập nhật `LanguageSubjects` thêm UI quản lý cognitive_levels |
+| 5 | Tạo hook `useLangQuestionStats` thống kê theo ma trận |
+| 6 | Tạo `LanguageExamGenerator` với ma trận 4 chiều |
+
+## Lợi ích
+
+1. **Khoa học**: Đảm bảo đề thi cân bằng về mức nhận thức (không chỉ toàn nhận diện)
+2. **Linh hoạt**: Mỗi môn tự định nghĩa cognitive levels phù hợp tiêu chuẩn riêng
+3. **Hiệu quả**: Hỗ trợ sinh đề tự động theo ma trận đa chiều
+4. **Nhất quán**: Cấu trúc tương đồng với hệ thống chính, dễ maintain
