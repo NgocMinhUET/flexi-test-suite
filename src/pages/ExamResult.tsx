@@ -118,6 +118,52 @@ const parseQuestionResults = (rawResults: unknown[]): QuestionResult[] => {
   });
 };
 
+// Calculate statistics from questionResults when DB stats are missing/incorrect
+const calculateStatisticsFromResults = (
+  questionResults: QuestionResult[], 
+  questions: Question[]
+): ExamResult['statistics'] => {
+  let correctCount = 0;
+  let incorrectCount = 0;
+  let unansweredCount = 0;
+  let partialCreditCount = 0;
+  const byType = createDefaultByTypeStats();
+  
+  questionResults.forEach((qr) => {
+    const question = questions.find(q => q.id === qr.questionId);
+    const questionType = question?.type || 'multiple-choice';
+    
+    byType[questionType].total += 1;
+    byType[questionType].points += qr.earnedPoints || 0;
+    
+    // Check if unanswered
+    const hasAnswer = qr.userAnswer && 
+      (typeof qr.userAnswer === 'string' ? qr.userAnswer.trim() !== '' : qr.userAnswer.length > 0);
+    
+    if (!hasAnswer) {
+      unansweredCount++;
+    } else if (qr.isCorrect && qr.earnedPoints === qr.maxPoints) {
+      correctCount++;
+      byType[questionType].correct += 1;
+    } else if (qr.earnedPoints > 0 && qr.earnedPoints < qr.maxPoints) {
+      // Partial credit
+      partialCreditCount++;
+      byType[questionType].partial = (byType[questionType].partial || 0) + 1;
+    } else {
+      incorrectCount++;
+    }
+  });
+  
+  return {
+    totalQuestions: questionResults.length,
+    correctAnswers: correctCount,
+    incorrectAnswers: incorrectCount,
+    unanswered: unansweredCount,
+    partialCredit: partialCreditCount,
+    byType,
+  };
+};
+
 const gradeColors: Record<string, string> = {
   'A+': 'text-success',
   'A': 'text-success',
@@ -229,25 +275,31 @@ const ExamResultPage = () => {
       const examQuestions = (examData.questions as unknown as Question[]) || [];
       setQuestions(examQuestions);
 
+      const parsedQuestionResults = parseQuestionResults(resultData.question_results as unknown[] || []);
+      
+      // Calculate statistics from questionResults if not available or seems incorrect
+      const calculatedStats = calculateStatisticsFromResults(parsedQuestionResults, examQuestions);
+      const dbStats = resultData.statistics as unknown as ExamResult['statistics'];
+      
+      // Use calculated stats if db stats seem wrong (all zeros)
+      const shouldUseCalculated = !dbStats || 
+        (dbStats.correctAnswers === 0 && dbStats.incorrectAnswers === 0 && dbStats.unanswered === 0);
+      
       const examResult: ExamResult = {
         examId: examData.id,
         examTitle: examData.title,
         subject: examData.subject,
         submittedAt: new Date(resultData.submitted_at),
         duration: resultData.duration || 0,
-        totalPoints: Number(resultData.total_points),
-        earnedPoints: Number(resultData.earned_points),
-        percentage: Number(resultData.percentage),
+        totalPoints: Math.round(Number(resultData.total_points) * 100) / 100,
+        earnedPoints: Math.round(Number(resultData.earned_points) * 100) / 100,
+        percentage: Math.round(Number(resultData.percentage) * 100) / 100,
         grade: resultData.grade || 'F',
-        questionResults: parseQuestionResults(resultData.question_results as unknown[] || []),
+        questionResults: parsedQuestionResults,
         violationStats: (resultData.statistics as unknown as { violationStats?: ViolationStats })?.violationStats,
-        statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
-          totalQuestions: examData.total_questions,
-          correctAnswers: 0,
-          incorrectAnswers: 0,
-          unanswered: 0,
-          partialCredit: 0,
-          byType: createDefaultByTypeStats(),
+        statistics: shouldUseCalculated ? calculatedStats : {
+          ...dbStats,
+          byType: dbStats.byType || createDefaultByTypeStats(),
         },
       };
 
@@ -300,25 +352,31 @@ const ExamResultPage = () => {
       const examQuestions = (examData.questions as unknown as Question[]) || [];
       setQuestions(examQuestions);
 
+      const parsedQuestionResults = parseQuestionResults(resultData.question_results as unknown[] || []);
+      
+      // Calculate statistics from questionResults if not available or seems incorrect
+      const calculatedStats = calculateStatisticsFromResults(parsedQuestionResults, examQuestions);
+      const dbStats = resultData.statistics as unknown as ExamResult['statistics'];
+      
+      // Use calculated stats if db stats seem wrong (all zeros)
+      const shouldUseCalculated = !dbStats || 
+        (dbStats.correctAnswers === 0 && dbStats.incorrectAnswers === 0 && dbStats.unanswered === 0);
+
       const examResult: ExamResult = {
         examId: examData.id,
         examTitle: examData.title,
         subject: examData.subject,
         submittedAt: new Date(resultData.submitted_at),
         duration: resultData.duration || 0,
-        totalPoints: Number(resultData.total_points),
-        earnedPoints: Number(resultData.earned_points),
-        percentage: Number(resultData.percentage),
+        totalPoints: Math.round(Number(resultData.total_points) * 100) / 100,
+        earnedPoints: Math.round(Number(resultData.earned_points) * 100) / 100,
+        percentage: Math.round(Number(resultData.percentage) * 100) / 100,
         grade: resultData.grade || 'F',
-        questionResults: parseQuestionResults(resultData.question_results as unknown[] || []),
+        questionResults: parsedQuestionResults,
         violationStats: (resultData.statistics as unknown as { violationStats?: ViolationStats })?.violationStats,
-        statistics: (resultData.statistics as unknown as ExamResult['statistics']) || {
-          totalQuestions: examData.total_questions,
-          correctAnswers: 0,
-          incorrectAnswers: 0,
-          unanswered: 0,
-          partialCredit: 0,
-          byType: createDefaultByTypeStats(),
+        statistics: shouldUseCalculated ? calculatedStats : {
+          ...dbStats,
+          byType: dbStats.byType || createDefaultByTypeStats(),
         },
       };
 
