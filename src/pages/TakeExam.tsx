@@ -767,8 +767,13 @@ const TakeExam = () => {
     }
 
     const percentage = totalPoints > 0 ? (totalEarned / totalPoints) * 100 : 0;
-    const durationMs = Date.now() - startTimeRef.current;
-    const durationMins = Math.ceil(durationMs / 60000);
+    
+    // Calculate duration based on currentTimeLeftRef for accuracy (especially after restore)
+    // currentTimeLeftRef.current is in seconds, convert to minutes used
+    const examDurationMins = exam.duration || 60;
+    const timeLeftSeconds = currentTimeLeftRef.current || 0;
+    const timeLeftMins = Math.floor(timeLeftSeconds / 60);
+    const durationMins = Math.max(1, Math.min(examDurationMins, examDurationMins - timeLeftMins));
 
     return {
       examId: exam.id,
