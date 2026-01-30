@@ -324,10 +324,11 @@ async function gradeExamInBackground(
       duration,
     };
 
-    // Save to exam_results
+    // Save to exam_results with UPSERT to prevent duplicate constraint errors
+    // If a result already exists for this user+exam, update it instead
     const { error: saveError } = await supabase
       .from('exam_results')
-      .insert({
+      .upsert({
         user_id: userId,
         exam_id: examId,
         question_results: questionResults,
@@ -336,6 +337,9 @@ async function gradeExamInBackground(
         percentage,
         grade,
         duration,
+      }, {
+        onConflict: 'user_id,exam_id',
+        ignoreDuplicates: false, // Update if exists
       });
 
     if (saveError) {

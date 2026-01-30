@@ -814,9 +814,11 @@ const TakeExam = () => {
         violationStats: result.violationStats,
       };
 
+      // Use upsert to prevent duplicate constraint errors
+      // If a result already exists for this user+exam, it will be updated
       const { error: insertError } = await supabase
         .from('exam_results')
-        .insert([{
+        .upsert([{
           user_id: user.id,
           exam_id: result.examId,
           total_points: result.totalPoints,
@@ -826,7 +828,10 @@ const TakeExam = () => {
           duration: result.duration,
           question_results: JSON.parse(JSON.stringify(result.questionResults)),
           statistics: JSON.parse(JSON.stringify(statisticsWithViolations)),
-        }]);
+        }], {
+          onConflict: 'user_id,exam_id',
+          ignoreDuplicates: false, // Update if exists
+        });
 
       if (insertError) throw insertError;
       console.log('Exam result saved successfully');
