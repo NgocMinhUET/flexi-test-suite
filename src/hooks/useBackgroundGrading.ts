@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface GradingJob {
@@ -19,10 +19,16 @@ interface UseBackgroundGradingOptions {
 export function useBackgroundGrading(options: UseBackgroundGradingOptions = {}) {
   const [job, setJob] = useState<GradingJob | null>(null);
   const [isGrading, setIsGrading] = useState(false);
+  
+  // Guard to prevent calling onComplete/onError multiple times
+  const completedRef = useRef(false);
 
   // Subscribe to realtime updates for the grading job
   useEffect(() => {
     if (!job?.id) return;
+    
+    // Reset completed guard when job ID changes
+    completedRef.current = false;
 
     const channel = supabase
       .channel(`grading-job-${job.id}`)
@@ -48,10 +54,13 @@ export function useBackgroundGrading(options: UseBackgroundGradingOptions = {}) 
             errorMessage: data.error_message,
           });
 
-          if (data.status === 'completed') {
+          // Guard: Only call callbacks once per job completion
+          if (data.status === 'completed' && !completedRef.current) {
+            completedRef.current = true;
             setIsGrading(false);
             options.onComplete?.(data.result_data);
-          } else if (data.status === 'failed') {
+          } else if (data.status === 'failed' && !completedRef.current) {
+            completedRef.current = true;
             setIsGrading(false);
             options.onError?.(data.error_message || 'Grading failed');
           }
