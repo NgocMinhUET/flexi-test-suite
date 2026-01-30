@@ -78,7 +78,8 @@ export function useBackgroundGrading(options: UseBackgroundGradingOptions = {}) 
     examId: string,
     answers: Record<string, string | string[]>,
     questions: any[],
-    startTime: number
+    timeLeft: number, // seconds remaining
+    examDuration: number // total exam duration in minutes
   ) => {
     try {
       setIsGrading(true);
@@ -155,6 +156,10 @@ export function useBackgroundGrading(options: UseBackgroundGradingOptions = {}) 
       });
 
       // Call edge function to start background grading
+      // Calculate duration in minutes based on time used
+      const timeLeftMins = Math.floor(timeLeft / 60);
+      const durationMins = Math.max(1, Math.min(examDuration, examDuration - timeLeftMins));
+      
       const { error: invokeError } = await supabase.functions.invoke('grade-exam-background', {
         body: {
           jobId: jobData.id,
@@ -162,7 +167,7 @@ export function useBackgroundGrading(options: UseBackgroundGradingOptions = {}) 
           examId,
           answers,
           questions,
-          startTime,
+          durationMins, // Pass pre-calculated duration in minutes
         },
       });
 

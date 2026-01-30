@@ -36,7 +36,7 @@ interface GradeRequest {
   examId: string;
   answers: Record<string, string | string[]>;
   questions: any[];
-  startTime: number;
+  durationMins: number; // Pre-calculated duration in minutes
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -155,7 +155,7 @@ async function gradeExamInBackground(
   supabase: any,
   request: GradeRequest
 ): Promise<void> {
-  const { jobId, userId, examId, answers, questions, startTime } = request;
+  const { jobId, userId, examId, answers, questions, durationMins } = request;
   
   console.log(`Starting background grading for job ${jobId}`);
 
@@ -168,7 +168,7 @@ async function gradeExamInBackground(
         status: 'processing', 
         updated_at: new Date().toISOString(),
         // Store answers in result_data temporarily for recovery
-        result_data: { _recovery_answers: answers, _recovery_startTime: startTime }
+        result_data: { _recovery_answers: answers, _recovery_durationMins: durationMins }
       })
       .eq('id', jobId);
 
@@ -309,7 +309,8 @@ async function gradeExamInBackground(
       ? Math.round((totalEarnedPoints / totalPossiblePoints) * 10000) / 100 
       : 0;
     
-    const duration = Math.round((Date.now() - startTime) / 1000);
+    // Use pre-calculated duration in minutes (already calculated on frontend based on exam time - time left)
+    const duration = durationMins;
 
     // Grade scale matching TakeExam.tsx
     let grade = 'F';
