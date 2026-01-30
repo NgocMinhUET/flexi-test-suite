@@ -1105,7 +1105,8 @@ const TakeExam = () => {
           exam.id,
           answersObject,
           questionsForGrading,
-          startTimeRef.current
+          currentTimeLeftRef.current || 0, // timeLeft in seconds
+          exam.duration // examDuration in minutes
         );
         
         toast.info('Đang chấm bài...', {
