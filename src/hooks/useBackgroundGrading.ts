@@ -82,9 +82,51 @@ export function useBackgroundGrading(options: UseBackgroundGradingOptions = {}) 
   ) => {
     try {
       setIsGrading(true);
+      completedRef.current = false;
 
       // Count coding questions
       const codingCount = questions.filter(q => q.type === 'coding').length;
+
+      // Check for existing stuck job and clean it up first
+      const { data: existingJob } = await supabase
+        .from('grading_jobs')
+        .select('id, status, updated_at')
+        .eq('user_id', userId)
+        .eq('exam_id', examId)
+        .in('status', ['pending', 'processing'])
+        .maybeSingle();
+
+      if (existingJob) {
+        const updatedAt = new Date(existingJob.updated_at).getTime();
+        const now = Date.now();
+        const stuckThreshold = 5 * 60 * 1000; // 5 minutes
+        
+        if (now - updatedAt > stuckThreshold) {
+          // Job is stuck, mark it as failed so we can create a new one
+          console.log(`Found stuck job ${existingJob.id}, marking as failed`);
+          await supabase
+            .from('grading_jobs')
+            .update({ 
+              status: 'failed', 
+              error_message: 'Job timed out, retrying with new job',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingJob.id);
+        } else {
+          // Job is still recent, subscribe to it instead of creating new one
+          console.log(`Found existing job ${existingJob.id}, subscribing to it`);
+          setJob({
+            id: existingJob.id,
+            status: existingJob.status as 'pending' | 'processing',
+            progress: 0,
+            totalQuestions: questions.length,
+            gradedQuestions: 0,
+            resultData: null,
+            errorMessage: null,
+          });
+          return existingJob.id;
+        }
+      }
 
       // Create grading job record
       const { data: jobData, error: insertError } = await supabase

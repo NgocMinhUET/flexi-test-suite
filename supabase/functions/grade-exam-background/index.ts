@@ -159,11 +159,17 @@ async function gradeExamInBackground(
   
   console.log(`Starting background grading for job ${jobId}`);
 
+  // IMPORTANT: Save answers to grading job for recovery purposes
+  // This allows retrying if the job fails midway
   try {
-    // Update job status to processing
     await supabase
       .from('grading_jobs')
-      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .update({ 
+        status: 'processing', 
+        updated_at: new Date().toISOString(),
+        // Store answers in result_data temporarily for recovery
+        result_data: { _recovery_answers: answers, _recovery_startTime: startTime }
+      })
       .eq('id', jobId);
 
     const codingQuestions = questions.filter((q: any) => q.type === 'coding');
@@ -369,14 +375,19 @@ async function gradeExamInBackground(
   } catch (error) {
     console.error(`Grading job ${jobId} failed:`, error);
     
+    // Mark job as failed but KEEP the recovery data (answers) for retry
     await supabase
       .from('grading_jobs')
       .update({ 
         status: 'failed', 
         error_message: String(error),
         updated_at: new Date().toISOString()
+        // Note: Don't clear result_data - it contains recovery answers
       })
       .eq('id', jobId);
+    
+    // IMPORTANT: Do NOT delete the exam draft when grading fails
+    // This allows the student to retry submission
   }
 }
 
