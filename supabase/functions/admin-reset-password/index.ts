@@ -91,25 +91,42 @@ serve(async (req) => {
     // Create admin client with service role key
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Find user by email
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    // Find user by email - use pagination to search all users
+    let targetUser = null;
+    let page = 1;
+    const perPage = 1000;
     
-    if (listError) {
-      console.error('Error listing users:', listError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to find user' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    while (!targetUser) {
+      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage
+      });
+      
+      if (listError) {
+        console.error('Error listing users:', listError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to find user' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    const targetUser = users.users.find(u => u.email === email);
+      targetUser = usersData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (usersData.users.length < perPage) {
+        break; // No more pages
+      }
+      page++;
+    }
     
     if (!targetUser) {
+      console.log(`User not found in auth: ${email}`);
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`Found user: ${targetUser.id}, email: ${targetUser.email}`);
 
     // Update user password
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
