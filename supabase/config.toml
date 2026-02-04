@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.grade-exam-background]
 verify_jwt = true
+
+[functions.admin-reset-password]
+verify_jwt = true
