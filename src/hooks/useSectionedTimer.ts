@@ -42,7 +42,7 @@ export const useSectionedTimer = ({
   const [sectionTimes, setSectionTimes] = useState<Record<string, number>>(initializeSectionTimes);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasCalledTimeUp = useRef(false);
 
   const currentSection = sections[currentSectionIndex];

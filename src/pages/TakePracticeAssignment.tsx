@@ -55,7 +55,7 @@ const TakePracticeAssignment = () => {
   const [isStarted, setIsStarted] = useState(false);
   
   const startTimeRef = useRef<number>(Date.now());
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
 
   // Timer effect
