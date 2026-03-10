@@ -842,22 +842,74 @@ const TakeExam = () => {
   };
 
   const handleTimeUp = useCallback(async () => {
-    if (!exam) return;
+    if (!exam || !user) return;
     
     toast.error('Hết thời gian làm bài!', {
       description: 'Bài thi của bạn sẽ được nộp tự động.',
     });
     
-    const result = await calculateResults();
-    if (result) {
-      await saveResultToDatabase(result);
-      setTimeout(() => {
-        navigate(`/exam/${exam.id}/result`, {
-          state: { result, questions: exam.questions },
-        });
-      }, 2000);
+    // Check if exam has many coding questions - use background grading
+    const codingQuestions = exam.questions.filter(q => q.type === 'coding');
+    const BACKGROUND_GRADING_THRESHOLD = 2;
+    
+    if (codingQuestions.length >= BACKGROUND_GRADING_THRESHOLD) {
+      setIsSubmitting(true);
+      setShowBackgroundGradingUI(true);
+      exitFullscreen();
+      
+      const answersObject: Record<string, string | string[]> = {};
+      answers.forEach((answer, questionId) => {
+        answersObject[questionId.toString()] = answer.answer;
+      });
+      
+      const questionsForGrading = exam.questions.map(q => ({
+        id: q.id,
+        type: q.type,
+        points: q.points,
+        correctAnswer: q.correctAnswer,
+        testCases: q.coding?.testCases || [],
+        language: q.coding?.defaultLanguage || q.coding?.languages?.[0] || 'python',
+        scoringMethod: q.coding?.scoringMethod || 'proportional',
+        coding: q.coding,
+      }));
+      
+      try {
+        await startBackgroundGrading(
+          user.id,
+          exam.id,
+          answersObject,
+          questionsForGrading,
+          0, // no time left
+          exam.duration
+        );
+      } catch (err) {
+        console.error('Background grading failed on time up:', err);
+        // Fallback to regular grading
+        const result = await calculateResults();
+        if (result) {
+          await saveResultToDatabase(result);
+          await clearDraft();
+          navigate(`/exam/${exam.id}/result`, {
+            state: { result, questions: exam.questions },
+          });
+        }
+        setIsSubmitting(false);
+        setShowBackgroundGradingUI(false);
+      }
+    } else {
+      exitFullscreen();
+      const result = await calculateResults();
+      if (result) {
+        await saveResultToDatabase(result);
+        await clearDraft();
+        setTimeout(() => {
+          navigate(`/exam/${exam.id}/result`, {
+            state: { result, questions: exam.questions },
+          });
+        }, 2000);
+      }
     }
-  }, [navigate, exam, calculateResults]);
+  }, [navigate, exam, user, calculateResults, answers, startBackgroundGrading, clearDraft, exitFullscreen]);
 
   const { formattedTime, isWarning, isCritical, timeLeft } = useExamTimer({
     initialMinutes: exam?.duration || 60,
