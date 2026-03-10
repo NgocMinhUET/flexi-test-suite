@@ -69,8 +69,8 @@ export const useExamAutoSave = ({
   const [hasDraft, setHasDraft] = useState(false);
   const [draftData, setDraftData] = useState<ExamDraft | null>(null);
   
-  const localSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const cloudSyncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const localSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudSyncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSavedDataRef = useRef<string>('');
 
   const getLocalStorageKey = useCallback(() => {
