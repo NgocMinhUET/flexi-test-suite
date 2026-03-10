@@ -203,7 +203,7 @@ const StudentExams = () => {
                 <Code2 className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold text-foreground">
-                Flexi<span className="text-primary">Test</span>
+                Exam<span className="text-primary">Pro</span>
               </span>
             </Link>
 
