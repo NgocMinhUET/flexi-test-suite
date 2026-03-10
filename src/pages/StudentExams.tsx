@@ -138,7 +138,7 @@ const StudentExams = () => {
       // Process contest assignments (use contest start/end time)
       // Show exams from active contests only
       const processedContestAssignments: AssignedExam[] = (contestAssignments || [])
-        .filter(a => a.exam && a.contest && (a.contest as any).status === 'active')
+        .filter(a => a.exam && a.contest && ['active', 'completed'].includes((a.contest as any).status))
         .map(a => ({
           id: a.id,
           exam_id: a.assigned_exam_id!,

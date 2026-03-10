@@ -540,7 +540,17 @@ const TakeExam = () => {
         unansweredCount++;
       } else {
         if (question.type === 'multiple-choice') {
-          isCorrect = userAnswer === question.correctAnswer;
+          if (Array.isArray(question.correctAnswer)) {
+            // Multi-select MCQ
+            const userAnswerArray = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
+            const correctArray = question.correctAnswer;
+            isCorrect = correctArray.length === userAnswerArray.length &&
+              correctArray.every((a: string) => userAnswerArray.includes(a));
+          } else {
+            // Single-select MCQ
+            const normalizedUser = Array.isArray(userAnswer) ? userAnswer[0] : userAnswer;
+            isCorrect = normalizedUser === question.correctAnswer;
+          }
           earnedPoints = isCorrect ? question.points : 0;
         } else if (question.type === 'short-answer') {
           const normalizedUser = String(userAnswer).toLowerCase().trim().replace(/\s+/g, '');
