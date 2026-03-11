@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Code2, Loader2, CheckCircle, AlertCircle, CreditCard, Building2, Copy, Upload, Image } from 'lucide-react';
 import { toast } from 'sonner';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function ContestRegistration() {
   const { contestId, inviteCode: urlInviteCode } = useParams<{ contestId: string; inviteCode?: string }>();
