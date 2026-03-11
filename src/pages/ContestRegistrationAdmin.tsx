@@ -187,7 +187,6 @@ export default function ContestRegistrationAdmin() {
                             <TableCell className="text-sm">
                               {new Date(reg.registered_at).toLocaleDateString('vi-VN')}
                             </TableCell>
-                            </TableCell>
                             <TableCell>
                               {reg.payment_status === 'pending' && (
                                 <div className="flex gap-1">
