@@ -179,6 +179,12 @@ export default function ContestRegistration() {
   }
 
   if (existingReg) {
+    // Auto-redirect to exams if already paid/free
+    if (existingReg.payment_status === 'paid' || existingReg.payment_status === 'free') {
+      navigate('/my-exams', { replace: true });
+      return null;
+    }
+
     const paymentLabel: Record<string, string> = {
       pending: 'Chờ thanh toán',
       paid: 'Đã thanh toán',
