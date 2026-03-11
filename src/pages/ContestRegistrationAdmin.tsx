@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContestRegistrations, useApproveRegistration, useRejectRegistration, useContestInviteCodes, useCreateInviteCode, useDeleteInviteCode } from '@/hooks/useContestRegistrations';
