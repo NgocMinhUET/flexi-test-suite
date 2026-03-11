@@ -324,6 +324,85 @@ export type Database = {
           },
         ]
       }
+      contest_registrations: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bank_transfer_note: string | null
+          bank_transfer_proof: string | null
+          contest_id: string
+          currency: string
+          id: string
+          invite_code_id: string
+          organization_id: string
+          payment_amount: number
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          registered_at: string
+          stripe_payment_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_transfer_note?: string | null
+          bank_transfer_proof?: string | null
+          contest_id: string
+          currency?: string
+          id?: string
+          invite_code_id: string
+          organization_id: string
+          payment_amount?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          registered_at?: string
+          stripe_payment_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bank_transfer_note?: string | null
+          bank_transfer_proof?: string | null
+          contest_id?: string
+          currency?: string
+          id?: string
+          invite_code_id?: string
+          organization_id?: string
+          payment_amount?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          registered_at?: string
+          stripe_payment_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_registrations_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_registrations_invite_code_id_fkey"
+            columns: ["invite_code_id"]
+            isOneToOne: false
+            referencedRelation: "organization_contest_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_registrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contests: {
         Row: {
           created_at: string
@@ -1291,6 +1370,105 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_contest_codes: {
+        Row: {
+          contest_id: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          invite_code: string
+          is_active: boolean
+          max_registrations: number | null
+          organization_id: string
+          registration_fee: number
+          updated_at: string
+        }
+        Insert: {
+          contest_id: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          invite_code: string
+          is_active?: boolean
+          max_registrations?: number | null
+          organization_id: string
+          registration_fee?: number
+          updated_at?: string
+        }
+        Update: {
+          contest_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          invite_code?: string
+          is_active?: boolean
+          max_registrations?: number | null
+          organization_id?: string
+          registration_fee?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_contest_codes_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_contest_codes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          address: string | null
+          code: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          code: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          code?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       practice_assignment_attempts: {
         Row: {
           analysis: Json | null
@@ -2166,6 +2344,8 @@ export type Database = {
         | "SPEAKING_READ"
         | "SPEAKING_DESCRIBE"
         | "SPEAKING_ANSWER"
+      payment_method: "stripe" | "bank_transfer" | "free"
+      payment_status: "pending" | "paid" | "failed" | "refunded" | "free"
       question_status: "draft" | "review" | "approved" | "published"
       question_type:
         | "MCQ_SINGLE"
@@ -2328,6 +2508,8 @@ export const Constants = {
         "SPEAKING_DESCRIBE",
         "SPEAKING_ANSWER",
       ],
+      payment_method: ["stripe", "bank_transfer", "free"],
+      payment_status: ["pending", "paid", "failed", "refunded", "free"],
       question_status: ["draft", "review", "approved", "published"],
       question_type: [
         "MCQ_SINGLE",

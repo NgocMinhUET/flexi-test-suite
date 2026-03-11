@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3, Pencil, Ticket } from 'lucide-react';
 import { AddExamsToContestDialog } from '@/components/contest/AddExamsToContestDialog';
 import { AddParticipantsDialog } from '@/components/contest/AddParticipantsDialog';
 import { GenerateExamsDialog } from '@/components/contest/GenerateExamsDialog';
@@ -188,6 +188,10 @@ export default function ContestDetail() {
                   Sửa
                 </Button>
               )}
+              <Button variant="outline" onClick={() => navigate(`/contests/${id}/registrations`)}>
+                <Ticket className="h-4 w-4 mr-2" />
+                Đăng ký & Thanh toán
+              </Button>
               <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Xóa
