@@ -150,8 +150,8 @@ export default function ContestRegistrationAdmin() {
                         <TableHead>Đơn vị</TableHead>
                         <TableHead className="text-right">Số tiền</TableHead>
                         <TableHead>Trạng thái</TableHead>
+                        <TableHead>Minh chứng</TableHead>
                         <TableHead>Ngày ĐK</TableHead>
-                        <TableHead className="w-[120px]">Thao tác</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
