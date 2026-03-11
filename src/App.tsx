@@ -45,6 +45,10 @@ const ClassManagement = lazyWithRetry(() => import("./pages/ClassManagement"));
 const ClassDetail = lazyWithRetry(() => import("./pages/ClassDetail"));
 const ClassProgressReport = lazyWithRetry(() => import("./pages/ClassProgressReport"));
 const MyClasses = lazyWithRetry(() => import("./pages/MyClasses"));
+const OrganizationManagement = lazyWithRetry(() => import("./pages/OrganizationManagement"));
+const ContestRegistration = lazyWithRetry(() => import("./pages/ContestRegistration"));
+const ContestRegistrationAdmin = lazyWithRetry(() => import("./pages/ContestRegistrationAdmin"));
+const RevenueReport = lazyWithRetry(() => import("./pages/RevenueReport"));
 
 // Language Module (Independent)
 const LanguageDashboard = lazyWithRetry(() => import("./pages/language/LanguageDashboard"));
