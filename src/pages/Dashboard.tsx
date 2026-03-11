@@ -238,7 +238,7 @@ const Dashboard = () => {
 
         {/* Quick Links */}
         <section className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
             <QuickLinkCard
               icon={ClipboardCheck}
               title="Đề thi chính thức"
@@ -275,10 +275,24 @@ const Dashboard = () => {
               onClick={() => navigate('/classes')}
             />
             <QuickLinkCard
+              icon={Building2}
+              title="Đơn vị"
+              description="Trường / Trung tâm"
+              variant="amber"
+              onClick={() => navigate('/organizations')}
+            />
+            <QuickLinkCard
+              icon={TrendingUp}
+              title="Doanh thu"
+              description="Báo cáo & xuất CSV"
+              variant="success"
+              onClick={() => navigate('/revenue')}
+            />
+            <QuickLinkCard
               icon={Languages}
               title="Thi Ngoại ngữ"
               description="Module thi ngoại ngữ"
-              variant="success"
+              variant="warning"
               onClick={() => navigate('/language')}
             />
           </div>
