@@ -61,7 +61,7 @@ export default function ContestRegistration() {
 
   // Lookup invite code
   const handleLookupCode = async () => {
-    if (!inviteCode.trim() || !contestId) return;
+    if (!inviteCode.trim() || !normalizedContestId) return;
     
     const { data, error } = await supabase
       .from('organization_contest_codes')
@@ -76,7 +76,7 @@ export default function ContestRegistration() {
     }
 
     // Validate contest match in JS to avoid RLS issues
-    if (data.contest_id !== contestId) {
+    if (String(data.contest_id).trim().toLowerCase() !== normalizedContestId) {
       toast.error('Mã mời này thuộc cuộc thi khác, không phải cuộc thi hiện tại');
       return;
     }
