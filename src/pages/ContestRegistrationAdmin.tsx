@@ -336,6 +336,18 @@ export default function ContestRegistrationAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Proof View Dialog */}
+      <Dialog open={!!proofViewUrl} onOpenChange={() => setProofViewUrl(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Minh chứng chuyển khoản</DialogTitle>
+          </DialogHeader>
+          {proofViewUrl && (
+            <img src={proofViewUrl} alt="Minh chứng chuyển khoản" className="w-full rounded-lg max-h-[70vh] object-contain" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
