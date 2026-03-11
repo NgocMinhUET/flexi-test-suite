@@ -173,7 +173,7 @@ export default function ContestRegistrationAdmin() {
                               {reg.payment_status === 'pending' && (
                                 <div className="flex gap-1">
                                   <Button
-                                    variant="ghost" size="icon" className="h-8 w-8 text-green-600"
+                                    variant="ghost" size="icon" className="h-8 w-8 text-success"
                                     onClick={() => approveReg.mutate({ registrationId: reg.id, contestId: contestId! })}
                                     disabled={approveReg.isPending}
                                   >

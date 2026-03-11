@@ -298,7 +298,7 @@ export default function ContestRegistration() {
 
           {step === 'done' && (
             <div className="space-y-4 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+              <CheckCircle className="w-16 h-16 text-success mx-auto" />
               <p className="font-medium text-lg">Đăng ký thành công!</p>
               <p className="text-muted-foreground">Bạn có thể thi ngay khi cuộc thi bắt đầu</p>
               <Button className="w-full" onClick={() => navigate('/my-exams')}>
