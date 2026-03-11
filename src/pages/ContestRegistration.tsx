@@ -281,11 +281,6 @@ export default function ContestRegistration() {
                 </div>
               </>
             )}
-            {(existingReg.payment_status === 'paid' || existingReg.payment_status === 'free') && (
-              <Button className="w-full" onClick={() => navigate('/my-exams')}>
-                Vào trang thi
-              </Button>
-            )}
           </CardContent>
         </Card>
       </div>
