@@ -144,9 +144,14 @@ export default function ContestRegistration() {
 
   const bankInfo = {
     bank: 'Vietcombank',
+    bankBin: '970436', // Vietcombank BIN for VietQR
     account: '0123456789',
     name: 'NGUYEN VAN A',
     content: `THIPRO ${inviteCode.toUpperCase()} ${user?.email || ''}`,
+  };
+
+  const buildVietQRUrl = (amount: number, memo: string) => {
+    return `https://img.vietqr.io/image/${bankInfo.bankBin}-${bankInfo.account}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(bankInfo.name)}`;
   };
 
   if (authLoading) {
