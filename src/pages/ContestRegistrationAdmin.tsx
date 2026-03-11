@@ -44,6 +44,7 @@ export default function ContestRegistrationAdmin() {
   const deleteCode = useDeleteInviteCode();
 
   const [createCodeOpen, setCreateCodeOpen] = useState(false);
+  const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
   const [codeForm, setCodeForm] = useState({
     organization_id: '', invite_code: '', registration_fee: '0', max_registrations: '',
   });
