@@ -46,6 +46,8 @@ export default function ContestRegistrationAdmin() {
 
   const [createCodeOpen, setCreateCodeOpen] = useState(false);
   const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<{ url: string; code: string; orgName: string; fee: string } | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
   const [codeForm, setCodeForm] = useState({
     organization_id: '', invite_code: '', registration_fee: '0', max_registrations: '',
   });
