@@ -76,7 +76,6 @@ export default function ContestRegistrationAdmin() {
     toast.success('Đã copy link đăng ký');
   };
 
-  const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
 
   const pendingCount = registrations?.filter(r => r.payment_status === 'pending').length || 0;
   const paidCount = registrations?.filter(r => r.payment_status === 'paid' || r.payment_status === 'free').length || 0;
