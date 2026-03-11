@@ -404,6 +404,16 @@ export default function ContestRegistration() {
                 </div>
               </div>
 
+              {/* VietQR */}
+              <div className="flex justify-center">
+                <img
+                  src={buildVietQRUrl(Number(codeInfo?.registration_fee || 0), bankInfo.content)}
+                  alt="Mã QR chuyển khoản"
+                  className="w-56 h-auto rounded-lg border"
+                />
+              </div>
+              <p className="text-xs text-center text-muted-foreground">Quét mã QR bằng app ngân hàng để chuyển khoản</p>
+
               {/* Upload proof */}
               <div className="space-y-2">
                 <Label className="text-sm">Upload minh chứng chuyển khoản (không bắt buộc)</Label>
