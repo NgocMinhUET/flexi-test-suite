@@ -188,6 +188,10 @@ export default function ContestDetail() {
                   Sửa
                 </Button>
               )}
+              <Button variant="outline" onClick={() => navigate(`/contests/${id}/registrations`)}>
+                <Ticket className="h-4 w-4 mr-2" />
+                Đăng ký & Thanh toán
+              </Button>
               <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Xóa
