@@ -268,6 +268,17 @@ export default function ContestRegistrationAdmin() {
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyRegistrationLink(code.invite_code)}>
                                 <Copy className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost" size="icon" className="h-8 w-8"
+                                onClick={() => setQrCodeData({
+                                  url: `${window.location.origin}/register/contest/${contestId}/${code.invite_code}`,
+                                  code: code.invite_code,
+                                  orgName: code.organization_name || '',
+                                  fee: code.registration_fee === 0 ? 'Miễn phí' : `${Number(code.registration_fee).toLocaleString('vi-VN')} ${code.currency}`,
+                                })}
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteCode.mutate(code.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
