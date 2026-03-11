@@ -19,6 +19,9 @@ export default function ContestRegistration() {
   const { user, isLoading: authLoading } = useAuth();
   const registerMutation = useRegisterForContest();
 
+  const rawContestId = contestId ?? '';
+  const normalizedContestId = (rawContestId.match(/[0-9a-fA-F-]{36}/)?.[0] ?? rawContestId).trim().toLowerCase();
+
   const [inviteCode, setInviteCode] = useState('');
   const [step, setStep] = useState<'code' | 'confirm' | 'payment' | 'done'>('code');
   const [codeInfo, setCodeInfo] = useState<any>(null);
@@ -26,18 +29,18 @@ export default function ContestRegistration() {
 
   // Fetch contest info
   const { data: contest } = useQuery({
-    queryKey: ['contest-public', contestId],
+    queryKey: ['contest-public', normalizedContestId],
     queryFn: async () => {
-      if (!contestId) return null;
+      if (!normalizedContestId) return null;
       const { data, error } = await supabase
         .from('contests')
         .select('id, name, description, subject, start_time, end_time, status')
-        .eq('id', contestId)
+        .eq('id', normalizedContestId)
         .single();
       if (error) return null;
       return data;
     },
-    enabled: !!contestId,
+    enabled: !!normalizedContestId,
   });
 
   // Check if already registered
