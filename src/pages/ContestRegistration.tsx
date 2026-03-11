@@ -122,7 +122,7 @@ export default function ContestRegistration() {
             <CardDescription>Bạn cần đăng nhập để đăng ký tham gia cuộc thi</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full" onClick={() => navigate(`/auth?redirect=/register/contest/${contestId || ''}`)}>
+            <Button className="w-full" onClick={() => navigate(`/auth?redirect=/register/contest/${normalizedContestId || ''}`)}>
               Đăng nhập / Tạo tài khoản
             </Button>
           </CardContent>
