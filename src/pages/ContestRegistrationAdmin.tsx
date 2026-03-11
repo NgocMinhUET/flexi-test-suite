@@ -362,6 +362,62 @@ export default function ContestRegistrationAdmin() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* QR Code Dialog */}
+      <Dialog open={!!qrCodeData} onOpenChange={() => setQrCodeData(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mã QR đăng ký</DialogTitle>
+          </DialogHeader>
+          {qrCodeData && (
+            <div className="space-y-4">
+              <div ref={qrRef} className="bg-white rounded-xl p-6 space-y-4 text-center">
+                <QRCodeCanvas
+                  value={qrCodeData.url}
+                  size={240}
+                  level="H"
+                  includeMargin
+                  style={{ margin: '0 auto' }}
+                />
+                <div className="space-y-1">
+                  <p className="text-lg font-bold text-gray-900">Mã mời: {qrCodeData.code}</p>
+                  <p className="text-sm text-gray-600">{qrCodeData.orgName}</p>
+                  <p className="text-sm text-gray-500">Lệ phí: {qrCodeData.fee}</p>
+                </div>
+                <p className="text-xs text-gray-400 break-all">{qrCodeData.url}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(qrCodeData.url);
+                    toast.success('Đã copy link');
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy link
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    const canvas = qrRef.current?.querySelector('canvas');
+                    if (!canvas) return;
+                    const url = canvas.toDataURL('image/png');
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `QR-${qrCodeData.code}.png`;
+                    a.click();
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Tải QR
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
