@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3, Pencil } from 'lucide-react';
+import { ArrowLeft, Users, FileText, Shuffle, Play, CheckCircle, Trash2, Loader2, Wand2, BarChart3, Pencil, Ticket } from 'lucide-react';
 import { AddExamsToContestDialog } from '@/components/contest/AddExamsToContestDialog';
 import { AddParticipantsDialog } from '@/components/contest/AddParticipantsDialog';
 import { GenerateExamsDialog } from '@/components/contest/GenerateExamsDialog';
