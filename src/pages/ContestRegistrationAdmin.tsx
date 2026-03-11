@@ -168,8 +168,24 @@ export default function ContestRegistrationAdmin() {
                             <TableCell>
                               <Badge variant={status.variant}>{status.label}</Badge>
                             </TableCell>
+                            <TableCell>
+                              {reg.bank_transfer_proof ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-primary"
+                                  onClick={() => setProofViewUrl(reg.bank_transfer_proof)}
+                                >
+                                  <Image className="h-4 w-4 mr-1" />
+                                  Xem
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-sm">
                               {new Date(reg.registered_at).toLocaleDateString('vi-VN')}
+                            </TableCell>
                             </TableCell>
                             <TableCell>
                               {reg.payment_status === 'pending' && (
