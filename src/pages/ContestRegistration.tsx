@@ -58,21 +58,31 @@ export default function ContestRegistration() {
 
   // Lookup invite code
   const handleLookupCode = async () => {
-    if (!inviteCode.trim()) return;
+    if (!inviteCode.trim() || !contestId) return;
+    
+    // Query directly with contest_id filter to avoid mismatch
     const { data, error } = await supabase
       .from('organization_contest_codes')
       .select('*, organization:organizations(name)')
       .eq('invite_code', inviteCode.trim().toUpperCase())
+      .eq('contest_id', contestId)
       .eq('is_active', true)
       .maybeSingle();
 
     if (error || !data) {
-      toast.error('Mã mời không hợp lệ hoặc đã hết hạn');
-      return;
-    }
-
-    if (contestId && data.contest_id !== contestId) {
-      toast.error('Mã mời không thuộc cuộc thi này');
+      // Also try without contest_id to give better error message
+      const { data: anyCode } = await supabase
+        .from('organization_contest_codes')
+        .select('contest_id')
+        .eq('invite_code', inviteCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (anyCode) {
+        toast.error('Mã mời này thuộc cuộc thi khác, không phải cuộc thi hiện tại');
+      } else {
+        toast.error('Mã mời không hợp lệ hoặc đã hết hạn');
+      }
       return;
     }
 
