@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterForContest } from '@/hooks/useContestRegistrations';
@@ -19,6 +19,9 @@ export default function ContestRegistration() {
   const { user, isLoading: authLoading } = useAuth();
   const registerMutation = useRegisterForContest();
 
+  const rawContestId = contestId ?? '';
+  const normalizedContestId = (rawContestId.match(/[0-9a-fA-F-]{36}/)?.[0] ?? rawContestId).trim().toLowerCase();
+
   const [inviteCode, setInviteCode] = useState('');
   const [step, setStep] = useState<'code' | 'confirm' | 'payment' | 'done'>('code');
   const [codeInfo, setCodeInfo] = useState<any>(null);
@@ -26,39 +29,39 @@ export default function ContestRegistration() {
 
   // Fetch contest info
   const { data: contest } = useQuery({
-    queryKey: ['contest-public', contestId],
+    queryKey: ['contest-public', normalizedContestId],
     queryFn: async () => {
-      if (!contestId) return null;
+      if (!normalizedContestId) return null;
       const { data, error } = await supabase
         .from('contests')
         .select('id, name, description, subject, start_time, end_time, status')
-        .eq('id', contestId)
+        .eq('id', normalizedContestId)
         .single();
       if (error) return null;
       return data;
     },
-    enabled: !!contestId,
+    enabled: !!normalizedContestId,
   });
 
   // Check if already registered
   const { data: existingReg } = useQuery({
-    queryKey: ['my-registration', contestId, user?.id],
+    queryKey: ['my-registration', normalizedContestId, user?.id],
     queryFn: async () => {
-      if (!contestId || !user?.id) return null;
+      if (!normalizedContestId || !user?.id) return null;
       const { data } = await supabase
         .from('contest_registrations')
         .select('*, organization:organizations(name)')
-        .eq('contest_id', contestId)
+        .eq('contest_id', normalizedContestId)
         .eq('user_id', user.id)
         .maybeSingle();
       return data;
     },
-    enabled: !!contestId && !!user?.id,
+    enabled: !!normalizedContestId && !!user?.id,
   });
 
   // Lookup invite code
   const handleLookupCode = async () => {
-    if (!inviteCode.trim() || !contestId) return;
+    if (!inviteCode.trim() || !normalizedContestId) return;
     
     const { data, error } = await supabase
       .from('organization_contest_codes')
@@ -73,7 +76,7 @@ export default function ContestRegistration() {
     }
 
     // Validate contest match in JS to avoid RLS issues
-    if (data.contest_id !== contestId) {
+    if (String(data.contest_id).trim().toLowerCase() !== normalizedContestId) {
       toast.error('Mã mời này thuộc cuộc thi khác, không phải cuộc thi hiện tại');
       return;
     }
@@ -119,7 +122,7 @@ export default function ContestRegistration() {
             <CardDescription>Bạn cần đăng nhập để đăng ký tham gia cuộc thi</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full" onClick={() => navigate(`/auth?redirect=/register/contest/${contestId || ''}`)}>
+            <Button className="w-full" onClick={() => navigate(`/auth?redirect=/register/contest/${normalizedContestId || ''}`)}>
               Đăng nhập / Tạo tài khoản
             </Button>
           </CardContent>
