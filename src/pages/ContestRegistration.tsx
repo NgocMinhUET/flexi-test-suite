@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Code2, Loader2, CheckCircle, AlertCircle, CreditCard, Building2, Copy, Upload, Image } from 'lucide-react';
 import { toast } from 'sonner';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function ContestRegistration() {
   const { contestId, inviteCode: urlInviteCode } = useParams<{ contestId: string; inviteCode?: string }>();
@@ -143,9 +144,14 @@ export default function ContestRegistration() {
 
   const bankInfo = {
     bank: 'Vietcombank',
+    bankBin: '970436', // Vietcombank BIN for VietQR
     account: '0123456789',
     name: 'NGUYEN VAN A',
     content: `THIPRO ${inviteCode.toUpperCase()} ${user?.email || ''}`,
+  };
+
+  const buildVietQRUrl = (amount: number, memo: string) => {
+    return `https://img.vietqr.io/image/${bankInfo.bankBin}-${bankInfo.account}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(bankInfo.name)}`;
   };
 
   if (authLoading) {
@@ -234,6 +240,16 @@ export default function ContestRegistration() {
                     <p>Số tiền: <strong>{Number(existingReg.payment_amount).toLocaleString('vi-VN')} {existingReg.currency}</strong></p>
                   </div>
                 </div>
+
+                {/* VietQR */}
+                <div className="flex justify-center">
+                  <img
+                    src={buildVietQRUrl(Number(existingReg.payment_amount), bankInfo.content)}
+                    alt="Mã QR chuyển khoản"
+                    className="w-56 h-auto rounded-lg border"
+                  />
+                </div>
+                <p className="text-xs text-center text-muted-foreground">Quét mã QR bằng app ngân hàng để chuyển khoản</p>
 
                 {/* Upload proof section */}
                 <div className="space-y-2">
@@ -387,6 +403,16 @@ export default function ContestRegistration() {
                   </span>
                 </div>
               </div>
+
+              {/* VietQR */}
+              <div className="flex justify-center">
+                <img
+                  src={buildVietQRUrl(Number(codeInfo?.registration_fee || 0), bankInfo.content)}
+                  alt="Mã QR chuyển khoản"
+                  className="w-56 h-auto rounded-lg border"
+                />
+              </div>
+              <p className="text-xs text-center text-muted-foreground">Quét mã QR bằng app ngân hàng để chuyển khoản</p>
 
               {/* Upload proof */}
               <div className="space-y-2">
