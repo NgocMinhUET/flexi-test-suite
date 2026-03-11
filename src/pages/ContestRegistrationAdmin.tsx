@@ -177,7 +177,7 @@ export default function ContestRegistrationAdmin() {
                                   className="text-primary"
                                   onClick={() => setProofViewUrl(reg.bank_transfer_proof)}
                                 >
-                                  <Image className="h-4 w-4 mr-1" />
+                                  <ImageIcon className="h-4 w-4 mr-1" />
                                   Xem
                                 </Button>
                               ) : (
