@@ -70,10 +70,12 @@ export default function ContestRegistrationAdmin() {
   };
 
   const copyRegistrationLink = (code: string) => {
-    const url = `${window.location.origin}/register/contest/${contestId}`;
-    navigator.clipboard.writeText(`${url} (Mã mời: ${code})`);
+    const url = `${window.location.origin}/register/contest/${contestId}/${code}`;
+    navigator.clipboard.writeText(url);
     toast.success('Đã copy link đăng ký');
   };
+
+  const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
 
   const pendingCount = registrations?.filter(r => r.payment_status === 'pending').length || 0;
   const paidCount = registrations?.filter(r => r.payment_status === 'paid' || r.payment_status === 'free').length || 0;

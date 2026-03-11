@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterForContest } from '@/hooks/useContestRegistrations';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -10,22 +11,25 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Code2, Loader2, CheckCircle, AlertCircle, CreditCard, Building2, Copy } from 'lucide-react';
+import { Code2, Loader2, CheckCircle, AlertCircle, CreditCard, Building2, Copy, Upload, Image } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ContestRegistration() {
-  const { contestId } = useParams<{ contestId: string }>();
+  const { contestId, inviteCode: urlInviteCode } = useParams<{ contestId: string; inviteCode?: string }>();
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const registerMutation = useRegisterForContest();
+  const { uploadImage, isUploading } = useImageUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const rawContestId = contestId ?? '';
-  const normalizedContestId = (rawContestId.match(/[0-9a-fA-F-]{36}/)?.[0] ?? rawContestId).trim().toLowerCase();
+  const normalizedContestId = contestId?.trim() || '';
 
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(urlInviteCode?.toUpperCase() || '');
   const [step, setStep] = useState<'code' | 'confirm' | 'payment' | 'done'>('code');
   const [codeInfo, setCodeInfo] = useState<any>(null);
   const [registrationResult, setRegistrationResult] = useState<any>(null);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [autoLookupDone, setAutoLookupDone] = useState(false);
 
   // Fetch contest info
   const { data: contest } = useQuery({
@@ -44,7 +48,7 @@ export default function ContestRegistration() {
   });
 
   // Check if already registered
-  const { data: existingReg } = useQuery({
+  const { data: existingReg, isLoading: existingRegLoading } = useQuery({
     queryKey: ['my-registration', normalizedContestId, user?.id],
     queryFn: async () => {
       if (!normalizedContestId || !user?.id) return null;
@@ -59,14 +63,23 @@ export default function ContestRegistration() {
     enabled: !!normalizedContestId && !!user?.id,
   });
 
+  // Auto-lookup invite code from URL
+  useEffect(() => {
+    if (urlInviteCode && !autoLookupDone && user && !existingRegLoading && !existingReg) {
+      setAutoLookupDone(true);
+      handleLookupCode(urlInviteCode.toUpperCase());
+    }
+  }, [urlInviteCode, autoLookupDone, user, existingRegLoading, existingReg]);
+
   // Lookup invite code
-  const handleLookupCode = async () => {
-    if (!inviteCode.trim() || !normalizedContestId) return;
-    
+  const handleLookupCode = async (code?: string) => {
+    const codeToLookup = code || inviteCode.trim().toUpperCase();
+    if (!codeToLookup || !normalizedContestId) return;
+
     const { data, error } = await supabase
       .from('organization_contest_codes')
       .select('*, organization:organizations(name)')
-      .eq('invite_code', inviteCode.trim().toUpperCase())
+      .eq('invite_code', codeToLookup)
       .eq('is_active', true)
       .maybeSingle();
 
@@ -75,12 +88,12 @@ export default function ContestRegistration() {
       return;
     }
 
-    // Validate contest match in JS to avoid RLS issues
-    if (String(data.contest_id).trim().toLowerCase() !== normalizedContestId) {
-      toast.error('Mã mời này thuộc cuộc thi khác, không phải cuộc thi hiện tại');
+    if (String(data.contest_id).trim().toLowerCase() !== normalizedContestId.toLowerCase()) {
+      toast.error('Mã mời này thuộc cuộc thi khác');
       return;
     }
 
+    setInviteCode(codeToLookup);
     setCodeInfo(data);
     setStep('confirm');
   };
@@ -96,7 +109,38 @@ export default function ContestRegistration() {
     }
   };
 
-  // Bank transfer info (configurable in future)
+  const handleUploadProof = async (file: File) => {
+    const result = await uploadImage(file);
+    if (!result) return;
+
+    setProofUrl(result.url);
+
+    // Update registration with proof
+    const regId = registrationResult?.registration?.id;
+    if (regId) {
+      await supabase
+        .from('contest_registrations')
+        .update({ bank_transfer_proof: result.url })
+        .eq('id', regId);
+      toast.success('Đã upload minh chứng chuyển khoản');
+    }
+  };
+
+  const handleUploadProofExisting = async (file: File) => {
+    const result = await uploadImage(file);
+    if (!result) return;
+
+    setProofUrl(result.url);
+
+    if (existingReg?.id) {
+      await supabase
+        .from('contest_registrations')
+        .update({ bank_transfer_proof: result.url })
+        .eq('id', existingReg.id);
+      toast.success('Đã upload minh chứng chuyển khoản');
+    }
+  };
+
   const bankInfo = {
     bank: 'Vietcombank',
     account: '0123456789',
@@ -109,6 +153,9 @@ export default function ContestRegistration() {
   }
 
   if (!user) {
+    const redirectPath = urlInviteCode
+      ? `/register/contest/${normalizedContestId}/${urlInviteCode}`
+      : `/register/contest/${normalizedContestId}`;
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <Card className="max-w-md w-full">
@@ -122,7 +169,7 @@ export default function ContestRegistration() {
             <CardDescription>Bạn cần đăng nhập để đăng ký tham gia cuộc thi</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full" onClick={() => navigate(`/auth?redirect=/register/contest/${normalizedContestId || ''}`)}>
+            <Button className="w-full" onClick={() => navigate(`/auth?redirect=${encodeURIComponent(redirectPath)}`)}>
               Đăng nhập / Tạo tài khoản
             </Button>
           </CardContent>
@@ -167,25 +214,72 @@ export default function ContestRegistration() {
               </Badge>
             </div>
             {existingReg.payment_status === 'pending' && (
-              <div className="bg-muted rounded-lg p-4 space-y-2">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-warning" />
-                  Vui lòng chuyển khoản để hoàn tất đăng ký
-                </p>
-                <div className="text-sm space-y-1">
-                  <p>Ngân hàng: <strong>{bankInfo.bank}</strong></p>
-                  <p>STK: <strong>{bankInfo.account}</strong></p>
-                  <p>Tên: <strong>{bankInfo.name}</strong></p>
-                  <p>Nội dung CK: <strong>{bankInfo.content}</strong></p>
-                  <p>Số tiền: <strong>{Number(existingReg.payment_amount).toLocaleString('vi-VN')} {existingReg.currency}</strong></p>
+              <>
+                <div className="bg-muted rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-warning" />
+                    Vui lòng chuyển khoản để hoàn tất đăng ký
+                  </p>
+                  <div className="text-sm space-y-1">
+                    <p>Ngân hàng: <strong>{bankInfo.bank}</strong></p>
+                    <p>STK: <strong>{bankInfo.account}</strong></p>
+                    <p>Tên: <strong>{bankInfo.name}</strong></p>
+                    <p>Nội dung CK: <strong>{bankInfo.content}</strong></p>
+                    <p>Số tiền: <strong>{Number(existingReg.payment_amount).toLocaleString('vi-VN')} {existingReg.currency}</strong></p>
+                  </div>
                 </div>
-              </div>
+
+                {/* Upload proof section */}
+                <div className="space-y-2">
+                  <Label className="text-sm">Upload minh chứng chuyển khoản</Label>
+                  {(proofUrl || existingReg.bank_transfer_proof) ? (
+                    <div className="space-y-2">
+                      <img
+                        src={proofUrl || existingReg.bank_transfer_proof || ''}
+                        alt="Minh chứng chuyển khoản"
+                        className="w-full rounded-lg border max-h-60 object-contain"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                        Thay ảnh khác
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full h-20 border-dashed"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Image className="w-5 h-5 mr-2" />}
+                      Chọn ảnh minh chứng
+                    </Button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadProofExisting(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+              </>
             )}
-            {existingReg.payment_status === 'paid' || existingReg.payment_status === 'free' ? (
+            {(existingReg.payment_status === 'paid' || existingReg.payment_status === 'free') && (
               <Button className="w-full" onClick={() => navigate('/my-exams')}>
                 Vào trang thi
               </Button>
-            ) : null}
+            )}
           </CardContent>
         </Card>
       </div>
@@ -216,7 +310,7 @@ export default function ContestRegistration() {
                   className="font-mono text-center text-lg"
                 />
               </div>
-              <Button className="w-full" onClick={handleLookupCode} disabled={!inviteCode.trim()}>
+              <Button className="w-full" onClick={() => handleLookupCode()} disabled={!inviteCode.trim()}>
                 Tiếp tục
               </Button>
             </div>
@@ -292,6 +386,42 @@ export default function ContestRegistration() {
                   </span>
                 </div>
               </div>
+
+              {/* Upload proof */}
+              <div className="space-y-2">
+                <Label className="text-sm">Upload minh chứng chuyển khoản (không bắt buộc)</Label>
+                {proofUrl ? (
+                  <div className="space-y-2">
+                    <img src={proofUrl} alt="Minh chứng" className="w-full rounded-lg border max-h-48 object-contain" />
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                      Thay ảnh khác
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full h-16 border-dashed"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Image className="w-5 h-5 mr-2" />}
+                    Chọn ảnh minh chứng
+                  </Button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadProof(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+
               <Button className="w-full" onClick={() => navigate('/my-exams')}>
                 Tôi đã chuyển khoản
               </Button>
