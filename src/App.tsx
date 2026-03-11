@@ -130,6 +130,7 @@ const App = () => {
                 <Route path="/classes/:id/progress" element={<ClassProgressReport />} />
                 <Route path="/my-classes" element={<MyClasses />} />
                 <Route path="/organizations" element={<OrganizationManagement />} />
+                <Route path="/register/contest/:contestId/:inviteCode" element={<ContestRegistration />} />
                 <Route path="/register/contest/:contestId" element={<ContestRegistration />} />
                 <Route path="/register/contest" element={<ContestRegistration />} />
                 <Route path="/contests/:id/registrations" element={<ContestRegistrationAdmin />} />

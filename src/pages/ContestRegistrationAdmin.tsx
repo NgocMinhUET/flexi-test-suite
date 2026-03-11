@@ -19,7 +19,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Check, X, Trash2, Loader2, Copy, Link2, Users, Ticket } from 'lucide-react';
+import { ArrowLeft, Plus, Check, X, Trash2, Loader2, Copy, Link2, Users, Ticket, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const paymentStatusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -44,6 +44,7 @@ export default function ContestRegistrationAdmin() {
   const deleteCode = useDeleteInviteCode();
 
   const [createCodeOpen, setCreateCodeOpen] = useState(false);
+  const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
   const [codeForm, setCodeForm] = useState({
     organization_id: '', invite_code: '', registration_fee: '0', max_registrations: '',
   });
@@ -70,10 +71,11 @@ export default function ContestRegistrationAdmin() {
   };
 
   const copyRegistrationLink = (code: string) => {
-    const url = `${window.location.origin}/register/contest/${contestId}`;
-    navigator.clipboard.writeText(`${url} (Mã mời: ${code})`);
+    const url = `${window.location.origin}/register/contest/${contestId}/${code}`;
+    navigator.clipboard.writeText(url);
     toast.success('Đã copy link đăng ký');
   };
+
 
   const pendingCount = registrations?.filter(r => r.payment_status === 'pending').length || 0;
   const paidCount = registrations?.filter(r => r.payment_status === 'paid' || r.payment_status === 'free').length || 0;
@@ -148,6 +150,7 @@ export default function ContestRegistrationAdmin() {
                         <TableHead>Đơn vị</TableHead>
                         <TableHead className="text-right">Số tiền</TableHead>
                         <TableHead>Trạng thái</TableHead>
+                        <TableHead>Minh chứng</TableHead>
                         <TableHead>Ngày ĐK</TableHead>
                         <TableHead className="w-[120px]">Thao tác</TableHead>
                       </TableRow>
@@ -165,6 +168,21 @@ export default function ContestRegistrationAdmin() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={status.variant}>{status.label}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {reg.bank_transfer_proof ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-primary"
+                                  onClick={() => setProofViewUrl(reg.bank_transfer_proof)}
+                                >
+                                  <ImageIcon className="h-4 w-4 mr-1" />
+                                  Xem
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-sm">
                               {new Date(reg.registered_at).toLocaleDateString('vi-VN')}
@@ -316,6 +334,18 @@ export default function ContestRegistrationAdmin() {
               Tạo mã mời
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Proof View Dialog */}
+      <Dialog open={!!proofViewUrl} onOpenChange={() => setProofViewUrl(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Minh chứng chuyển khoản</DialogTitle>
+          </DialogHeader>
+          {proofViewUrl && (
+            <img src={proofViewUrl} alt="Minh chứng chuyển khoản" className="w-full rounded-lg max-h-[70vh] object-contain" />
+          )}
         </DialogContent>
       </Dialog>
     </div>
