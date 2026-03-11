@@ -129,6 +129,11 @@ const App = () => {
                 <Route path="/classes/:id" element={<ClassDetail />} />
                 <Route path="/classes/:id/progress" element={<ClassProgressReport />} />
                 <Route path="/my-classes" element={<MyClasses />} />
+                <Route path="/organizations" element={<OrganizationManagement />} />
+                <Route path="/register/contest/:contestId" element={<ContestRegistration />} />
+                <Route path="/register/contest" element={<ContestRegistration />} />
+                <Route path="/contests/:id/registrations" element={<ContestRegistrationAdmin />} />
+                <Route path="/revenue" element={<RevenueReport />} />
                 
                 {/* Language Module Routes */}
                 <Route path="/language" element={<LanguageDashboard />} />
