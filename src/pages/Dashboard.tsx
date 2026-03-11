@@ -20,6 +20,8 @@ import {
   ClipboardList,
   School,
   Languages,
+  Building2,
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatCard } from '@/components/dashboard/StatCard';
