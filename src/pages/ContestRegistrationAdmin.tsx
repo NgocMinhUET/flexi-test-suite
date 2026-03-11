@@ -19,7 +19,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Check, X, Trash2, Loader2, Copy, Link2, Users, Ticket } from 'lucide-react';
+import { ArrowLeft, Plus, Check, X, Trash2, Loader2, Copy, Link2, Users, Ticket, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const paymentStatusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
