@@ -45,18 +45,18 @@ export default function ContestRegistration() {
 
   // Check if already registered
   const { data: existingReg } = useQuery({
-    queryKey: ['my-registration', contestId, user?.id],
+    queryKey: ['my-registration', normalizedContestId, user?.id],
     queryFn: async () => {
-      if (!contestId || !user?.id) return null;
+      if (!normalizedContestId || !user?.id) return null;
       const { data } = await supabase
         .from('contest_registrations')
         .select('*, organization:organizations(name)')
-        .eq('contest_id', contestId)
+        .eq('contest_id', normalizedContestId)
         .eq('user_id', user.id)
         .maybeSingle();
       return data;
     },
-    enabled: !!contestId && !!user?.id,
+    enabled: !!normalizedContestId && !!user?.id,
   });
 
   // Lookup invite code
