@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContestRegistrations, useApproveRegistration, useRejectRegistration, useContestInviteCodes, useCreateInviteCode, useDeleteInviteCode } from '@/hooks/useContestRegistrations';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { useContest } from '@/hooks/useContests';
 import { Button } from '@/components/ui/button';
