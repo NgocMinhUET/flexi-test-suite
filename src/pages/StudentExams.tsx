@@ -45,6 +45,20 @@ interface AssignedExam {
   organization_name?: string;
 }
 
+interface PendingRegistration {
+  id: string;
+  contest_id: string;
+  contest_name: string;
+  organization_name: string;
+  payment_status: string;
+  payment_amount: number;
+  currency: string;
+  registered_at: string;
+  contest_start_time?: string | null;
+  contest_end_time?: string | null;
+  contest_subject?: string;
+}
+
 interface ExamGroup {
   groupKey: string;
   contestName: string | null;
@@ -56,6 +70,7 @@ const StudentExams = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading: authLoading, signOut } = useAuth();
   const [assignments, setAssignments] = useState<AssignedExam[]>([]);
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -89,7 +104,7 @@ const StudentExams = () => {
 
       const { data: registrations } = await supabase
         .from('contest_registrations')
-        .select('contest_id, organization_id')
+        .select('contest_id, organization_id, payment_status, payment_amount, currency, registered_at')
         .eq('user_id', user.id);
 
       const orgIds = [...new Set((registrations || []).map(r => r.organization_id))];
@@ -100,6 +115,34 @@ const StudentExams = () => {
       }
       const contestOrgMap: Record<string, string> = {};
       (registrations || []).forEach(r => { contestOrgMap[r.contest_id] = orgMap[r.organization_id] || ''; });
+
+      // Fetch pending/failed registrations (not yet approved)
+      const pendingRegs = (registrations || []).filter(r => r.payment_status === 'pending' || r.payment_status === 'failed');
+      if (pendingRegs.length > 0) {
+        const pendingContestIds = pendingRegs.map(r => r.contest_id);
+        const { data: pendingContests } = await supabase
+          .from('contests')
+          .select('id, name, subject, start_time, end_time')
+          .in('id', pendingContestIds);
+        const contestInfoMap: Record<string, any> = {};
+        (pendingContests || []).forEach(c => { contestInfoMap[c.id] = c; });
+
+        setPendingRegistrations(pendingRegs.map(r => ({
+          id: r.contest_id,
+          contest_id: r.contest_id,
+          contest_name: contestInfoMap[r.contest_id]?.name || 'Cuộc thi',
+          organization_name: contestOrgMap[r.contest_id] || '',
+          payment_status: r.payment_status,
+          payment_amount: Number(r.payment_amount),
+          currency: r.currency,
+          registered_at: r.registered_at,
+          contest_start_time: contestInfoMap[r.contest_id]?.start_time,
+          contest_end_time: contestInfoMap[r.contest_id]?.end_time,
+          contest_subject: contestInfoMap[r.contest_id]?.subject,
+        })));
+      } else {
+        setPendingRegistrations([]);
+      }
 
       const { data: resultsData, error: resultsError } = await supabase
         .from('exam_results')
@@ -230,12 +273,71 @@ const StudentExams = () => {
           <Progress value={stats.progress} className="h-1.5 mb-6" />
         )}
 
-        {assignments.length === 0 ? (
+        {/* Pending registrations */}
+        {pendingRegistrations.length > 0 && (
+          <div className="space-y-3 mb-6">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-500" />
+              Đang chờ duyệt
+            </h2>
+            {pendingRegistrations.map((reg) => (
+              <div key={reg.id} className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-accent shrink-0" />
+                      <span className="font-medium text-sm text-foreground truncate">{reg.contest_name}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {reg.organization_name && (
+                        <span className="flex items-center gap-1">
+                          <Building2 className="w-3 h-3" />
+                          {reg.organization_name}
+                        </span>
+                      )}
+                      {reg.contest_subject && (
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          {reg.contest_subject}
+                        </span>
+                      )}
+                      {reg.contest_start_time && (
+                        <span className="flex items-center gap-1">
+                          <CalendarClock className="w-3 h-3" />
+                          {format(new Date(reg.contest_start_time), 'dd/MM/yyyy', { locale: vi })}
+                          {reg.contest_end_time && <> — {format(new Date(reg.contest_end_time), 'dd/MM/yyyy', { locale: vi })}</>}
+                        </span>
+                      )}
+                      <span>
+                        Đăng ký: {format(new Date(reg.registered_at), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant={reg.payment_status === 'pending' ? 'secondary' : 'destructive'} className="shrink-0">
+                    {reg.payment_status === 'pending' ? 'Chờ thanh toán' : 'Bị từ chối'}
+                  </Badge>
+                </div>
+                {reg.payment_status === 'pending' && reg.payment_amount > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
+                    Lệ phí: <span className="font-medium text-foreground">{reg.payment_amount.toLocaleString('vi-VN')} {reg.currency}</span> · Vui lòng chuyển khoản và chờ admin xác nhận
+                  </p>
+                )}
+                {reg.payment_status === 'pending' && reg.payment_amount === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
+                    Miễn phí · Đang chờ admin duyệt đăng ký
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {assignments.length === 0 && pendingRegistrations.length === 0 ? (
           <div className="text-center py-20">
             <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground">Bạn chưa được gán bài thi nào</p>
           </div>
-        ) : (
+        ) : assignments.length > 0 ? (
           <div className="space-y-5">
             {groupedExams.map((group) => (
               <section key={group.groupKey}>
@@ -337,7 +439,7 @@ const StudentExams = () => {
               </section>
             ))}
           </div>
-        )}
+        ) : null}
       </main>
     </div>
   );
