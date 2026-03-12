@@ -104,7 +104,7 @@ const StudentExams = () => {
 
       const { data: registrations } = await supabase
         .from('contest_registrations')
-        .select('contest_id, organization_id')
+        .select('contest_id, organization_id, payment_status, payment_amount, currency, registered_at')
         .eq('user_id', user.id);
 
       const orgIds = [...new Set((registrations || []).map(r => r.organization_id))];
@@ -115,6 +115,34 @@ const StudentExams = () => {
       }
       const contestOrgMap: Record<string, string> = {};
       (registrations || []).forEach(r => { contestOrgMap[r.contest_id] = orgMap[r.organization_id] || ''; });
+
+      // Fetch pending/failed registrations (not yet approved)
+      const pendingRegs = (registrations || []).filter(r => r.payment_status === 'pending' || r.payment_status === 'failed');
+      if (pendingRegs.length > 0) {
+        const pendingContestIds = pendingRegs.map(r => r.contest_id);
+        const { data: pendingContests } = await supabase
+          .from('contests')
+          .select('id, name, subject, start_time, end_time')
+          .in('id', pendingContestIds);
+        const contestInfoMap: Record<string, any> = {};
+        (pendingContests || []).forEach(c => { contestInfoMap[c.id] = c; });
+
+        setPendingRegistrations(pendingRegs.map(r => ({
+          id: r.contest_id,
+          contest_id: r.contest_id,
+          contest_name: contestInfoMap[r.contest_id]?.name || 'Cuộc thi',
+          organization_name: contestOrgMap[r.contest_id] || '',
+          payment_status: r.payment_status,
+          payment_amount: Number(r.payment_amount),
+          currency: r.currency,
+          registered_at: r.registered_at,
+          contest_start_time: contestInfoMap[r.contest_id]?.start_time,
+          contest_end_time: contestInfoMap[r.contest_id]?.end_time,
+          contest_subject: contestInfoMap[r.contest_id]?.subject,
+        })));
+      } else {
+        setPendingRegistrations([]);
+      }
 
       const { data: resultsData, error: resultsError } = await supabase
         .from('exam_results')
