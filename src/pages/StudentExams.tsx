@@ -3,9 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import {
   Code2,
@@ -142,14 +140,13 @@ const StudentExams = () => {
   const handleSignOut = async () => { await signOut(); navigate('/'); };
 
   const getExamStatus = (assignment: AssignedExam) => {
-    if (assignment.has_submitted) return { label: 'Đã hoàn thành', variant: 'default' as const, canTake: false, icon: CheckCircle };
+    if (assignment.has_submitted) return { label: 'Đã nộp', variant: 'default' as const, canTake: false, icon: CheckCircle, color: 'text-success' };
     const now = new Date();
-    if (assignment.start_time && new Date(assignment.start_time) > now) return { label: 'Chưa bắt đầu', variant: 'secondary' as const, canTake: false, icon: Clock };
-    if (assignment.end_time && new Date(assignment.end_time) < now) return { label: 'Đã hết hạn', variant: 'destructive' as const, canTake: false, icon: AlertCircle };
-    return { label: 'Sẵn sàng', variant: 'outline' as const, canTake: true, icon: Play };
+    if (assignment.start_time && new Date(assignment.start_time) > now) return { label: 'Chưa mở', variant: 'secondary' as const, canTake: false, icon: Clock, color: 'text-muted-foreground' };
+    if (assignment.end_time && new Date(assignment.end_time) < now) return { label: 'Hết hạn', variant: 'destructive' as const, canTake: false, icon: AlertCircle, color: 'text-destructive' };
+    return { label: 'Sẵn sàng', variant: 'outline' as const, canTake: true, icon: Play, color: 'text-primary' };
   };
 
-  // Group exams by contest
   const groupedExams = useMemo(() => {
     const groups: ExamGroup[] = [];
     const directExams = assignments.filter(a => !a.contest_name);
@@ -161,13 +158,11 @@ const StudentExams = () => {
       contestMap.get(key)!.push(a);
     });
 
-    // Contest groups first
     contestMap.forEach((exams, key) => {
       const [contestName, orgName] = key.split('||');
       groups.push({ groupKey: key, contestName, organizationName: orgName || null, exams });
     });
 
-    // Direct assignments
     if (directExams.length > 0) {
       groups.push({ groupKey: '__direct__', contestName: null, organizationName: null, exams: directExams });
     }
@@ -191,203 +186,155 @@ const StudentExams = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Code2 className="w-5 h-5 text-primary-foreground" />
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <Code2 className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold text-foreground">
+              <span className="text-lg font-bold text-foreground">
                 Exam<span className="text-primary">Pro</span>
               </span>
             </Link>
-            <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
-                <p className="text-xs text-muted-foreground">Thí sinh</p>
-              </div>
-              <Button variant="ghost" size="icon" asChild>
-                <Link to="/profile" title="Hồ sơ cá nhân"><User className="w-5 h-5" /></Link>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">{profile?.full_name}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                <Link to="/profile"><User className="w-4 h-4" /></Link>
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleSignOut}>
-                <LogOut className="w-5 h-5" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSignOut}>
+                <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Page title + Summary stats */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-6">Bài thi của tôi</h1>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-border/60">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <FileText className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                  <p className="text-xs text-muted-foreground">Tổng bài thi</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <CheckCircle className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.completed}</p>
-                  <p className="text-xs text-muted-foreground">Đã hoàn thành</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                  <Play className="w-6 h-6 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.ready}</p>
-                  <p className="text-xs text-muted-foreground">Chờ làm bài</p>
-                </div>
-              </CardContent>
-            </Card>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {/* Stats row */}
+        <div className="flex items-center gap-6 mb-1">
+          <h1 className="text-xl font-bold text-foreground">Bài thi của tôi</h1>
+          <div className="flex items-center gap-4 ml-auto text-sm">
+            <span className="text-muted-foreground">
+              <span className="font-semibold text-foreground">{stats.completed}</span>/{stats.total} hoàn thành
+            </span>
+            {stats.ready > 0 && (
+              <span className="text-primary font-medium">{stats.ready} chờ làm</span>
+            )}
           </div>
-
-          {stats.total > 0 && (
-            <div className="mt-4 flex items-center gap-3">
-              <Progress value={stats.progress} className="flex-1 h-2" />
-              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">{stats.progress}% hoàn thành</span>
-            </div>
-          )}
         </div>
+        
+        {stats.total > 0 && (
+          <Progress value={stats.progress} className="h-1.5 mb-6" />
+        )}
 
         {assignments.length === 0 ? (
-          <Card>
-            <CardContent className="py-16">
-              <div className="text-center">
-                <FileText className="w-14 h-14 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-lg font-medium text-muted-foreground">Bạn chưa được gán bài thi nào</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Vui lòng liên hệ giáo viên hoặc đăng ký qua mã mời để nhận bài thi.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="text-center py-20">
+            <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">Bạn chưa được gán bài thi nào</p>
+          </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {groupedExams.map((group) => (
-              <Card key={group.groupKey} className="overflow-hidden border-border/60">
-                {/* Group Header */}
-                <CardHeader className="pb-0">
-                  <div className="flex items-center gap-3">
-                    {group.contestName ? (
-                      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                        <Trophy className="w-5 h-5 text-amber-600" />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <GraduationCap className="w-5 h-5 text-primary" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg">
-                        {group.contestName || 'Bài thi được giao trực tiếp'}
-                      </CardTitle>
-                      {group.organizationName && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                          <Building2 className="w-3.5 h-3.5" />
-                          {group.organizationName}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant="ghost" className="shrink-0">
-                      {group.exams.length} đề
-                    </Badge>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-4">
-                  {/* Time info for contest */}
-                  {group.contestName && group.exams[0]?.start_time && (
-                    <div className="mb-4 px-3 py-2 rounded-lg bg-muted/50 text-sm text-muted-foreground flex items-center gap-2">
-                      <CalendarClock className="w-4 h-4 text-primary shrink-0" />
-                      <span>
-                        {group.exams[0].start_time && format(new Date(group.exams[0].start_time), 'HH:mm dd/MM/yyyy', { locale: vi })}
-                        {group.exams[0].end_time && <> — {format(new Date(group.exams[0].end_time), 'HH:mm dd/MM/yyyy', { locale: vi })}</>}
-                      </span>
-                    </div>
+              <section key={group.groupKey}>
+                {/* Group header */}
+                <div className="flex items-center gap-2 mb-2.5">
+                  {group.contestName ? (
+                    <Trophy className="w-4 h-4 text-accent" />
+                  ) : (
+                    <GraduationCap className="w-4 h-4 text-primary" />
                   )}
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {group.contestName || 'Bài thi trực tiếp'}
+                  </h2>
+                  {group.organizationName && (
+                    <>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Building2 className="w-3 h-3" />
+                        {group.organizationName}
+                      </span>
+                    </>
+                  )}
+                  {group.contestName && group.exams[0]?.start_time && (
+                    <>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <CalendarClock className="w-3 h-3" />
+                        {format(new Date(group.exams[0].start_time), 'dd/MM/yyyy', { locale: vi })}
+                        {group.exams[0].end_time && <> — {format(new Date(group.exams[0].end_time), 'dd/MM/yyyy', { locale: vi })}</>}
+                      </span>
+                    </>
+                  )}
+                </div>
 
-                  {/* Exam rows */}
-                  <div className="divide-y divide-border/50">
-                    {group.exams.map((assignment) => {
-                      const status = getExamStatus(assignment);
-                      const StatusIcon = status.icon;
-                      return (
-                        <div key={assignment.id} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
-                          {/* Exam info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-foreground truncate text-[15px]">
-                              {assignment.exam.title}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <BookOpen className="w-3.5 h-3.5" />
-                                {assignment.exam.subject}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                {assignment.exam.duration} phút
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <FileText className="w-3.5 h-3.5" />
-                                {assignment.exam.total_questions} câu
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Status badge */}
-                          <Badge variant={status.variant} className="shrink-0 gap-1">
-                            <StatusIcon className="w-3 h-3" />
-                            {status.label}
-                          </Badge>
-
-                          {/* Action */}
-                          <div className="shrink-0">
-                            {assignment.has_submitted ? (
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={`/exam/${assignment.exam_id}/result`}>
-                                  <BarChart3 className="w-4 h-4 mr-1.5" />
-                                  Kết quả
-                                </Link>
-                              </Button>
-                            ) : status.canTake ? (
-                              <Button size="sm" asChild>
-                                <Link to={`/exam/${assignment.exam_id}`}>
-                                  <Play className="w-4 h-4 mr-1.5" />
-                                  Làm bài
-                                </Link>
-                              </Button>
-                            ) : (
-                              <Button variant="outline" size="sm" disabled>
+                {/* Exam table */}
+                <div className="rounded-lg border border-border bg-card overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2">Tên đề thi</th>
+                        <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2 hidden sm:table-cell">Môn</th>
+                        <th className="text-center text-xs font-medium text-muted-foreground px-3 py-2 w-20">Thời gian</th>
+                        <th className="text-center text-xs font-medium text-muted-foreground px-3 py-2 w-16">Câu hỏi</th>
+                        <th className="text-center text-xs font-medium text-muted-foreground px-3 py-2 w-24">Trạng thái</th>
+                        <th className="text-right text-xs font-medium text-muted-foreground px-4 py-2 w-28"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {group.exams.map((assignment) => {
+                        const status = getExamStatus(assignment);
+                        const StatusIcon = status.icon;
+                        return (
+                          <tr key={assignment.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-sm text-foreground leading-tight line-clamp-1">
+                                {assignment.exam.title}
+                              </p>
+                            </td>
+                            <td className="px-3 py-3 hidden sm:table-cell">
+                              <span className="text-xs text-muted-foreground">{assignment.exam.subject}</span>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-xs text-muted-foreground">{assignment.exam.duration}′</span>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-xs text-muted-foreground">{assignment.exam.total_questions}</span>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium ${status.color}`}>
+                                <StatusIcon className="w-3 h-3" />
                                 {status.label}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {assignment.has_submitted ? (
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+                                  <Link to={`/exam/${assignment.exam_id}/result`}>
+                                    <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                                    Kết quả
+                                  </Link>
+                                </Button>
+                              ) : status.canTake ? (
+                                <Button size="sm" className="h-7 text-xs" asChild>
+                                  <Link to={`/exam/${assignment.exam_id}`}>
+                                    <Play className="w-3.5 h-3.5 mr-1" />
+                                    Làm bài
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">{status.label}</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             ))}
           </div>
         )}
