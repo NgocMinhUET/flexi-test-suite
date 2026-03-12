@@ -173,6 +173,57 @@ export const useApproveRegistration = () => {
         }, { onConflict: 'contest_id,user_id', ignoreDuplicates: true });
 
       if (participantError) throw participantError;
+
+      // 3. Auto-assign exam if contest already has distributed exams
+      const { data: exams } = await supabase
+        .from('contest_exams')
+        .select('exam_id')
+        .eq('contest_id', contestId);
+
+      if (exams && exams.length > 0) {
+        // Check if participant already has an assigned exam
+        const { data: participant } = await supabase
+          .from('contest_participants')
+          .select('id, assigned_exam_id')
+          .eq('contest_id', contestId)
+          .eq('user_id', registration.user_id)
+          .single();
+
+        if (participant && !participant.assigned_exam_id) {
+          // Get current assignment counts for balanced distribution
+          const { data: allParticipants } = await supabase
+            .from('contest_participants')
+            .select('assigned_exam_id')
+            .eq('contest_id', contestId)
+            .not('assigned_exam_id', 'is', null);
+
+          const assignmentCounts = new Map<string, number>();
+          exams.forEach(e => assignmentCounts.set(e.exam_id, 0));
+          (allParticipants || []).forEach(p => {
+            if (p.assigned_exam_id) {
+              assignmentCounts.set(p.assigned_exam_id, (assignmentCounts.get(p.assigned_exam_id) || 0) + 1);
+            }
+          });
+
+          // Pick the exam with the fewest assignments
+          let selectedExamId = exams[0].exam_id;
+          let minCount = Infinity;
+          for (const [examId, count] of assignmentCounts.entries()) {
+            if (count < minCount) {
+              minCount = count;
+              selectedExamId = examId;
+            }
+          }
+
+          await supabase
+            .from('contest_participants')
+            .update({
+              assigned_exam_id: selectedExamId,
+              assigned_at: new Date().toISOString(),
+            })
+            .eq('id', participant.id);
+        }
+      }
     },
     onSuccess: (_, { contestId }) => {
       queryClient.invalidateQueries({ queryKey: ['contest-registrations', contestId] });
