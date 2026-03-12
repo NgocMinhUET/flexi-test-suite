@@ -45,6 +45,20 @@ interface AssignedExam {
   organization_name?: string;
 }
 
+interface PendingRegistration {
+  id: string;
+  contest_id: string;
+  contest_name: string;
+  organization_name: string;
+  payment_status: string;
+  payment_amount: number;
+  currency: string;
+  registered_at: string;
+  contest_start_time?: string | null;
+  contest_end_time?: string | null;
+  contest_subject?: string;
+}
+
 interface ExamGroup {
   groupKey: string;
   contestName: string | null;
