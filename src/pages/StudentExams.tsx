@@ -3,8 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Code2,
   Clock,
@@ -16,6 +17,8 @@ import {
   LogOut,
   CalendarClock,
   User,
+  Building2,
+  Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -36,7 +39,8 @@ interface AssignedExam {
     description: string | null;
   };
   has_submitted: boolean;
-  contest_name?: string; // Name of contest if assigned via contest
+  contest_name?: string;
+  organization_name?: string;
 }
 
 const StudentExams = () => {
@@ -84,13 +88,14 @@ const StudentExams = () => {
 
       if (directError) throw directError;
 
-      // Fetch contest-based assignments (where student is assigned an exam in a contest)
+      // Fetch contest-based assignments
       const { data: contestAssignments, error: contestError } = await supabase
         .from('contest_participants')
         .select(`
           id,
           assigned_exam_id,
           assigned_at,
+          contest_id,
           contest:contests (
             id,
             name,
@@ -112,7 +117,30 @@ const StudentExams = () => {
 
       if (contestError) throw contestError;
 
-      // Fetch submission status for each exam
+      // Fetch registration info (to get organization)
+      const { data: registrations } = await supabase
+        .from('contest_registrations')
+        .select('contest_id, organization_id')
+        .eq('user_id', user.id);
+
+      // Fetch organization names
+      const orgIds = [...new Set((registrations || []).map(r => r.organization_id))];
+      let orgMap: Record<string, string> = {};
+      if (orgIds.length > 0) {
+        const { data: orgs } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .in('id', orgIds);
+        (orgs || []).forEach(o => { orgMap[o.id] = o.name; });
+      }
+
+      // Build contest->org map
+      const contestOrgMap: Record<string, string> = {};
+      (registrations || []).forEach(r => {
+        contestOrgMap[r.contest_id] = orgMap[r.organization_id] || '';
+      });
+
+      // Fetch submission status
       const { data: resultsData, error: resultsError } = await supabase
         .from('exam_results')
         .select('exam_id')
@@ -135,8 +163,7 @@ const StudentExams = () => {
           has_submitted: submittedExamIds.has(a.exam_id),
         }));
 
-      // Process contest assignments (use contest start/end time)
-      // Show exams from active contests only
+      // Process contest assignments
       const processedContestAssignments: AssignedExam[] = (contestAssignments || [])
         .filter(a => a.exam && a.contest && ['active', 'completed'].includes((a.contest as any).status))
         .map(a => ({
@@ -148,9 +175,10 @@ const StudentExams = () => {
           exam: a.exam as AssignedExam['exam'],
           has_submitted: submittedExamIds.has(a.assigned_exam_id!),
           contest_name: (a.contest as any)?.name || undefined,
+          organization_name: contestOrgMap[a.contest_id] || undefined,
         }));
 
-      // Combine and deduplicate by exam_id (prefer direct assignments)
+      // Combine and deduplicate
       const examIdSet = new Set(processedDirectAssignments.map(a => a.exam_id));
       const uniqueContestAssignments = processedContestAssignments.filter(a => !examIdSet.has(a.exam_id));
 
@@ -170,18 +198,18 @@ const StudentExams = () => {
 
   const getExamStatus = (assignment: AssignedExam) => {
     if (assignment.has_submitted) {
-      return { label: 'Đã hoàn thành', variant: 'default' as const, canTake: false };
+      return { label: 'Đã hoàn thành', variant: 'default' as const, canTake: false, color: 'text-emerald-600' };
     }
 
     const now = new Date();
     if (assignment.start_time && new Date(assignment.start_time) > now) {
-      return { label: 'Chưa bắt đầu', variant: 'secondary' as const, canTake: false };
+      return { label: 'Chưa bắt đầu', variant: 'secondary' as const, canTake: false, color: 'text-muted-foreground' };
     }
     if (assignment.end_time && new Date(assignment.end_time) < now) {
-      return { label: 'Đã hết hạn', variant: 'destructive' as const, canTake: false };
+      return { label: 'Đã hết hạn', variant: 'destructive' as const, canTake: false, color: 'text-destructive' };
     }
 
-    return { label: 'Sẵn sàng', variant: 'outline' as const, canTake: true };
+    return { label: 'Sẵn sàng', variant: 'outline' as const, canTake: true, color: 'text-primary' };
   };
 
   if (authLoading || isLoading) {
@@ -193,7 +221,7 @@ const StudentExams = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/30">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="container mx-auto px-4">
@@ -225,95 +253,116 @@ const StudentExams = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Bài thi của tôi</h1>
-          <p className="text-muted-foreground">Các bài thi được gán cho bạn</p>
+          <p className="text-muted-foreground mt-1">Các bài thi được gán cho bạn</p>
         </div>
 
         {assignments.length === 0 ? (
           <Card>
-            <CardContent className="py-12">
+            <CardContent className="py-16">
               <div className="text-center">
-                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Bạn chưa được gán bài thi nào</p>
+                <FileText className="w-14 h-14 text-muted-foreground/40 mx-auto mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">Bạn chưa được gán bài thi nào</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Vui lòng liên hệ giáo viên để được gán bài thi.
+                  Vui lòng liên hệ giáo viên hoặc đăng ký qua mã mời để nhận bài thi.
                 </p>
               </div>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-5">
             {assignments.map((assignment) => {
               const status = getExamStatus(assignment);
               return (
-                <Card key={assignment.id} className="flex flex-col">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{assignment.exam.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <BookOpen className="w-3.5 h-3.5" />
-                          {assignment.exam.subject}
-                          {assignment.contest_name && (
-                            <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              {assignment.contest_name}
-                            </span>
-                          )}
-                        </CardDescription>
-                      </div>
-                      <Badge variant={status.variant}>{status.label}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    {assignment.exam.description && (
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {assignment.exam.description}
-                      </p>
-                    )}
-                    
-                    <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>Thời gian: {assignment.exam.duration} phút</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        <span>Số câu: {assignment.exam.total_questions} câu</span>
-                      </div>
-                      {(assignment.start_time || assignment.end_time) && (
-                        <div className="flex items-center gap-2">
-                          <CalendarClock className="w-4 h-4" />
-                          <span>
-                            {assignment.start_time && (
-                              <>Từ: {format(new Date(assignment.start_time), 'HH:mm dd/MM/yyyy', { locale: vi })}</>
-                            )}
-                            {assignment.end_time && (
-                              <> - Đến: {format(new Date(assignment.end_time), 'HH:mm dd/MM/yyyy', { locale: vi })}</>
-                            )}
-                          </span>
+                <Card key={assignment.id} className="overflow-hidden border-border/60 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-0">
+                    <div className="p-6">
+                      {/* Title row */}
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xl font-bold text-foreground leading-tight">
+                            {assignment.exam.title}
+                          </h3>
                         </div>
+                        <Badge variant={status.variant} className="shrink-0 text-xs">
+                          {status.label}
+                        </Badge>
+                      </div>
+
+                      {/* Meta info */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mb-4">
+                        <span className="flex items-center gap-1.5">
+                          <BookOpen className="w-4 h-4 text-primary/70" />
+                          {assignment.exam.subject}
+                        </span>
+                        {assignment.contest_name && (
+                          <span className="flex items-center gap-1.5">
+                            <Trophy className="w-4 h-4 text-amber-500" />
+                            {assignment.contest_name}
+                          </span>
+                        )}
+                        {assignment.organization_name && (
+                          <span className="flex items-center gap-1.5">
+                            <Building2 className="w-4 h-4 text-primary/70" />
+                            {assignment.organization_name}
+                          </span>
+                        )}
+                      </div>
+
+                      {assignment.exam.description && (
+                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                          {assignment.exam.description}
+                        </p>
                       )}
+
+                      <Separator className="my-4" />
+
+                      {/* Stats row */}
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-primary" />
+                          <span>Thời gian: <strong>{assignment.exam.duration} phút</strong></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-primary" />
+                          <span>Số câu: <strong>{assignment.exam.total_questions} câu</strong></span>
+                        </div>
+                        {(assignment.start_time || assignment.end_time) && (
+                          <div className="flex items-center gap-2">
+                            <CalendarClock className="w-4 h-4 text-primary" />
+                            <span>
+                              {assignment.start_time && (
+                                <>Từ {format(new Date(assignment.start_time), 'HH:mm dd/MM/yyyy', { locale: vi })}</>
+                              )}
+                              {assignment.end_time && (
+                                <> — Đến {format(new Date(assignment.end_time), 'HH:mm dd/MM/yyyy', { locale: vi })}</>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="mt-auto">
+                    {/* Action button */}
+                    <div className="px-6 pb-5">
                       {assignment.has_submitted ? (
-                        <Button variant="outline" className="w-full" asChild>
+                        <Button variant="outline" className="w-full h-12 text-base" asChild>
                           <Link to={`/exam/${assignment.exam_id}/result`}>
-                            <CheckCircle className="w-4 h-4 mr-2" />
+                            <CheckCircle className="w-5 h-5 mr-2" />
                             Xem kết quả
                           </Link>
                         </Button>
                       ) : status.canTake ? (
-                        <Button className="w-full" asChild>
+                        <Button className="w-full h-12 text-base" asChild>
                           <Link to={`/exam/${assignment.exam_id}`}>
-                            <Play className="w-4 h-4 mr-2" />
+                            <Play className="w-5 h-5 mr-2" />
                             Bắt đầu làm bài
                           </Link>
                         </Button>
                       ) : (
-                        <Button variant="outline" className="w-full" disabled>
+                        <Button variant="outline" className="w-full h-12 text-base" disabled>
                           {status.label}
                         </Button>
                       )}
