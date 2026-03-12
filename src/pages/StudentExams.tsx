@@ -70,6 +70,7 @@ const StudentExams = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading: authLoading, signOut } = useAuth();
   const [assignments, setAssignments] = useState<AssignedExam[]>([]);
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
