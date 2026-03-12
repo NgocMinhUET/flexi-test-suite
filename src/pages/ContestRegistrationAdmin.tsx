@@ -54,9 +54,35 @@ export default function ContestRegistrationAdmin() {
     organization_id: '', invite_code: '', registration_fee: '0', max_registrations: '',
   });
 
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (!authLoading && (!user || (!isAdmin && !isTeacher))) navigate('/auth');
   }, [authLoading, user, isAdmin, isTeacher, navigate]);
+
+  // Realtime subscription for new registrations
+  useEffect(() => {
+    if (!contestId) return;
+    const channel = supabase
+      .channel(`contest-registrations-${contestId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contest_registrations',
+          filter: `contest_id=eq.${contestId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['contest-registrations', contestId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [contestId, queryClient]);
 
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
