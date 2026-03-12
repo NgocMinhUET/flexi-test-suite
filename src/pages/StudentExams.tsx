@@ -277,7 +277,7 @@ const StudentExams = () => {
         {pendingRegistrations.length > 0 && (
           <div className="space-y-3 mb-6">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4 text-warning" />
+              <Clock className="w-4 h-4 text-amber-500" />
               Đang chờ duyệt
             </h2>
             {pendingRegistrations.map((reg) => (
