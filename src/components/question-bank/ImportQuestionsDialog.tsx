@@ -253,12 +253,34 @@ export function ImportQuestionsDialog({
     const codingConfigSheet = XLSX.utils.json_to_sheet(codingConfigData);
     XLSX.utils.book_append_sheet(wb, codingConfigSheet, 'Coding_Config');
 
+    // Shell_Config + Shell_Tests sheets
+    const shellConfigSheet = XLSX.utils.json_to_sheet([
+      {
+        question_code: 'Q005',
+        mode: 'script',
+        time_limit: 5,
+        scoring_method: 'proportional',
+        setup_files: 'data/log.txt::a ERROR x\nb ok\nc ERROR y',
+        setup_script: '',
+        starter_script: '#!/bin/bash\n',
+        sample_solution: 'mkdir -p out\ngrep ERROR data/log.txt > out/err.txt\nwc -l < out/err.txt',
+      },
+    ]);
+    XLSX.utils.book_append_sheet(wb, shellConfigSheet, 'Shell_Config');
+    const shellTestSheet = XLSX.utils.json_to_sheet([
+      { question_code: 'Q005', kind: 'stdout', target: '', expected: '2', weight: 1, is_hidden: 'FALSE', description: 'In ra số dòng lỗi' },
+      { question_code: 'Q005', kind: 'file_content', target: 'out/err.txt', expected: 'a ERROR x\nc ERROR y', weight: 2, is_hidden: 'TRUE', description: '' },
+    ]);
+    XLSX.utils.book_append_sheet(wb, shellTestSheet, 'Shell_Tests');
+
     // Lookups sheet - taxonomy codes and cognitive levels
     const lookupsData = [
       { category: 'Loại câu hỏi', value: 'MCQ_SINGLE', description: 'Trắc nghiệm 1 đáp án' },
       { category: 'Loại câu hỏi', value: 'TRUE_FALSE_4', description: 'Đúng/Sai 4 mệnh đề' },
       { category: 'Loại câu hỏi', value: 'SHORT_ANSWER', description: 'Trả lời ngắn' },
       { category: 'Loại câu hỏi', value: 'CODING', description: 'Lập trình' },
+      { category: 'Loại câu hỏi', value: 'SHELL', description: 'Shell/Linux (Bash)' },
+      ...['stdout', 'file_exists', 'dir_exists', 'file_content', 'permission', 'custom'].map(k => ({ category: 'Loại kiểm tra Shell', value: k, description: '' })),
       ...subject.cognitive_levels.map(level => ({
         category: 'Mức độ nhận thức',
         value: level,
@@ -278,7 +300,7 @@ export function ImportQuestionsDialog({
       { 'Hướng dẫn sử dụng': '' },
       { 'Hướng dẫn sử dụng': '1. Sheet "Questions": Điền thông tin chính của câu hỏi' },
       { 'Hướng dẫn sử dụng': '   - code: Mã câu hỏi (bắt buộc, duy nhất)' },
-      { 'Hướng dẫn sử dụng': '   - type: Loại câu (MCQ_SINGLE, TRUE_FALSE_4, SHORT_ANSWER, CODING)' },
+      { 'Hướng dẫn sử dụng': '   - type: Loại câu (MCQ_SINGLE, TRUE_FALSE_4, SHORT_ANSWER, CODING, SHELL)' },
       { 'Hướng dẫn sử dụng': '   - content: Nội dung câu hỏi (text thuần)' },
       { 'Hướng dẫn sử dụng': '   - taxonomy_code: Mã phân loại (xem sheet Lookups)' },
       { 'Hướng dẫn sử dụng': '   - cognitive_level: Mức độ nhận thức (xem sheet Lookups)' },
@@ -301,7 +323,9 @@ export function ImportQuestionsDialog({
       { 'Hướng dẫn sử dụng': '' },
       { 'Hướng dẫn sử dụng': '5. Sheet "Coding_TestCases": Test case cho câu lập trình' },
       { 'Hướng dẫn sử dụng': '6. Sheet "Coding_Config": Cấu hình câu lập trình' },
-      { 'Hướng dẫn sử dụng': '7. Sheet "Lookups": Danh sách các giá trị hợp lệ' },
+      { 'Hướng dẫn sử dụng': '7. Sheet "Shell_Config": Cấu hình câu Shell (mode: script hoặc terminal; setup_files: "đường_dẫn::nội dung", nhiều file cách nhau bởi dòng ---)' },
+      { 'Hướng dẫn sử dụng': '8. Sheet "Shell_Tests": Bài kiểm tra câu Shell (kind xem Lookups; permission dùng số như 644; custom là lệnh Bash)' },
+      { 'Hướng dẫn sử dụng': '9. Sheet "Lookups": Danh sách các giá trị hợp lệ' },
     ];
     const instructionsSheet = XLSX.utils.json_to_sheet(instructionsData);
     XLSX.utils.book_append_sheet(wb, instructionsSheet, 'Instructions');
