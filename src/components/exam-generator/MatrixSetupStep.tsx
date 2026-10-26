@@ -119,7 +119,7 @@ export function MatrixSetupStep({
       {questionTypes.length === 0 ? (
         <div className="p-4 border border-dashed border-muted-foreground/50 rounded-lg text-center">
           <p className="text-muted-foreground">
-            Môn học chưa được cấu hình loại câu hỏi. Vui lòng thêm các loại câu hỏi (MCQ_SINGLE, TRUE_FALSE_4, SHORT_ANSWER, CODING) trong phần Quản lý môn học.
+            Môn học chưa được cấu hình loại câu hỏi. Vui lòng thêm các loại câu hỏi (MCQ_SINGLE, TRUE_FALSE_4, SHORT_ANSWER, CODING, SHELL) trong phần Quản lý môn học.
           </p>
         </div>
       ) : (
@@ -130,7 +130,8 @@ export function MatrixSetupStep({
               {type === 'MCQ_SINGLE' ? 'Trắc nghiệm' :
                type === 'TRUE_FALSE_4' ? 'Đúng/Sai' :
                type === 'SHORT_ANSWER' ? 'Tự luận ngắn' :
-               type === 'CODING' ? 'Lập trình' : type}
+               type === 'CODING' ? 'Lập trình' :
+               type === 'SHELL' ? 'Shell/Linux' : type}
             </TabsTrigger>
           ))}
         </TabsList>
