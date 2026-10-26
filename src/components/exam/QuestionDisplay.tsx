@@ -7,6 +7,7 @@ import { Question, QuestionStatus, Answer, ProgrammingLanguage } from '@/types/e
 import { QuestionContentRenderer, OptionContentRenderer, MediaItem } from './QuestionContentRenderer';
 
 // Lazy load heavy components
+const ShellQuestionDisplay = lazy(() => import('./ShellQuestionDisplay').then(m => ({ default: m.ShellQuestionDisplay })));
 const CodingEditor = lazy(() => import('./CodingEditor').then(m => ({ default: m.CodingEditor })));
 const ListeningQuestionDisplay = lazy(() => import('./ListeningQuestionDisplay').then(m => ({ default: m.ListeningQuestionDisplay })));
 const ReadingQuestionDisplay = lazy(() => import('./ReadingQuestionDisplay').then(m => ({ default: m.ReadingQuestionDisplay })));
@@ -205,7 +206,7 @@ export const QuestionDisplay = memo(({
     <div className="ml-60 pt-20 pb-8 px-4 lg:px-6">
       <div className={cn(
         "mx-auto bg-card rounded-xl border border-border shadow-sm p-6 lg:p-8",
-        question.type === 'coding' ? 'max-w-[1400px]' : 'max-w-[900px]'
+        (question.type === 'coding' || question.type === 'shell') ? 'max-w-[1400px]' : 'max-w-[900px]'
       )}>
         {/* Question Header - Simplified */}
         <div className="flex items-start justify-between mb-5">
@@ -285,6 +286,17 @@ export const QuestionDisplay = memo(({
                 currentLanguage={selectedLanguage}
                 onCodeChange={handleCodeChange}
                 onLanguageChange={handleLanguageChange}
+              />
+            </Suspense>
+          )}
+
+          {question.type === 'shell' && question.shell && (
+            <Suspense fallback={<QuestionTypeLoader />}>
+              <ShellQuestionDisplay
+                key={question.id}
+                question={question}
+                currentAnswer={currentAnswer}
+                onAnswer={onAnswer}
               />
             </Suspense>
           )}

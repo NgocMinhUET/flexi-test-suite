@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { ExamData, Question, Answer, QuestionStatus, ExamResult, QuestionResult, QuestionType, ViolationStats, ExamSection } from '@/types/exam';
 import { createDefaultByTypeStats } from '@/utils/questionTypeStats';
+import { scoreShell, historyToScript, describeShellTest, type ShellRunResponse } from '@/lib/shellScoring';
 import { Loader2, Maximize, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -510,7 +511,8 @@ const TakeExam = () => {
     
     // Separate coding and non-coding questions for parallel processing
     const codingQuestions = exam.questions.filter(q => q.type === 'coding' && q.coding);
-    const nonCodingQuestions = exam.questions.filter(q => q.type !== 'coding');
+    const nonCodingQuestions = exam.questions.filter(q => q.type !== 'coding' && q.type !== 'shell');
+    const shellQuestions = exam.questions.filter(q => q.type === 'shell' && q.shell);
     const totalCodingQuestions = codingQuestions.length;
     
     if (totalCodingQuestions > 0) {
@@ -768,6 +770,65 @@ const TakeExam = () => {
           codingResults: cResults,
         });
       }
+    }
+
+    // Grade Shell/Linux questions (one server run per question, includes hidden checks)
+    for (const question of shellQuestions) {
+      const answer = answers.get(question.id);
+      const raw = answer?.answer;
+      const script = Array.isArray(raw) ? historyToScript(raw) : String(raw || '');
+      byType['shell'].total += 1;
+      let earnedPoints = 0;
+      let isCorrect = false;
+      let isPartial = false;
+      let codingResults: QuestionResult['codingResults'] = undefined;
+
+      if (!script.trim()) {
+        unansweredCount++;
+      } else {
+        let data: ShellRunResponse | null = null;
+        for (let attempt = 0; attempt < 4 && !data?.success; attempt++) {
+          const res = await supabase.functions.invoke('execute-code', {
+            body: { mode: 'shell', shell: question.shell, script, includeHidden: true },
+          });
+          data = (res.data as ShellRunResponse) || null;
+          if (!data?.success) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        }
+        if (!data?.success || !data.tests) {
+          throw new Error(data?.error || 'Không chấm được câu Shell. Vui lòng thử nộp lại.');
+        }
+        const sc = scoreShell(data.tests, question.points, question.shell!.scoringMethod || 'proportional');
+        ({ earnedPoints, isCorrect, isPartial } = sc);
+        const t = data.tests;
+        codingResults = {
+          passedTests: t.filter((x) => x.passed).length,
+          totalTests: t.length,
+          visibleTests: { passed: t.filter((x) => !x.isHidden && x.passed).length, total: t.filter((x) => !x.isHidden).length },
+          hiddenTests: { passed: t.filter((x) => x.isHidden && x.passed).length, total: t.filter((x) => x.isHidden).length },
+          earnedPoints,
+          maxPoints: question.points,
+          scoringMethod: question.shell!.scoringMethod === 'all-or-nothing' ? 'all-or-nothing' : 'proportional',
+          testResults: t.map((x) => ({
+            testCaseId: x.id, passed: x.passed, isHidden: x.isHidden, weight: x.weight,
+            input: describeShellTest(question.shell!.tests.find((q) => q.id === x.id) || x),
+            actualOutput: x.isHidden ? undefined : data!.stdout,
+          })),
+        };
+        if (isCorrect) { correctCount++; byType['shell'].correct += 1; }
+        else if (isPartial) { partialCreditCount++; byType['shell'].partial += 1; }
+        else incorrectCount++;
+        byType['shell'].points += earnedPoints;
+        totalEarned += earnedPoints;
+      }
+
+      resultsMap.set(question.id, {
+        questionId: question.id,
+        isCorrect,
+        earnedPoints,
+        maxPoints: question.points,
+        userAnswer: raw ?? '',
+        codingResults,
+      });
     }
 
     // Build final questionResults in original question order
@@ -1178,6 +1239,7 @@ const TakeExam = () => {
           language: q.coding?.defaultLanguage || q.coding?.languages?.[0] || 'python',
           scoringMethod: q.coding?.scoringMethod || 'proportional',
           coding: q.coding, // Pass full coding config for weighted scoring
+          shell: q.shell,
         }));
         
         await startBackgroundGrading(
