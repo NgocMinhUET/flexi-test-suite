@@ -80,7 +80,8 @@ interface TaxonomyNode {
   parent_id?: string | null;
 }
 
-const VALID_QUESTION_TYPES: QuestionType[] = ['MCQ_SINGLE', 'TRUE_FALSE_4', 'SHORT_ANSWER', 'CODING'];
+const VALID_QUESTION_TYPES: QuestionType[] = ['MCQ_SINGLE', 'TRUE_FALSE_4', 'SHORT_ANSWER', 'CODING', 'SHELL'];
+const SHELL_TEST_KINDS = ['stdout', 'file_exists', 'dir_exists', 'file_content', 'permission', 'custom'];
 
 function normalizeString(value: unknown): string {
   if (value === null || value === undefined) return '';
@@ -148,6 +149,20 @@ export function parseExcelFile(
   const codingConfigData = codingConfigSheet ? XLSX.utils.sheet_to_json<CodingConfigRow>(codingConfigSheet) : [];
   const codingConfigMap = new Map<string, CodingConfigRow>();
   codingConfigData.forEach(row => codingConfigMap.set(normalizeString(row.question_code), row));
+
+  const shellConfigSheet = workbook.Sheets['Shell_Config'];
+  const shellConfigData = shellConfigSheet ? XLSX.utils.sheet_to_json<Record<string, unknown>>(shellConfigSheet) : [];
+  const shellConfigMap = new Map<string, Record<string, unknown>>();
+  shellConfigData.forEach(row => shellConfigMap.set(normalizeString(row.question_code), row));
+
+  const shellTestSheet = workbook.Sheets['Shell_Tests'];
+  const shellTestData = shellTestSheet ? XLSX.utils.sheet_to_json<Record<string, unknown>>(shellTestSheet) : [];
+  const shellTestMap = new Map<string, Record<string, unknown>[]>();
+  shellTestData.forEach(row => {
+    const c = normalizeString(row.question_code);
+    if (!shellTestMap.has(c)) shellTestMap.set(c, []);
+    shellTestMap.get(c)!.push(row);
+  });
 
   // Build taxonomy code to ID map
   const taxonomyCodeMap = new Map<string, string>();
@@ -262,6 +277,44 @@ export function parseExcelFile(
           caseSensitive: normalizeBoolean(shortRow.case_sensitive),
         };
       }
+    } else if (questionType === 'SHELL') {
+      const cfg = shellConfigMap.get(code) || {};
+      const rows = shellTestMap.get(code) || [];
+      if (rows.length === 0) {
+        errors.push({ row: rowNum, field: 'Shell_Tests', message: 'Cần ít nhất 1 bài kiểm tra trong sheet Shell_Tests' });
+      }
+      const tests = rows.map((r, i) => {
+        const kind = normalizeString(r.kind).toLowerCase();
+        if (!SHELL_TEST_KINDS.includes(kind)) {
+          errors.push({ row: rowNum, field: 'Shell_Tests', message: `Loại kiểm tra không hợp lệ: ${kind || '(trống)'}` });
+        }
+        return {
+          id: `t${i + 1}`,
+          kind,
+          description: normalizeString(r.description),
+          target: normalizeString(r.target),
+          expected: r.expected === undefined || r.expected === null ? '' : String(r.expected),
+          weight: normalizeNumber(r.weight, 1),
+          isHidden: normalizeBoolean(r.is_hidden),
+        };
+      });
+      // setup_files: one "path::content" block per line group separated by a line "---"
+      const setupFiles = normalizeString(cfg.setup_files)
+        ? String(cfg.setup_files).split(/\n---\n/).map((block) => {
+            const [path, ...rest] = block.split('::');
+            return { path: path.trim(), content: rest.join('::').replace(/^\n/, ''), mode: '' };
+          }).filter((f) => f.path)
+        : [];
+      answerData = {
+        mode: normalizeString(cfg.mode).toLowerCase() === 'terminal' ? 'terminal' : 'script',
+        setupFiles,
+        setupScript: cfg.setup_script ? String(cfg.setup_script) : '',
+        tests,
+        timeLimit: normalizeNumber(cfg.time_limit, 5),
+        scoringMethod: normalizeString(cfg.scoring_method) === 'all-or-nothing' ? 'all-or-nothing' : 'proportional',
+        starterScript: cfg.starter_script ? String(cfg.starter_script) : '#!/bin/bash\n',
+        sampleSolution: cfg.sample_solution ? String(cfg.sample_solution) : '',
+      };
     } else if (questionType === 'CODING') {
       const testCases = codingTestMap.get(code) || [];
       const config = codingConfigMap.get(code);
