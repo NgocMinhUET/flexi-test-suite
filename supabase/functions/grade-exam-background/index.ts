@@ -6,7 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const PISTON_API = 'https://emkc.org/api/v2/piston/execute';
+import { buildGradingScript, parseGradingOutput, scoreShell, historyToScript } from '../_shared/shell.ts';
+const PISTON_BASE = (Deno.env.get('PISTON_API_URL') || 'https://emkc.org/api/v2/piston').replace(/\/+$/, '').replace(/\/execute$/, '');
+const PISTON_API = `${PISTON_BASE}/execute`;
+const PISTON_KEY = Deno.env.get('PISTON_API_KEY') || '';
+const pistonHeaders = (): Record<string, string> => ({ 'Content-Type': 'application/json', ...(PISTON_KEY ? { Authorization: PISTON_KEY } : {}) });
 
 // Improved rate limiting handling
 const MAX_CONCURRENT = 1; // Run one test at a time for reliability
@@ -57,7 +61,7 @@ async function executeCode(
   try {
     const response = await fetch(PISTON_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: pistonHeaders(),
       body: JSON.stringify({
         language: langConfig.language,
         version: langConfig.version,
@@ -173,7 +177,8 @@ async function gradeExamInBackground(
       .eq('id', jobId);
 
     const codingQuestions = questions.filter((q: any) => q.type === 'coding');
-    const nonCodingQuestions = questions.filter((q: any) => q.type !== 'coding');
+    const shellQuestions = questions.filter((q: any) => q.type === 'shell' && q.shell);
+    const nonCodingQuestions = questions.filter((q: any) => q.type !== 'coding' && q.type !== 'shell');
     const totalQuestions = questions.length;
     let gradedCount = 0;
 
@@ -301,6 +306,57 @@ async function gradeExamInBackground(
           await sleep(1000);
         }
       }
+    }
+
+    // Grade Shell/Linux questions (one bash run per question)
+    for (const question of shellQuestions) {
+      const pts = Number(question.points) || 0;
+      totalPossiblePoints += pts;
+      const raw = answers[question.id.toString()];
+      const script = Array.isArray(raw) ? historyToScript(raw) : String(raw || '');
+      let earnedPoints = 0;
+      let isCorrect = false;
+      let shellResult: any = null;
+      if (script.trim()) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const tl = Math.min(Math.max(1, question.shell.timeLimit || 5), 20);
+            const res = await fetch(PISTON_API, {
+              method: 'POST',
+              headers: pistonHeaders(),
+              body: JSON.stringify({ language: 'bash', version: '*', files: [{ name: 'main.sh', content: buildGradingScript(question.shell, script, true) }], run_timeout: (tl + 15) * 1000 }),
+            });
+            if (res.status === 429 || res.status >= 500) { await sleep(1500 * Math.pow(2, attempt)); continue; }
+            const r = await res.json();
+            shellResult = parseGradingOutput(question.shell, r.run?.stdout ?? r.run?.output ?? '', true);
+            const sc = scoreShell(shellResult.tests, pts, question.shell.scoringMethod || 'proportional');
+            earnedPoints = sc.earnedPoints;
+            isCorrect = sc.isCorrect;
+            break;
+          } catch (e) {
+            console.error('Shell grading error', e);
+            await sleep(1500 * Math.pow(2, attempt));
+          }
+        }
+      }
+      totalEarnedPoints += earnedPoints;
+      questionResults.push({
+        questionId: question.id,
+        userAnswer: raw ?? '',
+        earnedPoints,
+        maxPoints: pts,
+        isCorrect,
+        codingResults: shellResult ? {
+          passedTests: shellResult.tests.filter((t: any) => t.passed).length,
+          totalTests: shellResult.tests.length,
+          visibleTests: { passed: shellResult.tests.filter((t: any) => !t.isHidden && t.passed).length, total: shellResult.tests.filter((t: any) => !t.isHidden).length },
+          hiddenTests: { passed: shellResult.tests.filter((t: any) => t.isHidden && t.passed).length, total: shellResult.tests.filter((t: any) => t.isHidden).length },
+          earnedPoints, maxPoints: pts,
+          scoringMethod: question.shell.scoringMethod || 'proportional',
+          testResults: shellResult.tests.map((t: any) => ({ testCaseId: t.id, passed: t.passed, isHidden: t.isHidden, weight: t.weight, input: t.description || t.kind, actualOutput: t.isHidden ? undefined : shellResult.stdout })),
+        } : undefined,
+      });
+      gradedCount++;
     }
 
     // Calculate final results
