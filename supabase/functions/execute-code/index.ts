@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildGradingScript, parseGradingOutput, buildTerminalScript, parseTerminalOutput, type ShellConfig } from "../_shared/shell.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,7 +30,13 @@ interface TestResult {
 }
 
 // Piston API - Free code execution engine
-const PISTON_API = "https://emkc.org/api/v2/piston";
+// Self-hosted Piston instance (public emkc API is whitelist-only since 2026-02)
+const PISTON_API = (Deno.env.get("PISTON_API_URL") || "https://emkc.org/api/v2/piston").replace(/\/+$/, "").replace(/\/execute$/, "");
+const PISTON_KEY = Deno.env.get("PISTON_API_KEY") || "";
+const pistonHeaders = (): Record<string, string> => ({
+  "Content-Type": "application/json",
+  ...(PISTON_KEY ? { Authorization: PISTON_KEY } : {}),
+});
 
 const languageMap: Record<string, { language: string; version: string }> = {
   python: { language: "python", version: "3.10.0" },
@@ -39,6 +46,7 @@ const languageMap: Record<string, { language: string; version: string }> = {
   c: { language: "c", version: "10.2.0" },
   go: { language: "go", version: "1.16.2" },
   rust: { language: "rust", version: "1.68.2" },
+  bash: { language: "bash", version: "*" },
 };
 
 // Improved retry configuration for better rate limit handling
@@ -71,9 +79,7 @@ async function executeCodeWithRetry(
   try {
     const response = await fetch(`${PISTON_API}/execute`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: pistonHeaders(),
       body: JSON.stringify({
         language: langConfig.language,
         version: langConfig.version,
@@ -187,6 +193,7 @@ function getFileName(language: string): string {
     c: "main.c",
     go: "main.go",
     rust: "main.rs",
+    bash: "main.sh",
   };
   return extensions[language] || "main.txt";
 }
@@ -299,7 +306,11 @@ serve(async (req) => {
       );
     }
 
-    const body: ExecuteRequest = await req.json();
+    const rawBody = await req.json();
+    if (rawBody?.mode === "shell" || rawBody?.mode === "terminal") {
+      return await handleShell(rawBody, userId);
+    }
+    const body: ExecuteRequest = rawBody;
     const { code, language, testCases, timeLimit, memoryLimit, includeHidden } = body;
 
     // Input validation
@@ -390,3 +401,80 @@ serve(async (req) => {
     );
   }
 });
+
+
+// ===== Shell / Linux questions =====
+const lastShellRun = new Map<string, number>();
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function runBashRaw(script: string, timeoutSec: number): Promise<{ output: string; error?: string }> {
+  for (let attempt = 0; attempt <= 4; attempt++) {
+    try {
+      const res = await fetch(`${PISTON_API}/execute`, {
+        method: "POST",
+        headers: pistonHeaders(),
+        body: JSON.stringify({
+          language: "bash",
+          version: "*",
+          files: [{ name: "main.sh", content: script }],
+          run_timeout: timeoutSec * 1000,
+        }),
+      });
+      if (res.status === 429 || res.status >= 500) {
+        await sleep(INITIAL_RETRY_DELAY * Math.pow(2, attempt));
+        continue;
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        return { output: "", error: `Máy chạy mã báo lỗi (${res.status}): ${t.slice(0, 200)}` };
+      }
+      const r = await res.json();
+      return { output: r.run?.stdout ?? r.run?.output ?? "" };
+    } catch (e) {
+      if (attempt === 4) return { output: "", error: `Không kết nối được máy chạy mã: ${e instanceof Error ? e.message : e}` };
+      await sleep(INITIAL_RETRY_DELAY * Math.pow(2, attempt));
+    }
+  }
+  return { output: "", error: "Máy chạy mã đang bận. Vui lòng thử lại." };
+}
+
+async function handleShell(body: any, userId: string) {
+  const config = body.shell as ShellConfig;
+  if (!config || !Array.isArray(config.tests)) return json({ success: false, error: "Thiếu cấu hình câu hỏi Shell" }, 400);
+
+  // Per-user pacing for practice runs (grading runs are not throttled)
+  if (!body.includeHidden) {
+    const minGap = body.mode === "terminal" ? 1500 : 5000;
+    const key = `${userId}:${body.mode}`;
+    const now = Date.now();
+    const last = lastShellRun.get(key) || 0;
+    if (now - last < minGap) {
+      const wait = Math.ceil((minGap - (now - last)) / 1000);
+      return json({ success: false, error: `Vui lòng đợi ${wait} giây rồi chạy lại.`, retryAfter: wait }, 429);
+    }
+    lastShellRun.set(key, now);
+  }
+
+  if (body.mode === "terminal") {
+    const history: string[] = Array.isArray(body.history) ? body.history.map(String).slice(-200) : [];
+    if (history.length === 0) return json({ success: false, error: "Chưa có lệnh" }, 400);
+    if (history.join("\n").length > 50000) return json({ success: false, error: "Lịch sử lệnh quá dài" }, 400);
+    const { output, error } = await runBashRaw(buildTerminalScript(config, history), 10);
+    if (error) return json({ success: false, error });
+    return json({ success: true, ...parseTerminalOutput(output) });
+  }
+
+  const script = String(body.script ?? "");
+  if (script.length > 50000) return json({ success: false, error: "Bài làm quá dài" }, 400);
+  const includeHidden = !!body.includeHidden;
+  const tl = Math.min(Math.max(1, config.timeLimit || 5), 20);
+  const { output, error } = await runBashRaw(buildGradingScript(config, script, includeHidden), tl + 15);
+  if (error) return json({ success: false, error });
+  return json({ success: true, ...parseGradingOutput(config, output, includeHidden) });
+}
