@@ -154,6 +154,7 @@ export function parseExcelFile(
   taxonomyNodes.forEach(node => taxonomyCodeMap.set(node.code, node.id));
 
   // Validate and parse each question row
+  const seenCodes = new Set<string>();
   questionsData.forEach((row, index) => {
     const rowNum = index + 2; // Excel rows start at 1, plus header row
     const code = normalizeString(row.code);
