@@ -47,6 +47,7 @@ const TakeExam = () => {
   const [gradingProgress, setGradingProgress] = useState<{ current: number; total: number } | null>(null);
   const [showBackgroundGradingUI, setShowBackgroundGradingUI] = useState(false);
   const startTimeRef = useRef(Date.now());
+  const submitLockRef = useRef(false);
   
   // Fullscreen and violation tracking
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -536,7 +537,7 @@ const TakeExam = () => {
 
       byType[question.type].total += 1;
 
-      if (!answer || (typeof userAnswer === 'string' && !userAnswer.trim())) {
+      if (!answer || (typeof userAnswer === 'string' && !userAnswer.trim()) || (Array.isArray(userAnswer) && userAnswer.length === 0)) {
         unansweredCount++;
       } else {
         if (question.type === 'multiple-choice') {
@@ -553,9 +554,10 @@ const TakeExam = () => {
           }
           earnedPoints = isCorrect ? question.points : 0;
         } else if (question.type === 'short-answer') {
-          const normalizedUser = String(userAnswer).toLowerCase().trim().replace(/\s+/g, '');
-          const normalizedCorrect = String(question.correctAnswer || '').toLowerCase().trim().replace(/\s+/g, '');
-          isCorrect = normalizedUser === normalizedCorrect;
+          const norm = (v: unknown) => String(v ?? '').toLowerCase().trim().replace(/\s+/g, '');
+          const accepted = Array.isArray(question.correctAnswer) ? question.correctAnswer : [question.correctAnswer];
+          const normalizedUser = norm(Array.isArray(userAnswer) ? userAnswer[0] : userAnswer);
+          isCorrect = accepted.some((a) => norm(a) === normalizedUser);
           earnedPoints = isCorrect ? question.points : 0;
         } else if (question.type === 'essay') {
           const wordCount = String(userAnswer).trim().split(/\s+/).length;
@@ -1128,6 +1130,8 @@ const TakeExam = () => {
 
   const handleConfirmSubmit = async () => {
     if (!exam || !user) return;
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     
     setIsSubmitting(true);
     setShowSubmitDialog(false);
@@ -1136,6 +1140,20 @@ const TakeExam = () => {
     exitFullscreen();
     
     try {
+      // Re-check: block duplicate submission (e.g. another tab already submitted)
+      const { data: already } = await supabase
+        .from('exam_results')
+        .select('id')
+        .eq('exam_id', exam.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (already) {
+        toast.info('Bạn đã nộp bài thi này rồi');
+        await clearDraft();
+        navigate(`/exam/${exam.id}/result`);
+        return;
+      }
+
       // Count coding questions
       const codingQuestions = exam.questions.filter(q => q.type === 'coding');
       const BACKGROUND_GRADING_THRESHOLD = 2; // Use background grading if >= 2 coding questions
@@ -1201,6 +1219,7 @@ const TakeExam = () => {
       setIsSubmitting(false);
       setGradingProgress(null);
       setShowBackgroundGradingUI(false);
+      submitLockRef.current = false;
     }
   };
 

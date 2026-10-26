@@ -205,10 +205,9 @@ async function gradeExamInBackground(
         const correctAnswers = Array.isArray(question.correctAnswer) 
           ? question.correctAnswer 
           : [question.correctAnswer];
-        const normalizedUser = String(userAnswer || '').trim().toLowerCase();
-        const isCorrect = correctAnswers.some((ans: string) => 
-          String(ans).trim().toLowerCase() === normalizedUser
-        );
+        const norm = (v: unknown) => String(v ?? '').toLowerCase().trim().replace(/\s+/g, '');
+        const normalizedUser = norm(Array.isArray(userAnswer) ? userAnswer[0] : userAnswer);
+        const isCorrect = correctAnswers.some((ans: string) => norm(ans) === normalizedUser);
         earnedPoints = isCorrect ? questionPoints : 0;
       }
 
