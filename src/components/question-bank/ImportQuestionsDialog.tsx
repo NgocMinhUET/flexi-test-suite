@@ -169,6 +169,16 @@ export function ImportQuestionsDialog({
         estimated_time: 30,
         needs_rich_edit: false,
       },
+      {
+        code: 'Q005',
+        type: 'SHELL',
+        content: 'Lọc các dòng chứa ERROR trong data/log.txt vào out/err.txt và in ra số dòng lỗi.',
+        taxonomy_code: '',
+        cognitive_level: subject.cognitive_levels[2] || 'Vận dụng',
+        difficulty: 0.5,
+        estimated_time: 300,
+        needs_rich_edit: false,
+      },
     ];
     const questionsSheet = XLSX.utils.json_to_sheet(questionsData);
     XLSX.utils.book_append_sheet(wb, questionsSheet, 'Questions');
