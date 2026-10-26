@@ -1,7 +1,7 @@
 // Types for Question Bank module
 
 export type QuestionStatus = 'draft' | 'review' | 'approved' | 'published';
-export type QuestionType = 'MCQ_SINGLE' | 'TRUE_FALSE_4' | 'SHORT_ANSWER' | 'CODING';
+export type QuestionType = 'MCQ_SINGLE' | 'TRUE_FALSE_4' | 'SHORT_ANSWER' | 'CODING' | 'SHELL';
 export type ProgrammingLanguage = 'python' | 'javascript' | 'java' | 'cpp' | 'c' | 'go' | 'rust';
 
 export interface Subject {
@@ -82,7 +82,19 @@ export interface CodingAnswerData {
   explanation?: string;
 }
 
-export type AnswerData = MCQAnswerData | TrueFalseAnswerData | ShortAnswerData | CodingAnswerData;
+export interface ShellAnswerDataBank {
+  mode: 'script' | 'terminal';
+  setupFiles: { path: string; content: string; mode?: string }[];
+  setupScript?: string;
+  tests: { id: string; kind: 'stdout' | 'file_exists' | 'dir_exists' | 'file_content' | 'permission' | 'custom'; description?: string; target?: string; expected?: string; weight?: number; isHidden?: boolean }[];
+  timeLimit?: number;
+  scoringMethod?: 'proportional' | 'all-or-nothing';
+  starterScript?: string;
+  sampleSolution?: string;
+  explanation?: string;
+}
+
+export type AnswerData = MCQAnswerData | TrueFalseAnswerData | ShortAnswerData | CodingAnswerData | ShellAnswerDataBank;
 
 export interface Question {
   id: string;

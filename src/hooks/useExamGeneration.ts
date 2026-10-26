@@ -95,6 +95,22 @@ function convertToExamQuestion(question: any, position: number, points: number, 
       };
     }
 
+    case 'SHELL': {
+      return {
+        ...baseQuestion,
+        type: 'shell' as const,
+        shell: {
+          mode: answerData?.mode === 'terminal' ? 'terminal' : 'script',
+          setupFiles: answerData?.setupFiles || [],
+          setupScript: answerData?.setupScript || '',
+          tests: answerData?.tests || [],
+          timeLimit: answerData?.timeLimit || 5,
+          scoringMethod: answerData?.scoringMethod || 'proportional',
+          starterScript: answerData?.starterScript || '',
+        },
+      };
+    }
+
     case 'CODING': {
       return {
         ...baseQuestion,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ShellQuestionEditor, defaultShellAnswerData, validateShellAnswerData, type ShellAnswerData } from '@/components/question-bank/ShellQuestionEditor';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubjects, useSubject } from '@/hooks/useSubjects';
@@ -75,6 +76,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
   TRUE_FALSE_4: 'Đúng/Sai 4 mệnh đề',
   SHORT_ANSWER: 'Trả lời ngắn',
   CODING: 'Lập trình',
+  SHELL: 'Shell/Linux (Bash)',
 };
 
 function generateId() {
@@ -135,6 +137,7 @@ export default function QuestionEditor() {
   const [caseSensitive, setCaseSensitive] = useState(false);
 
   // Coding answer data
+  const [shellData, setShellData] = useState<ShellAnswerData>(defaultShellAnswerData());
   const [codingLanguages, setCodingLanguages] = useState<ProgrammingLanguage[]>(['python']);
   const [defaultLanguage, setDefaultLanguage] = useState<ProgrammingLanguage>('python');
   const [starterCode, setStarterCode] = useState<Record<string, string>>({});
@@ -189,6 +192,10 @@ export default function QuestionEditor() {
         setShortAnswers(data.correctAnswers || ['']);
         setCaseSensitive(data.caseSensitive || false);
         setExplanation(data.explanation || '');
+      } else if (existingQuestion.question_type === 'SHELL') {
+        const data = answerData as unknown as ShellAnswerData;
+        setShellData({ ...defaultShellAnswerData(), ...data });
+        setExplanation(data.explanation || '');
       } else if (existingQuestion.question_type === 'CODING') {
         const data = answerData as CodingAnswerData;
         setCodingLanguages(data.languages || ['python']);
@@ -224,6 +231,8 @@ export default function QuestionEditor() {
         return { statements: tfStatements, explanation };
       case 'SHORT_ANSWER':
         return { correctAnswers: shortAnswers.filter(Boolean), caseSensitive, explanation };
+      case 'SHELL':
+        return { ...shellData, explanation };
       case 'CODING':
         return {
           languages: codingLanguages,
@@ -272,6 +281,14 @@ export default function QuestionEditor() {
     if (questionType === 'SHORT_ANSWER') {
       if (shortAnswers.filter(Boolean).length === 0) {
         toast.error('Vui lòng nhập ít nhất một đáp án đúng');
+        return false;
+      }
+    }
+
+    if (questionType === 'SHELL') {
+      const err = validateShellAnswerData(shellData);
+      if (err) {
+        toast.error(err);
         return false;
       }
     }
@@ -597,6 +614,7 @@ export default function QuestionEditor() {
                 {questionType === 'TRUE_FALSE_4' && 'Đánh dấu mệnh đề đúng/sai'}
                 {questionType === 'SHORT_ANSWER' && 'Nhập các đáp án được chấp nhận'}
                 {questionType === 'CODING' && 'Thiết lập ngôn ngữ, starter code và test cases'}
+                {questionType === 'SHELL' && 'Thiết lập môi trường Linux, chế độ làm bài và các bài kiểm tra'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -705,6 +723,10 @@ export default function QuestionEditor() {
                     <Label htmlFor="case">Phân biệt chữ hoa/thường</Label>
                   </div>
                 </>
+              )}
+
+              {questionType === 'SHELL' && (
+                <ShellQuestionEditor value={shellData} onChange={setShellData} />
               )}
 
               {questionType === 'CODING' && (
