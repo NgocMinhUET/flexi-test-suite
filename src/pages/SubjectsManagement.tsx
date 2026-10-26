@@ -355,6 +355,39 @@ export default function SubjectsManagement() {
                 Phân cách bằng dấu phẩy
               </p>
             </div>
+
+            <div>
+              <Label>Loại câu hỏi dùng trong môn</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {([
+                  ['MCQ_SINGLE', 'Trắc nghiệm'],
+                  ['TRUE_FALSE_4', 'Đúng/Sai'],
+                  ['SHORT_ANSWER', 'Trả lời ngắn'],
+                  ['CODING', 'Lập trình'],
+                  ['SHELL', 'Shell/Linux'],
+                ] as const).map(([type, label]) => {
+                  const active = formData.question_types.includes(type);
+                  return (
+                    <Button
+                      key={type}
+                      type="button"
+                      size="sm"
+                      variant={active ? 'default' : 'outline'}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          question_types: active
+                            ? formData.question_types.filter((t) => t !== type)
+                            : [...formData.question_types, type],
+                        })
+                      }
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <DialogFooter>

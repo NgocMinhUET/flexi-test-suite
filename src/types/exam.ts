@@ -5,6 +5,7 @@ export type QuestionType =
   | 'essay' 
   | 'drag-drop' 
   | 'coding'
+  | 'shell'              // Shell/Linux (Bash)
   // Language exam question types
   | 'listening-mcq'      // Nghe và chọn đáp án
   | 'listening-fill'     // Nghe và điền từ
@@ -88,6 +89,34 @@ export interface OrderingQuestion {
   correctOrder: string[];      // Thứ tự đúng (mảng ID)
 }
 
+export type ShellTestKind = 'stdout' | 'file_exists' | 'dir_exists' | 'file_content' | 'permission' | 'custom';
+
+export interface ShellTest {
+  id: string;
+  kind: ShellTestKind;
+  description?: string;
+  target?: string;
+  expected?: string;
+  weight?: number;
+  isHidden?: boolean;
+}
+
+export interface ShellSetupFile {
+  path: string;
+  content: string;
+  mode?: string;
+}
+
+export interface ShellQuestion {
+  mode: 'script' | 'terminal';
+  setupFiles: ShellSetupFile[];
+  setupScript?: string;
+  tests: ShellTest[];
+  timeLimit?: number;
+  scoringMethod?: 'proportional' | 'all-or-nothing';
+  starterScript?: string;
+}
+
 export interface Question {
   id: number;
   type: QuestionType;
@@ -95,6 +124,7 @@ export interface Question {
   options?: QuestionOption[];
   points: number;
   coding?: CodingQuestion;
+  shell?: ShellQuestion;
   correctAnswer?: string | string[]; // For grading
   // Language exam specific fields
   listening?: ListeningQuestion;

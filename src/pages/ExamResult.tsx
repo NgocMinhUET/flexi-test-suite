@@ -181,6 +181,7 @@ const questionTypeIcons: Record<QuestionType, React.ReactNode> = {
   'essay': <FileText className="w-4 h-4" />,
   'drag-drop': <Target className="w-4 h-4" />,
   'coding': <Code2 className="w-4 h-4" />,
+  'shell': <Code2 className="w-4 h-4" />,
   // Language exam types
   'listening-mcq': <Headphones className="w-4 h-4" />,
   'listening-fill': <Headphones className="w-4 h-4" />,
@@ -721,17 +722,17 @@ const ExamResultPage = () => {
                       )}
 
                       {/* Coding results - Enhanced display */}
-                      {question.type === 'coding' && (
+                      {(question.type === 'coding' || question.type === 'shell') && (
                         qResult.codingResults ? (
                           <CodingResultsDisplay 
                             codingResults={qResult.codingResults}
-                            userAnswer={qResult.userAnswer as string}
+                            userAnswer={Array.isArray(qResult.userAnswer) ? qResult.userAnswer.map((c) => `$ ${c}`).join('\n') : (qResult.userAnswer as string)}
                           />
                         ) : (
                           <div>
                             <h4 className="text-sm font-medium text-muted-foreground mb-2">Code của thí sinh</h4>
                             <pre className="p-4 bg-muted/50 rounded-lg overflow-x-auto text-sm font-mono max-h-64 overflow-y-auto border">
-                              {qResult.userAnswer || '(Không có code)'}
+                              {Array.isArray(qResult.userAnswer) ? qResult.userAnswer.map((c) => `$ ${c}`).join('\n') : (qResult.userAnswer || '(Không có code)')}
                             </pre>
                           </div>
                         )

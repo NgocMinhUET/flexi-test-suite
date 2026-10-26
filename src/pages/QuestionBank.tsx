@@ -84,6 +84,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
   TRUE_FALSE_4: 'Đúng/Sai',
   SHORT_ANSWER: 'Trả lời ngắn',
   CODING: 'Lập trình',
+  SHELL: 'Shell/Linux',
 };
 
 function stripHtml(html: string): string {
