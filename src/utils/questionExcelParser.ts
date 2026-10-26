@@ -154,6 +154,7 @@ export function parseExcelFile(
   taxonomyNodes.forEach(node => taxonomyCodeMap.set(node.code, node.id));
 
   // Validate and parse each question row
+  const seenCodes = new Set<string>();
   questionsData.forEach((row, index) => {
     const rowNum = index + 2; // Excel rows start at 1, plus header row
     const code = normalizeString(row.code);
@@ -178,6 +179,13 @@ export function parseExcelFile(
       errors.push({ row: rowNum, field: 'type', message: `Loại câu hỏi không hợp lệ: ${questionType}` });
       return;
     }
+
+    if (seenCodes.has(code)) {
+      errors.push({ row: rowNum, field: 'code', message: `Mã câu hỏi bị trùng trong file: ${code}` });
+      return;
+    }
+    seenCodes.add(code);
+    const errorCountBefore = errors.length;
 
     // Validate taxonomy code exists
     if (taxonomyCode && !taxonomyCodeMap.has(taxonomyCode)) {
@@ -292,6 +300,9 @@ export function parseExcelFile(
         starterCode,
       };
     }
+
+    // Skip rows that failed any validation above
+    if (errors.length > errorCountBefore) return;
 
     questions.push({
       code,

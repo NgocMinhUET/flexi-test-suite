@@ -119,10 +119,8 @@ export default function ContestRegistration() {
     // Update registration with proof
     const regId = registrationResult?.registration?.id;
     if (regId) {
-      await supabase
-        .from('contest_registrations')
-        .update({ bank_transfer_proof: result.url })
-        .eq('id', regId);
+      const { error } = await supabase.rpc('submit_registration_proof', { _registration_id: regId, _proof_url: result.url });
+      if (error) { toast.error(error.message); return; }
       toast.success('Đã upload minh chứng chuyển khoản');
     }
   };
@@ -134,10 +132,8 @@ export default function ContestRegistration() {
     setProofUrl(result.url);
 
     if (existingReg?.id) {
-      await supabase
-        .from('contest_registrations')
-        .update({ bank_transfer_proof: result.url })
-        .eq('id', existingReg.id);
+      const { error } = await supabase.rpc('submit_registration_proof', { _registration_id: existingReg.id, _proof_url: result.url });
+      if (error) { toast.error(error.message); return; }
       toast.success('Đã upload minh chứng chuyển khoản');
     }
   };

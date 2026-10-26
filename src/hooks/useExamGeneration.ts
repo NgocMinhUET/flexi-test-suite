@@ -216,11 +216,14 @@ export function useGenerateExams() {
             const matchTaxonomy = !cell.taxonomyNodeId || q.taxonomy_node_id === cell.taxonomyNodeId;
             const matchCognitive = !cell.cognitiveLevel || q.cognitive_level === cell.cognitiveLevel;
             const matchType = !cell.questionType || q.question_type === cell.questionType;
+            const rawD = q.difficulty == null ? null : Number(q.difficulty);
+            const d = rawD == null ? null : (rawD > 1 ? rawD / 100 : rawD);
+            const matchDifficulty = d == null || (d >= (constraints.minDifficulty ?? 0) && d <= (constraints.maxDifficulty ?? 1));
             
             // Exclude already selected questions
             const notSelected = !selectedQuestions.some(sq => sq.question.id === q.id);
             
-            return matchTaxonomy && matchCognitive && matchType && notSelected;
+            return matchTaxonomy && matchCognitive && matchType && matchDifficulty && notSelected;
           }) || [];
 
           // Select questions from pool
@@ -373,8 +376,11 @@ export function useGenerateExamsForContest() {
             const matchTaxonomy = !cell.taxonomyNodeId || q.taxonomy_node_id === cell.taxonomyNodeId;
             const matchCognitive = !cell.cognitiveLevel || q.cognitive_level === cell.cognitiveLevel;
             const matchType = !cell.questionType || q.question_type === cell.questionType;
+            const rawD = q.difficulty == null ? null : Number(q.difficulty);
+            const d = rawD == null ? null : (rawD > 1 ? rawD / 100 : rawD);
+            const matchDifficulty = d == null || (d >= (constraints.minDifficulty ?? 0) && d <= (constraints.maxDifficulty ?? 1));
             const notSelected = !selectedQuestions.some(sq => sq.question.id === q.id);
-            return matchTaxonomy && matchCognitive && matchType && notSelected;
+            return matchTaxonomy && matchCognitive && matchType && matchDifficulty && notSelected;
           }) || [];
 
           const selected = rng.sample(pool, Math.min(cell.count, pool.length));
@@ -400,6 +406,11 @@ export function useGenerateExamsForContest() {
         let totalDuration = matrixConfig.duration;
 
         if (constraints.isSectioned && constraints.sectionConfig.length > 0) {
+          const coveredTypes = new Set(constraints.sectionConfig.flatMap((sc) => sc.questionTypes));
+          const orphan = selectedQuestions.filter((sq) => !coveredTypes.has(sq.question.question_type));
+          if (orphan.length > 0) {
+            throw new Error(`Có ${orphan.length} câu hỏi thuộc loại chưa được gán vào phần thi nào. Vui lòng gán đủ loại câu hỏi cho các phần.`);
+          }
           // Build sections with questions grouped by question type
           examSections = [];
           let questionPosition = 1;
@@ -479,7 +490,7 @@ export function useGenerateExamsForContest() {
             duration: totalDuration,
             total_questions: examQuestions.length,
             questions: examQuestions as unknown as Json,
-            is_published: true,
+            is_published: false,
             created_by: user.user.id,
             source_type: 'contest',
             source_contest_id: contestId,

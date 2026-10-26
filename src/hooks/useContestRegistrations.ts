@@ -31,7 +31,7 @@ export const useContestInviteCodes = (contestId?: string) => {
       const [orgsRes, contestsRes, regCountsRes] = await Promise.all([
         supabase.from('organizations').select('id, name').in('id', orgIds),
         supabase.from('contests').select('id, name').in('id', contestIds),
-        supabase.from('contest_registrations').select('invite_code_id').in('invite_code_id', codeIds),
+        supabase.from('contest_registrations').select('invite_code_id').in('invite_code_id', codeIds).in('payment_status', ['pending', 'paid', 'free']),
       ]);
 
       const orgMap: Record<string, string> = {};
@@ -146,84 +146,9 @@ export const useContestRegistrations = (contestId?: string) => {
 export const useApproveRegistration = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ registrationId, contestId }: { registrationId: string; contestId: string }) => {
-      const { data: user } = await supabase.auth.getUser();
-      
-      // 1. Update payment status
-      const { data: reg, error: updateError } = await supabase
-        .from('contest_registrations')
-        .update({
-          payment_status: 'paid',
-          approved_by: user.user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', registrationId)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
-      // 2. Add to contest_participants if not already there
-      const registration = reg as ContestRegistration;
-      const { error: participantError } = await supabase
-        .from('contest_participants')
-        .upsert({
-          contest_id: contestId,
-          user_id: registration.user_id,
-        }, { onConflict: 'contest_id,user_id', ignoreDuplicates: true });
-
-      if (participantError) throw participantError;
-
-      // 3. Auto-assign exam if contest already has distributed exams
-      const { data: exams } = await supabase
-        .from('contest_exams')
-        .select('exam_id')
-        .eq('contest_id', contestId);
-
-      if (exams && exams.length > 0) {
-        // Check if participant already has an assigned exam
-        const { data: participant } = await supabase
-          .from('contest_participants')
-          .select('id, assigned_exam_id')
-          .eq('contest_id', contestId)
-          .eq('user_id', registration.user_id)
-          .single();
-
-        if (participant && !participant.assigned_exam_id) {
-          // Get current assignment counts for balanced distribution
-          const { data: allParticipants } = await supabase
-            .from('contest_participants')
-            .select('assigned_exam_id')
-            .eq('contest_id', contestId)
-            .not('assigned_exam_id', 'is', null);
-
-          const assignmentCounts = new Map<string, number>();
-          exams.forEach(e => assignmentCounts.set(e.exam_id, 0));
-          (allParticipants || []).forEach(p => {
-            if (p.assigned_exam_id) {
-              assignmentCounts.set(p.assigned_exam_id, (assignmentCounts.get(p.assigned_exam_id) || 0) + 1);
-            }
-          });
-
-          // Pick the exam with the fewest assignments
-          let selectedExamId = exams[0].exam_id;
-          let minCount = Infinity;
-          for (const [examId, count] of assignmentCounts.entries()) {
-            if (count < minCount) {
-              minCount = count;
-              selectedExamId = examId;
-            }
-          }
-
-          await supabase
-            .from('contest_participants')
-            .update({
-              assigned_exam_id: selectedExamId,
-              assigned_at: new Date().toISOString(),
-            })
-            .eq('id', participant.id);
-        }
-      }
+    mutationFn: async ({ registrationId }: { registrationId: string; contestId: string }) => {
+      const { error } = await supabase.rpc('approve_registration', { _registration_id: registrationId });
+      if (error) throw error;
     },
     onSuccess: (_, { contestId }) => {
       queryClient.invalidateQueries({ queryKey: ['contest-registrations', contestId] });
@@ -239,10 +164,7 @@ export const useRejectRegistration = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ registrationId }: { registrationId: string }) => {
-      const { error } = await supabase
-        .from('contest_registrations')
-        .update({ payment_status: 'failed' })
-        .eq('id', registrationId);
+      const { error } = await supabase.rpc('reject_registration', { _registration_id: registrationId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -257,78 +179,10 @@ export const useRejectRegistration = () => {
 export const useRegisterForContest = () => {
   return useMutation({
     mutationFn: async ({ inviteCode }: { inviteCode: string }) => {
-      // 1. Look up the invite code
-      const { data: codeData, error: codeError } = await supabase
-        .from('organization_contest_codes')
-        .select('*')
-        .eq('invite_code', inviteCode)
-        .eq('is_active', true)
-        .single();
-
-      if (codeError || !codeData) throw new Error('Mã mời không hợp lệ hoặc đã hết hạn');
-
-      const code = codeData as OrganizationContestCode;
-
-      // 2. Check max registrations
-      if (code.max_registrations) {
-        const { count } = await supabase
-          .from('contest_registrations')
-          .select('id', { count: 'exact', head: true })
-          .eq('invite_code_id', code.id);
-
-        if (count && count >= code.max_registrations) {
-          throw new Error('Mã mời đã đạt giới hạn đăng ký');
-        }
-      }
-
-      // 3. Get current user
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Bạn cần đăng nhập để đăng ký');
-
-      // 4. Check already registered
-      const { data: existing } = await supabase
-        .from('contest_registrations')
-        .select('id')
-        .eq('contest_id', code.contest_id)
-        .eq('user_id', userData.user.id)
-        .maybeSingle();
-
-      if (existing) throw new Error('Bạn đã đăng ký cuộc thi này rồi');
-
-      // 5. Determine payment method
-      const isFree = code.registration_fee === 0;
-      const paymentStatus = isFree ? 'free' : 'pending';
-      const paymentMethod = isFree ? 'free' : 'bank_transfer';
-
-      // 6. Create registration
-      const { data: reg, error: regError } = await supabase
-        .from('contest_registrations')
-        .insert({
-          contest_id: code.contest_id,
-          user_id: userData.user.id,
-          organization_id: code.organization_id,
-          invite_code_id: code.id,
-          payment_status: paymentStatus,
-          payment_method: paymentMethod,
-          payment_amount: code.registration_fee,
-          currency: code.currency,
-        })
-        .select()
-        .single();
-
-      if (regError) throw regError;
-
-      // 7. If free, auto-add to contest_participants
-      if (isFree) {
-        await supabase
-          .from('contest_participants')
-          .upsert({
-            contest_id: code.contest_id,
-            user_id: userData.user.id,
-          }, { onConflict: 'contest_id,user_id', ignoreDuplicates: true });
-      }
-
-      return { registration: reg, code, isFree };
+      const { data: reg, error } = await supabase.rpc('register_for_contest', { _invite_code: inviteCode.trim().toUpperCase() });
+      if (error) throw new Error(error.message);
+      const registration = reg as unknown as ContestRegistration;
+      return { registration, isFree: registration.payment_status === 'free' };
     },
     onError: (error) => toast.error(error.message),
   });
