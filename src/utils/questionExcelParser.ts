@@ -179,6 +179,13 @@ export function parseExcelFile(
       return;
     }
 
+    if (seenCodes.has(code)) {
+      errors.push({ row: rowNum, field: 'code', message: `Mã câu hỏi bị trùng trong file: ${code}` });
+      return;
+    }
+    seenCodes.add(code);
+    const errorCountBefore = errors.length;
+
     // Validate taxonomy code exists
     if (taxonomyCode && !taxonomyCodeMap.has(taxonomyCode)) {
       errors.push({ row: rowNum, field: 'taxonomy_code', message: `Mã phân loại không tồn tại: ${taxonomyCode}` });
@@ -292,6 +299,9 @@ export function parseExcelFile(
         starterCode,
       };
     }
+
+    // Skip rows that failed any validation above
+    if (errors.length > errorCountBefore) return;
 
     questions.push({
       code,
