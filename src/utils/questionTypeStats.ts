@@ -19,6 +19,7 @@ export function createDefaultByTypeStats(): QuestionTypeStats {
     'essay': { correct: 0, total: 0, points: 0, partial: 0 },
     'drag-drop': { correct: 0, total: 0, points: 0, partial: 0 },
     'coding': { correct: 0, total: 0, points: 0, partial: 0 },
+    'shell': { correct: 0, total: 0, points: 0, partial: 0 },
     // Language exam types
     'listening-mcq': { correct: 0, total: 0, points: 0, partial: 0 },
     'listening-fill': { correct: 0, total: 0, points: 0, partial: 0 },
@@ -42,6 +43,7 @@ export const questionTypeLabels: Record<QuestionType, string> = {
   'essay': 'Tự luận',
   'drag-drop': 'Kéo thả',
   'coding': 'Lập trình',
+  'shell': 'Shell/Linux',
   // Language exam types
   'listening-mcq': 'Nghe - Chọn đáp án',
   'listening-fill': 'Nghe - Điền từ',
